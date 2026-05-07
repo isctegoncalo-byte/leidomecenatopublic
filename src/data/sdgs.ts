@@ -17,8 +17,8 @@ const localImg = (n: number) => `/images/ods/ods-${String(n).padStart(2, '0')}.p
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const odsBucket = import.meta.env.VITE_SUPABASE_ODS_BUCKET || 'images'
-const odsFolder = import.meta.env.VITE_SUPABASE_ODS_FOLDER || 'ods'
-const odsFile = (n: number) => `ods-${String(n).padStart(2, '0')}.png`
+const odsFolder = import.meta.env.VITE_SUPABASE_ODS_FOLDER || 'ODS'
+const odsFile = (n: number) => `ods-${n}-pt.png`
 const supabaseImg = (n: number) => {
   if (!supabaseUrl) return ''
   const base = supabaseUrl.replace(/\/$/, '')

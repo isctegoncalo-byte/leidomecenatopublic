@@ -6,10 +6,10 @@ interface Props {
 
 export default function ImpactRatingPage({ setCurrentView }: Props) {
   const factors = [
-    { label: 'Impacto social', weight: '40%', text: 'Beneficiários diretos, relevância social e métrica de impacto indicada pela instituição.' },
-    { label: 'Impacto ambiental', weight: '30%', text: 'Contributo ambiental quando o projeto está ligado a ODS ambientais ou redução de externalidades.' },
-    { label: 'Governação', weight: '15%', text: 'Qualidade da informação, clareza do projeto, documentação e capacidade de prestação de contas.' },
-    { label: 'Cobertura financeira', weight: '15%', text: 'Relação entre o valor confirmado do donativo e o custo total do projeto específico.' },
+    { label: 'Impacto social e KPI', weight: '32%', text: 'Beneficiários diretos, metas declaradas, métricas de impacto e profundidade dos KPI indicados pela instituição.' },
+    { label: 'Impacto ambiental', weight: '25%', text: 'Contributo ambiental quando o projeto está ligado a ODS ambientais ou redução de externalidades.' },
+    { label: 'Governação', weight: '13%', text: 'Qualidade da informação, clareza do projeto, documentação e capacidade de prestação de contas.' },
+    { label: 'Adequação do projeto', weight: '30%', text: 'Combina cobertura do donativo, custo total do projeto, KPI, beneficiários e financiamento já assegurado.' },
   ]
 
   const ratings = [
@@ -28,7 +28,7 @@ export default function ImpactRatingPage({ setCurrentView }: Props) {
           <p className="text-sm font-black uppercase tracking-wide text-emerald-400 mb-3">Metodologia</p>
           <h1 className="text-4xl md:text-5xl font-black mb-4">Como é calculado o Rating de Impacto</h1>
           <p className="text-blue-100 text-lg">
-            O rating combina dados ESG do projeto, ODS, beneficiários e a percentagem do custo total do projeto coberta por donativos confirmados.
+            O rating combina dados ESG do projeto, ODS, beneficiários, KPI, custo total do projeto, financiamento já assegurado e donativos confirmados.
           </p>
         </div>
       </section>
@@ -48,9 +48,9 @@ export default function ImpactRatingPage({ setCurrentView }: Props) {
           <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-10">
             <h2 className="text-2xl font-black text-slate-900 mb-4">Fórmula simplificada</h2>
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-sm text-slate-700 leading-relaxed">
-              <p><strong>Rating de Impacto =</strong> Ambiental 30% + Social 40% + Governação 15% + Cobertura financeira 15%.</p>
+              <p><strong>Rating de Impacto =</strong> Ambiental 25% + Social/KPI 32% + Governação 13% + Adequação do projeto 30%.</p>
               <p className="mt-3">
-                A cobertura financeira é calculada assim: valor confirmado do donativo dividido pelo custo total do projeto. Se o projeto custa €20.000 e foram confirmados €10.000, a cobertura é 50%.
+                A adequação do projeto valoriza quatro sinais: percentagem coberta pelo donativo confirmado, custo total do projeto, força dos KPI/beneficiários e financiamento já assegurado. Assim, projetos maiores, com métricas mais claras e parte da verba já garantida, recebem uma avaliação mais forte.
               </p>
             </div>
           </div>

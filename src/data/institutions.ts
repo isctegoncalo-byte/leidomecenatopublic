@@ -4,7 +4,40 @@ const n = (
   id: string, category: string, subcategory: string, description: string,
   urgency: 'alta' | 'media' | 'baixa', sdgGoals: number[], esgPillar: 'E' | 'S' | 'G',
   impactMetric: string, estimatedValue?: number, beneficiaries?: number, quantity?: string
-): NeedItem => ({ id, category, subcategory, description, urgency, sdgGoals, esgPillar, impactMetric, estimatedValue, beneficiaries, quantity })
+): NeedItem => {
+  const securedFundingById: Record<string, number> = {
+    'n1-2': 6000,
+    'n2-1': 45000,
+    'n4-1': 18000,
+    'n5-2': 32000,
+    'n7-1': 25000,
+    'n10-1': 41000,
+    'n15-1': 55000,
+  }
+  const productKeywords = ['material', 'equipamento', 'hardware', 'veículo', 'carrinha', 'sensores', 'software', 'árvores', 'unidade', 'kits']
+  const text = `${category} ${subcategory} ${description} ${quantity || ''}`.toLowerCase()
+  const supportType = productKeywords.some(keyword => text.includes(keyword)) ? 'produtos' : 'dinheiro'
+  return {
+    id,
+    category,
+    subcategory,
+    description,
+    urgency,
+    sdgGoals,
+    esgPillar,
+    impactMetric,
+    estimatedValue,
+    beneficiaries,
+    quantity,
+    supportType,
+    implementationPhase: securedFundingById[id] ? 'a-decorrer' : 'candidatura',
+    requestedAmount: supportType === 'dinheiro' ? estimatedValue : undefined,
+    productOrService: supportType === 'produtos' ? subcategory : undefined,
+    totalProjectCost: estimatedValue,
+    securedFunding: securedFundingById[id] || 0,
+    status: 'ativo',
+  }
+}
 
 export const sampleInstitutions: Institution[] = [
 

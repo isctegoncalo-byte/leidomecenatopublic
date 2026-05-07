@@ -17,6 +17,7 @@ export default function HomePage({ setCurrentView }: Props) {
   const [institutionView, setInstitutionView] = useState<'list' | 'profiles'>('profiles')
   const [moneyPage, setMoneyPage] = useState(0)
   const [productPage, setProductPage] = useState(0)
+  const [institutionSearch, setInstitutionSearch] = useState('')
   const proofs = listProofs()
   const pageSize = 6
 
@@ -40,8 +41,14 @@ export default function HomePage({ setCurrentView }: Props) {
   const sortByName = (items: typeof sampleInstitutions) =>
     [...items].sort((a, b) => a.name.localeCompare(b.name, 'pt-PT'))
 
-  const moneyInstitutions = sortByName(sampleInstitutions.filter(inst => activeProjects(inst.needs, proofs, inst.name).some(need => !isProductOrServiceNeed(need))))
-  const productInstitutions = sortByName(sampleInstitutions.filter(inst => activeProjects(inst.needs, proofs, inst.name).some(isProductOrServiceNeed)))
+  const matchesInstitutionSearch = (inst: typeof sampleInstitutions[number]) => {
+    const term = institutionSearch.trim().toLowerCase()
+    if (!term) return true
+    return `${inst.name} ${inst.legalName} ${inst.category} ${inst.municipality} ${inst.district}`.toLowerCase().includes(term)
+  }
+
+  const moneyInstitutions = sortByName(sampleInstitutions.filter(inst => matchesInstitutionSearch(inst) && activeProjects(inst.needs, proofs, inst.name).some(need => !isProductOrServiceNeed(need))))
+  const productInstitutions = sortByName(sampleInstitutions.filter(inst => matchesInstitutionSearch(inst) && activeProjects(inst.needs, proofs, inst.name).some(isProductOrServiceNeed)))
 
   const pagedMoney = moneyInstitutions.slice(moneyPage * pageSize, (moneyPage + 1) * pageSize)
   const pagedProduct = productInstitutions.slice(productPage * pageSize, (productPage + 1) * pageSize)
@@ -267,6 +274,20 @@ export default function HomePage({ setCurrentView }: Props) {
                   className={`px-5 py-2 rounded-xl text-sm font-bold transition ${institutionView === 'profiles' ? 'bg-white text-slate-900 shadow' : 'text-slate-500 hover:text-slate-700'}`}>
                   Perfis ESG
                 </button>
+              </div>
+              <div className="mx-auto mt-5 max-w-xl">
+                <label className="sr-only" htmlFor="institution-search">Pesquisar instituição</label>
+                <input
+                  id="institution-search"
+                  value={institutionSearch}
+                  onChange={e => {
+                    setInstitutionSearch(e.target.value)
+                    setMoneyPage(0)
+                    setProductPage(0)
+                  }}
+                  placeholder="Pesquisar instituição por nome, área ou concelho..."
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
               </div>
             </div>
 

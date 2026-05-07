@@ -37,6 +37,33 @@ function scorePillar(needs: NeedItem[], pillar: 'E' | 'S' | 'G'): number {
   return Math.min(Math.round(raw / pillarNeeds.length), 100)
 }
 
+function projectValueScore(needs: NeedItem[], projectCost?: number): number {
+  const declaredCost = projectCost || needs.reduce((acc, n) => acc + (n.totalProjectCost || n.estimatedValue || n.requestedAmount || 0), 0)
+  if (!declaredCost) return 45
+  return Math.min(100, 35 + Math.log10(declaredCost) * 13)
+}
+
+function kpiImpactScore(needs: NeedItem[]): number {
+  if (needs.length === 0) return 45
+  const totalBeneficiaries = needs.reduce((acc, n) => acc + (n.beneficiaries || 0), 0)
+  const metricDepth = needs.reduce((acc, n) =>
+    acc
+    + Object.keys(n.generalImpactMetrics || {}).length
+    + Object.values(n.odsImpactMetrics || {}).reduce((sum, metrics) => sum + Object.keys(metrics || {}).length, 0)
+  , 0)
+  const beneficiaryScore = totalBeneficiaries ? Math.min(55, Math.log10(totalBeneficiaries) * 14) : 10
+  const metricScore = Math.min(35, metricDepth * 7)
+  const odsScore = Math.min(10, new Set(needs.flatMap(n => n.sdgGoals)).size * 2)
+  return Math.round(Math.min(100, beneficiaryScore + metricScore + odsScore))
+}
+
+function securedFundingScore(needs: NeedItem[], projectCost?: number): number {
+  const totalCost = projectCost || needs.reduce((acc, n) => acc + (n.totalProjectCost || n.estimatedValue || n.requestedAmount || 0), 0)
+  if (!totalCost) return 40
+  const secured = needs.reduce((acc, n) => acc + (n.securedFunding || 0), 0)
+  return Math.min(100, Math.round((secured / totalCost) * 100))
+}
+
 export function generateESGReport(
   institution: Institution,
   contract: ImpactContract
@@ -59,15 +86,19 @@ export function generateESGReport(
     ? Math.min((contract.donationAmount / projectCost) * 100, 100)
     : undefined
 
-  const fitScore = contract.donationType === 'produtos'
+  const coverageFitScore = contract.donationType === 'produtos'
     ? (exactMatch ? 100 : Math.min(Math.round((selectedNeedValues / Math.max(contract.donationAmount, 1)) * 100), 100))
     : (coveragePercent ? Math.min(Math.round(coveragePercent), 100) : 50)
+  const valueScore = projectValueScore(relevantNeeds, projectCost)
+  const kpiScore = kpiImpactScore(relevantNeeds)
+  const securedScore = securedFundingScore(relevantNeeds, projectCost)
+  const fitScore = Math.round(coverageFitScore * 0.40 + valueScore * 0.20 + kpiScore * 0.25 + securedScore * 0.15)
 
   const eScore = scorePillar(relevantNeeds, 'E')
   const sScore = scorePillar(relevantNeeds, 'S')
   const gScore = scorePillar(relevantNeeds, 'G')
-  const esgBaseScore = eScore * 0.30 + sScore * 0.40 + gScore * 0.15
-  const totalScore = Math.round(esgBaseScore + fitScore * 0.15)
+  const esgBaseScore = eScore * 0.25 + sScore * 0.32 + gScore * 0.13
+  const totalScore = Math.round(esgBaseScore + fitScore * 0.30)
 
   const allSDGs = [...new Set(relevantNeeds.flatMap(n => n.sdgGoals))]
   const totalBeneficiaries = relevantNeeds.reduce((acc, n) => acc + (n.beneficiaries || 0), 0)

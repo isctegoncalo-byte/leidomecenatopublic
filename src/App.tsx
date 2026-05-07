@@ -17,6 +17,7 @@ import PrivateAreaPage from './components/PrivateAreaPage'
 import AdminPage from './components/AdminPage'
 import LegalPage from './components/LegalPage'
 import CookieConsent from './components/CookieConsent'
+import SiteChatbot from './components/SiteChatbot'
 import BrandSync from './components/BrandSync'
 import { getSession, findAccountByEmail } from './utils/authStore'
 import { getRealSessionAccount, realBackendEnabled } from './utils/supabaseBackend'
@@ -228,6 +229,7 @@ export default function App() {
       </main>
 
       <Footer setCurrentView={setView} />
+      <SiteChatbot setCurrentView={setView} />
       <CookieConsent setCurrentView={setView} />
     </div>
   )

@@ -49,7 +49,7 @@ export interface BrandIdentity {
 
 export const DEFAULT_BRAND: BrandIdentity = {
   name: 'Lei do Mecenato',
-  tagline: 'Relatórios de Impacto de Donativos',
+  tagline: 'Plataforma Nacional de Donativos',
   description: 'Plataforma independente que produz relatórios de impacto sobre donativos feitos ao abrigo da Lei do Mecenato. O donativo vai sempre, na totalidade, da empresa para a instituição.',
 
   logoUrl: '/images/logo-leidomecenato-official.svg',
@@ -91,7 +91,7 @@ export const DEFAULT_BRAND: BrandIdentity = {
     'Omitir o caráter privado e independente da plataforma',
   ],
 
-  contactEmail: 'info@leidomecenato.pt',
+  contactEmail: 'geral@leidomecenato.pt',
   contactPhone: '+351 210 000 000',
   website: 'www.leidomecenato.pt',
 
@@ -110,6 +110,12 @@ export function getBrandIdentity(): BrandIdentity {
   const brand = readJson<BrandIdentity>(BRAND_KEY, DEFAULT_BRAND)
   if (!brand.logoUrl || brand.logoUrl === '/images/logo-lei-do-mecenato.png') {
     brand.logoUrl = DEFAULT_BRAND.logoUrl
+  }
+  if (!brand.tagline || brand.tagline === 'Relatórios de Impacto de Donativos') {
+    brand.tagline = DEFAULT_BRAND.tagline
+  }
+  if (!brand.contactEmail || brand.contactEmail === 'info@leidomecenato.pt') {
+    brand.contactEmail = DEFAULT_BRAND.contactEmail
   }
   return brand
 }

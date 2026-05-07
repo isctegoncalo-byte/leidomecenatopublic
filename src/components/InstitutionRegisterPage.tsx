@@ -66,7 +66,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
   const [identity, setIdentity] = useState({
     name: '', legalName: '', nif: '', type: '', category: '',
     address: '', municipality: '', district: '', postalCode: '',
-    phone: '', email: '', website: '', facebookUrl: '', instagramUrl: '',
+    phone: '', email: '', website: '', linktreeUrl: '', facebookUrl: '', instagramUrl: '',
     linkedinUrl: '', tiktokUrl: '', founded: '', iban: '',
   })
 
@@ -227,6 +227,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
         phone: identity.phone,
         email: identity.email,
         website: identity.website,
+        linktreeUrl: identity.linktreeUrl,
         facebookUrl: identity.facebookUrl,
         instagramUrl: identity.instagramUrl,
         linkedinUrl: identity.linkedinUrl,
@@ -436,6 +437,11 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                   <label className="block text-sm font-semibold text-slate-600 mb-2">Website</label>
                   <input value={identity.website} onChange={e => setIdentity({...identity, website: e.target.value})}
                     className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://www.instituicao.pt" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">LinkTree</label>
+                  <input value={identity.linktreeUrl} onChange={e => setIdentity({...identity, linktreeUrl: e.target.value})}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://linktr.ee/..." />
                 </div>
                 <div className="md:col-span-2">
                   <h3 className="text-base font-bold text-slate-800 mt-2 mb-1">Redes sociais</h3>

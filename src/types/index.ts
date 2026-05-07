@@ -206,6 +206,7 @@ export interface InstitutionRegistration {
   phone: string
   email: string
   website: string
+  linktreeUrl?: string
   facebookUrl?: string
   instagramUrl?: string
   linkedinUrl?: string

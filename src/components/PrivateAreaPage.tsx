@@ -344,6 +344,7 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
       phone: existing?.phone || '',
       email: account.email,
       website: existing?.website || '',
+      linktreeUrl: existing?.linktreeUrl || '',
       facebookUrl: existing?.facebookUrl || '',
       instagramUrl: existing?.instagramUrl || '',
       linkedinUrl: existing?.linkedinUrl || '',

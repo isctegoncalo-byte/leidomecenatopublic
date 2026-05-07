@@ -2,6 +2,7 @@ import { Account, ViewType } from '../types'
 import { findProjectEntry } from '../utils/projectCatalog'
 import { projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
 import { listProofs } from '../utils/proofStore'
+import { findInstitutionRegistration } from '../utils/institutionRegistry'
 
 interface Props {
   account: Account | null
@@ -26,9 +27,18 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
   }
 
   const { institution, project } = entry
+  const registration = findInstitutionRegistration(institution.name) || findInstitutionRegistration(institution.legalName)
   const target = projectTarget(project)
   const secured = projectSecured(project, proofs, institution.name)
   const progress = projectProgress(project, proofs, institution.name)
+  const socialLinks = [
+    { label: 'Site', url: registration?.website },
+    { label: 'LinkTree', url: registration?.linktreeUrl },
+    { label: 'Facebook', url: registration?.facebookUrl },
+    { label: 'Instagram', url: registration?.instagramUrl },
+    { label: 'LinkedIn', url: registration?.linkedinUrl },
+    { label: 'TikTok', url: registration?.tiktokUrl },
+  ].filter(link => !!link.url?.trim())
 
   const donate = () => {
     localStorage.setItem('leidomecenato_pending_project', JSON.stringify({
@@ -72,6 +82,24 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
                   <p className="text-slate-600">{institution.description}</p>
                 </div>
               </div>
+              {socialLinks.length > 0 && (
+                <div className="mt-5 border-t border-slate-100 pt-4">
+                  <p className="mb-3 text-xs font-black uppercase tracking-wide text-slate-400">Presença online</p>
+                  <div className="flex flex-wrap gap-2">
+                    {socialLinks.map(link => (
+                      <a
+                        key={link.label}
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-black text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                      >
+                        {link.label}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </article>
 
             <article className="bg-white border border-slate-200 rounded-2xl p-6">

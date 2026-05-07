@@ -11,6 +11,9 @@ interface Props {
 
 type Mode = 'login' | 'register' | 'recover' | 'reset'
 
+const DEMO_PASSWORD = 'demo1234'
+const DEMO_EMAILS = ['empresa@demo.pt', 'instituicao@demo.pt']
+
 export default function LoginPage({ onLogin, setCurrentView }: Props) {
   const [mode, setMode] = useState<Mode>('login')
   const [role, setRole] = useState<AccountRole>('empresa')
@@ -47,7 +50,8 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
     setError('')
     setSuccess('')
     setLoading(true)
-    const res = realBackendEnabled()
+    const isDemoLogin = DEMO_EMAILS.includes(email.trim().toLowerCase())
+    const res = realBackendEnabled() && !isDemoLogin
       ? await loginReal(email, password)
       : login(email, password)
     setLoading(false)
@@ -127,8 +131,19 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
 
   const fillDemo = (kind: AccountRole) => {
     setMode('login')
+    setError('')
+    setSuccess('Conta de demonstração preenchida. Clique em Entrar para testar em modo simulação.')
     setEmail(kind === 'empresa' ? 'empresa@demo.pt' : 'instituicao@demo.pt')
-    setPassword('demo1234')
+    setPassword(DEMO_PASSWORD)
+  }
+
+  const loginDemo = (kind: AccountRole) => {
+    setMode('login')
+    setError('')
+    setSuccess('')
+    const res = login(kind === 'empresa' ? 'empresa@demo.pt' : 'instituicao@demo.pt', DEMO_PASSWORD)
+    if (!res.ok) { setError(res.error); return }
+    onLogin(res.account)
   }
 
   return (
@@ -156,7 +171,7 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
                 : 'border-amber-200 bg-amber-50 text-amber-700'
             }`}>
               {realBackendEnabled()
-                ? 'Supabase ativo: contas e documentos usam a base real.'
+                ? 'Supabase ativo: contas reais usam a base real. As contas demo entram em modo simulação.'
                 : 'Modo demo: falta configurar o ficheiro .env do Supabase.'}
             </div>
 
@@ -345,10 +360,18 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
                   <div className="font-bold text-slate-800 text-sm">🏢 empresa@demo.pt</div>
                   <div className="text-xs text-slate-500">palavra-passe: demo1234</div>
                 </button>
+                <button onClick={() => loginDemo('empresa')}
+                  className="w-full rounded-xl bg-amber-500 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-400">
+                  Entrar como empresa demo
+                </button>
                 <button onClick={() => fillDemo('instituicao')}
                   className="w-full text-left bg-white border border-amber-200 rounded-xl p-3 hover:bg-amber-100 transition">
                   <div className="font-bold text-slate-800 text-sm">🏛️ instituicao@demo.pt</div>
                   <div className="text-xs text-slate-500">palavra-passe: demo1234</div>
+                </button>
+                <button onClick={() => loginDemo('instituicao')}
+                  className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white transition hover:bg-slate-800">
+                  Entrar como instituição demo
                 </button>
               </div>
             </div>

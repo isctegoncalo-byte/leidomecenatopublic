@@ -1,0 +1,21 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="transparent"/>
+
+  <!-- circular arrows -->
+  <path d="M330 390C371 302 459 255 551 270C594 277 633 295 665 321" stroke="#2F60E8" stroke-width="58" stroke-linecap="round"/>
+  <path d="M620 273L638 334L696 354" stroke="#2F60E8" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M674 540C633 628 545 675 453 660C410 653 371 635 339 609" stroke="#22C55E" stroke-width="58" stroke-linecap="round"/>
+  <path d="M384 657L361 599L299 592" stroke="#22C55E" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- document icon -->
+  <path d="M423 336C423 309 445 287 472 287H553C580 287 602 309 602 336V547C602 588 569 621 528 621H493C452 621 419 588 419 547V336H423Z" fill="#0E2B3A"/>
+  <rect x="454" y="403" width="116" height="27" rx="13.5" fill="#19394B"/>
+  <rect x="454" y="471" width="116" height="27" rx="13.5" fill="#19394B"/>
+
+  <!-- dots -->
+  <circle cx="610" cy="374" r="31" fill="#10B7D2"/>
+  <circle cx="410" cy="555" r="26" fill="#F59E0B"/>
+
+  <!-- wordmark -->
+  <text x="512" y="878" text-anchor="middle" font-family="Inter, Montserrat, Arial, sans-serif" font-size="44" font-weight="800" fill="#0E2B3A">leidomecenato.pt</text>
+</svg>

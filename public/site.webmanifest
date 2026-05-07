@@ -1,0 +1,17 @@
+{
+  "name": "leidomecenato.pt",
+  "short_name": "Mecenato",
+  "description": "Plataforma Nacional de Donativos com Relatórios de Impacto ESG do Donativo.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/images/logo-leidomecenato-official.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

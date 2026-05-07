@@ -1,0 +1,144 @@
+import { Institution, NeedItem, ImpactContract, GeneratedESGReport } from '../types'
+import { findInstitutionRegistration } from './institutionRegistry'
+
+export const sdgInfo: Record<number, { name: string; color: string; icon: string }> = {
+  1:  { name: 'Erradicação da Pobreza',       color: '#E5243B', icon: '🏚️' },
+  2:  { name: 'Fome Zero',                     color: '#DDA63A', icon: '🌾' },
+  3:  { name: 'Saúde de Qualidade',            color: '#4C9F38', icon: '💚' },
+  4:  { name: 'Educação de Qualidade',         color: '#C5192D', icon: '📚' },
+  5:  { name: 'Igualdade de Género',           color: '#FF3A21', icon: '⚧️' },
+  8:  { name: 'Trabalho Digno',                color: '#A21942', icon: '💼' },
+  10: { name: 'Redução das Desigualdades',     color: '#DD1367', icon: '⚖️' },
+  11: { name: 'Cidades Sustentáveis',          color: '#FD9D24', icon: '🏙️' },
+  13: { name: 'Ação Climática',                color: '#3F7E44', icon: '🌡️' },
+  14: { name: 'Vida Abaixo d\'Água',           color: '#0A97D9', icon: '🌊' },
+  15: { name: 'Vida Terrestre',                color: '#56C02B', icon: '🌿' },
+  17: { name: 'Parcerias para os Objetivos',   color: '#19486A', icon: '🤝' },
+}
+
+export const esgPillarInfo = {
+  E: { label: 'Ambiental',   color: '#16a34a', bg: 'bg-green-100',  text: 'text-green-800',  border: 'border-green-300' },
+  S: { label: 'Social',      color: '#2563eb', bg: 'bg-blue-100',   text: 'text-blue-800',   border: 'border-blue-300' },
+  G: { label: 'Governação',  color: '#7c3aed', bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-300' },
+}
+
+function scorePillar(needs: NeedItem[], pillar: 'E' | 'S' | 'G'): number {
+  const pillarNeeds = needs.filter(n => n.esgPillar === pillar)
+  if (pillarNeeds.length === 0) return 40
+
+  const urgencyWeight = { alta: 1.0, media: 0.7, baixa: 0.4 }
+  let raw = 0
+  pillarNeeds.forEach(n => {
+    const urgency = urgencyWeight[n.urgency]
+    const sdgBonus = Math.min(n.sdgGoals.length * 5, 15)
+    const beneficiaryBonus = n.beneficiaries ? Math.min(Math.log10(n.beneficiaries) * 8, 20) : 0
+    raw += 50 + urgency * 20 + sdgBonus + beneficiaryBonus
+  })
+  return Math.min(Math.round(raw / pillarNeeds.length), 100)
+}
+
+export function generateESGReport(
+  institution: Institution,
+  contract: ImpactContract
+): GeneratedESGReport {
+  const registration = findInstitutionRegistration(institution.name) || findInstitutionRegistration(institution.legalName)
+  const relevantNeeds = contract.selectedNeedIds.length > 0
+    ? institution.needs.filter(n => contract.selectedNeedIds.includes(n.id))
+    : institution.needs
+
+  const selectedNeedValues = relevantNeeds.reduce((acc, n) => acc + (n.estimatedValue || 0), 0)
+  const exactMatch = contract.donationType === 'produtos'
+    ? relevantNeeds.length === 1 && !!relevantNeeds[0]?.estimatedValue && Math.abs(contract.donationAmount - (relevantNeeds[0].estimatedValue || 0)) <= Math.max((relevantNeeds[0].estimatedValue || 0) * 0.05, 1)
+    : false
+
+  const projectCost = contract.donationMode === 'causa-com-projeto'
+    ? contract.projectCost ?? selectedNeedValues
+    : undefined
+
+  const coveragePercent = projectCost && projectCost > 0
+    ? Math.min((contract.donationAmount / projectCost) * 100, 100)
+    : undefined
+
+  const fitScore = contract.donationType === 'produtos'
+    ? (exactMatch ? 100 : Math.min(Math.round((selectedNeedValues / Math.max(contract.donationAmount, 1)) * 100), 100))
+    : (coveragePercent ? Math.min(Math.round(coveragePercent), 100) : 50)
+
+  const eScore = scorePillar(relevantNeeds, 'E')
+  const sScore = scorePillar(relevantNeeds, 'S')
+  const gScore = scorePillar(relevantNeeds, 'G')
+  const totalScore = Math.round(eScore * 0.35 + sScore * 0.45 + gScore * 0.20)
+
+  const allSDGs = [...new Set(relevantNeeds.flatMap(n => n.sdgGoals))]
+  const totalBeneficiaries = relevantNeeds.reduce((acc, n) => acc + (n.beneficiaries || 0), 0)
+  const totalValue = relevantNeeds.reduce((acc, n) => acc + (n.estimatedValue || 0), 0)
+  const coverageRatio = totalValue > 0 ? Math.min((contract.donationAmount / totalValue) * 100, 100) : 0
+  const impactPerEuro = totalBeneficiaries > 0 ? totalBeneficiaries / contract.donationAmount : 0
+
+  const eNeeds = relevantNeeds.filter(n => n.esgPillar === 'E')
+  const co2Impact = eNeeds.length > 0 ? Math.round(contract.donationAmount * 0.012) : 0
+
+  const simplerReport = contract.donationType === 'produtos' && exactMatch
+
+  let rating: string
+  let ratingColor: string
+  if (totalScore >= 85) { rating = 'AA+'; ratingColor = '#16a34a' }
+  else if (totalScore >= 75) { rating = 'AA';  ratingColor = '#22c55e' }
+  else if (totalScore >= 65) { rating = 'A+';  ratingColor = '#84cc16' }
+  else if (totalScore >= 55) { rating = 'A';   ratingColor = '#eab308' }
+  else if (totalScore >= 45) { rating = 'B+';  ratingColor = '#f97316' }
+  else                       { rating = 'B';   ratingColor = '#f43f5e' }
+
+  const generatedAt = new Date().toLocaleDateString('pt-PT', {
+    day: '2-digit', month: 'long', year: 'numeric'
+  })
+
+  return {
+    reportId: `IMP-${Date.now()}`,
+    generatedAt,
+    company: contract.company,
+    companyNif: contract.nif,
+    institution: contract.institutionName,
+    institutionCategory: institution.category,
+    donationDate: contract.donationDate,
+    donationAmount: contract.donationAmount,
+    reportPrice: contract.reportPrice,
+    reportTier: contract.reportTier.name,
+    donationMode: contract.donationMode,
+    projectCost,
+    coveragePercent,
+    exactMatch,
+    fitScore,
+    institutionPhotoUrls: (registration?.photoUrls || []).filter(Boolean),
+    institutionThankYouMessage: undefined,
+    scores: {
+      environmental: eScore,
+      social: sScore,
+      governance: gScore,
+      total: totalScore,
+      sdgAlignment: allSDGs,
+      beneficiaries: totalBeneficiaries,
+      impactNarrative: contract.donationMode === 'causa-com-projeto' && projectCost
+        ? `O donativo de €${contract.donationAmount.toLocaleString('pt-PT')} foi aplicado numa causa/projeto com custo total de €${projectCost.toLocaleString('pt-PT')}. A cobertura estimada do projeto é de ${coveragePercent?.toFixed(1)}%, com impacto direto em ${totalBeneficiaries.toLocaleString()} beneficiários.`
+        : exactMatch
+          ? `O donativo em géneros/serviços de €${contract.donationAmount.toLocaleString('pt-PT')} corresponde exatamente a uma necessidade da instituição, simplificando a modelação do impacto e apoiando ${totalBeneficiaries.toLocaleString()} beneficiários.`
+          : `O donativo de €${contract.donationAmount.toLocaleString('pt-PT')} — 100% entregue diretamente a ${institution.name} — apoiou ${relevantNeeds.length} necessidade(s) com impacto direto em ${totalBeneficiaries.toLocaleString()} beneficiários.`,
+      highlights: institution.esgScore.highlights,
+      risks: institution.esgScore.risks,
+    },
+    rating,
+    ratingColor,
+    coverageRatio: Math.round(coverageRatio),
+    impactPerEuro: parseFloat(impactPerEuro.toFixed(3)),
+    co2Impact,
+    relevantNeeds,
+    sdgAlignment: allSDGs,
+    pillarBreakdown: {
+      E: relevantNeeds.filter(n => n.esgPillar === 'E'),
+      S: relevantNeeds.filter(n => n.esgPillar === 'S'),
+      G: relevantNeeds.filter(n => n.esgPillar === 'G'),
+    },
+    irsDeduction: contract.donationAmount * 1.4,
+    ircSavings: Math.round(contract.donationAmount * 1.4 * 0.21 * 100) / 100,
+    disclaimer: `${simplerReport ? 'O donativo em géneros corresponde exatamente a uma necessidade da instituição, o que simplifica a modelação de impacto.' : 'O relatório foi calculado com base na relação entre o donativo e o projeto/necessidade selecionada.'} A plataforma Lei do Mecenato é uma iniciativa privada independente, sem qualquer vínculo a organismos públicos. Não é uma entidade certificadora oficial. O donativo referenciado é elegível para dedução fiscal nos termos do artigo 62.º do Código do IRC — confirme com o seu TOC.`,
+  }
+}

@@ -1,0 +1,717 @@
+import { useState, useEffect } from 'react'
+import { ViewType } from '../types'
+import { ReportTemplate, fillPlaceholders, defaultReportAdvanced } from '../templates/reportTemplates'
+import {
+  isAdminLoggedIn, adminLogin, adminLogout,
+  getReportTemplates, saveReportTemplate, deleteReportTemplate, resetReportTemplates,
+} from '../utils/adminStore'
+import { GeneratedESGReport } from '../types'
+import { downloadAdminDemoReport } from '../utils/adminDemoPdf'
+import { sampleInstitutions } from '../data/institutions'
+import AdminBrandTab from './AdminBrandTab'
+import {
+  AdminDocument,
+  AdminProfile,
+  listAdminDocumentsReal,
+  listAdminProfilesReal,
+  realBackendEnabled,
+} from '../utils/supabaseBackend'
+
+interface Props {
+  setCurrentView: (v: ViewType) => void
+}
+
+// Mock report for preview
+const mockReport: GeneratedESGReport = {
+  reportId: 'IMP-PREVIEW', generatedAt: new Date().toLocaleDateString('pt-PT'),
+  company: 'Empresa Exemplo, SA', companyNif: '514000000',
+  institution: 'Associação Crescer Juntos', institutionCategory: 'Infância e Juventude',
+  donationDate: '15/01/2025', donationAmount: 10000, reportPrice: 250,
+  reportTier: 'Relatório de Impacto Premium', donationMode: 'causa-com-projeto',
+  projectCost: 25000, coveragePercent: 40, exactMatch: false, fitScore: 40,
+  scores: { environmental: 52, social: 91, governance: 78, total: 78, sdgAlignment: [2, 3, 4, 10],
+    beneficiaries: 1200, impactNarrative: 'Donativo de €10.000 com impacto em 1.200 beneficiários.',
+    highlights: ['1.200 crianças/ano'], risks: ['Dependência de financiamento'] },
+  rating: 'AA', ratingColor: '#22c55e', coverageRatio: 40, impactPerEuro: 0.12, co2Impact: 0,
+  relevantNeeds: [
+    { id: 'n1', category: 'Educação', subcategory: 'Material Escolar', description: 'Material para 200 crianças',
+      urgency: 'alta', sdgGoals: [4], esgPillar: 'S', impactMetric: '200 crianças com material escolar', estimatedValue: 8000, beneficiaries: 200 },
+    { id: 'n2', category: 'Saúde', subcategory: 'Saúde Mental', description: 'Psicologia para famílias',
+      urgency: 'alta', sdgGoals: [3, 10], esgPillar: 'S', impactMetric: '60 famílias com acompanhamento', estimatedValue: 18000, beneficiaries: 180 },
+  ],
+  sdgAlignment: [2, 3, 4, 10],
+  pillarBreakdown: { E: [], S: [], G: [] },
+  irsDeduction: 14000, ircSavings: 2940,
+  disclaimer: 'Iniciativa privada independente.',
+}
+
+function buildPlaceholderVars(report: GeneratedESGReport): Record<string, string> {
+  return {
+    empresa: report.company,
+    instituicao: report.institution,
+    donativo: report.donationAmount.toLocaleString('pt-PT'),
+    data: report.donationDate,
+    rating: report.rating,
+    score: String(report.scores.total),
+    beneficiarios: report.scores.beneficiaries.toLocaleString(),
+    ods_principal: report.sdgAlignment.length > 0 ? `ODS ${report.sdgAlignment[0]}` : '—',
+    ods_numeros: report.sdgAlignment.map(s => `ODS ${s}`).join(', '),
+    cobertura: report.coveragePercent !== undefined ? report.coveragePercent.toFixed(1) : '—',
+    deducao_irc: report.irsDeduction.toLocaleString('pt-PT'),
+    poupanca: report.ircSavings.toLocaleString('pt-PT'),
+    necessidade_1: report.relevantNeeds[0] ? `${report.relevantNeeds[0].category} › ${report.relevantNeeds[0].subcategory}` : '—',
+    necessidade_2: report.relevantNeeds[1] ? `${report.relevantNeeds[1].category} › ${report.relevantNeeds[1].subcategory}` : '—',
+    relatorio_id: report.reportId,
+    ano: String(new Date().getFullYear()),
+  }
+}
+
+type AdminTab = 'users-docs' | 'brand' | 'report-templates' | 'preview'
+
+export default function AdminPage({ setCurrentView }: Props) {
+  const [authed, setAuthed] = useState(isAdminLoggedIn())
+  const [pin, setPin] = useState('')
+  const [pinError, setPinError] = useState('')
+  const [tab, setTab] = useState<AdminTab>('users-docs')
+
+  // Report templates
+  const [rTemplates, setRTemplates] = useState<ReportTemplate[]>([])
+  const [editingRT, setEditingRT] = useState<ReportTemplate | null>(null)
+
+  // Preview
+  const [previewReportId, setPreviewReportId] = useState('')
+
+  useEffect(() => {
+    if (authed) {
+      setRTemplates(getReportTemplates())
+    }
+  }, [authed, tab])
+
+  const handleLogin = () => {
+    if (adminLogin(pin)) { setAuthed(true); setPinError('') }
+    else setPinError('PIN incorreto.')
+  }
+
+  const handleLogout = () => { adminLogout(); setAuthed(false) }
+
+  if (!authed) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
+        <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-sm w-full text-center">
+          <div className="text-5xl mb-4">🔐</div>
+          <h1 className="text-2xl font-black text-slate-900 mb-2">Administração</h1>
+          <p className="text-slate-500 text-sm mb-6">Introduza o PIN de acesso.</p>
+          {pinError && <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{pinError}</div>}
+          <input type="password" value={pin} onChange={e => setPin(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleLogin()}
+            className="w-full px-4 py-3 border border-slate-300 rounded-xl text-center text-2xl tracking-widest font-mono mb-4" placeholder="••••••" />
+          <button onClick={handleLogin} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl">Entrar</button>
+          <button onClick={() => setCurrentView('home')} className="mt-4 text-sm text-blue-600 hover:text-blue-800">← Voltar ao site</button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-100">
+      {/* Header */}
+      <div className="bg-slate-900 text-white py-4 px-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">⚙️</span>
+          <div><h1 className="font-black text-lg">Administração</h1><p className="text-xs text-slate-400">Templates & Configuração</p></div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => setCurrentView('home')} className="bg-white/10 hover:bg-white/20 text-white text-sm px-4 py-2 rounded-lg">Site</button>
+          <button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 text-white text-sm px-4 py-2 rounded-lg">Sair</button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="bg-white border-b border-slate-200 px-6 flex gap-1 overflow-x-auto">
+        {([
+          { id: 'users-docs' as const, label: 'Utilizadores e Documentos' },
+          { id: 'brand' as const, label: '🎨 Identidade da Marca' },
+          { id: 'report-templates' as const, label: '📄 Templates de Relatório' },
+          { id: 'preview' as const, label: '👁️ Pré-visualização' },
+        ]).map(t => (
+          <button key={t.id} onClick={() => { setTab(t.id); setEditingRT(null) }}
+            className={`px-5 py-3 text-sm font-semibold border-b-2 transition whitespace-nowrap ${tab === t.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="p-6 max-w-6xl mx-auto">
+        {tab === 'users-docs' && <AdminUsersDocumentsTab />}
+        {tab === 'brand' && <AdminBrandTab />}
+
+        {/* ─── REPORT TEMPLATES ─── */}
+        {tab === 'report-templates' && !editingRT && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-black text-slate-900">Templates de Relatório PDF</h2>
+              <div className="flex gap-2">
+                <button onClick={() => setEditingRT(makeNewRT())} className="bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded-xl">+ Novo Template</button>
+                <button onClick={() => { resetReportTemplates(); setRTemplates(getReportTemplates()) }} className="bg-slate-200 text-slate-700 text-sm px-4 py-2 rounded-xl">Repor originais</button>
+              </div>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {rTemplates.map(t => (
+                <RTCard key={t.id} template={t}
+                  onEdit={() => setEditingRT({ ...t, sections: [...t.sections] })}
+                  onDelete={() => { deleteReportTemplate(t.id); setRTemplates(getReportTemplates()) }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tab === 'report-templates' && editingRT && (
+          <RTEditor template={editingRT} onSave={t => { saveReportTemplate(t); setRTemplates(getReportTemplates()); setEditingRT(null) }} onCancel={() => setEditingRT(null)} />
+        )}
+
+        {/* ─── PREVIEW ─── */}
+        {tab === 'preview' && (
+          <div className="space-y-8">
+            <h2 className="text-2xl font-black text-slate-900">Pré-visualização com dados simulados</h2>
+
+            {/* Report preview */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6">
+              <h3 className="font-bold text-slate-800 mb-4">📄 Template de Relatório</h3>
+              <select value={previewReportId} onChange={e => setPreviewReportId(e.target.value)} className="px-4 py-2 border border-slate-300 rounded-xl mb-4">
+                <option value="">Selecionar template...</option>
+                {rTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+              {previewReportId && (() => {
+                const t = rTemplates.find(r => r.id === previewReportId)
+                if (!t) return null
+                const vars = buildPlaceholderVars(mockReport)
+                return (
+                  <div className="bg-slate-50 rounded-xl p-5 space-y-3">
+                    <div className="flex gap-3 items-center">
+                      <div className="w-6 h-6 rounded" style={{ backgroundColor: t.accent }} />
+                      <div className="w-6 h-6 rounded" style={{ backgroundColor: t.subAccent }} />
+                      <span className="font-bold text-slate-700">{t.name}</span>
+                    </div>
+                    <div><span className="text-xs text-slate-500">Capa:</span><pre className="text-sm text-slate-700 whitespace-pre-wrap">{fillPlaceholders(t.coverTitle, vars)}</pre></div>
+                    <div><span className="text-xs text-slate-500">Subtítulo:</span><p className="text-sm text-slate-700">{fillPlaceholders(t.coverSubtitle, vars)}</p></div>
+                    <div><span className="text-xs text-slate-500">Sobre:</span><p className="text-sm text-slate-600">{fillPlaceholders(t.aboutText, vars)}</p></div>
+                    <div><span className="text-xs text-slate-500">Secções ativas:</span><p className="text-sm text-slate-600">{t.sections.filter(s => s.enabled).map(s => s.label).join(' → ')}</p></div>
+                    <div><span className="text-xs text-slate-500">Rodapé:</span><p className="text-sm text-slate-600">{t.footerText}</p></div>
+                  </div>
+                )
+              })()}
+            </div>
+
+            {/* Placeholders reference */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6">
+              <h3 className="font-bold text-slate-800 mb-4">📋 Referência de Placeholders</h3>
+              <div className="grid md:grid-cols-3 gap-2 text-xs">
+                {Object.entries(buildPlaceholderVars(mockReport)).map(([key, value]) => (
+                  <div key={key} className="flex justify-between bg-slate-50 rounded-lg px-3 py-2">
+                    <code className="text-blue-600 font-mono">{`{{${key}}}`}</code>
+                    <span className="text-slate-600 truncate ml-2">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function AdminUsersDocumentsTab() {
+  const [profiles, setProfiles] = useState<AdminProfile[]>([])
+  const [documents, setDocuments] = useState<AdminDocument[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const load = async () => {
+    setLoading(true)
+    setError('')
+    if (!realBackendEnabled()) {
+      setError('Supabase ainda nao esta ativo no ficheiro .env.')
+      setLoading(false)
+      return
+    }
+
+    const [profilesRes, docsRes] = await Promise.all([
+      listAdminProfilesReal(),
+      listAdminDocumentsReal(),
+    ])
+
+    if (!profilesRes.ok) {
+      setError(`Sem acesso aos utilizadores: ${profilesRes.error}`)
+      setLoading(false)
+      return
+    }
+    if (!docsRes.ok) {
+      setError(`Sem acesso aos documentos: ${docsRes.error}`)
+      setLoading(false)
+      return
+    }
+
+    setProfiles(profilesRes.profiles)
+    setDocuments(docsRes.documents)
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    void load()
+  }, [])
+
+  const companyCount = profiles.filter(p => p.role === 'empresa').length
+  const institutionCount = profiles.filter(p => p.role === 'instituicao').length
+  const totalStorage = documents.reduce((sum, d) => sum + (d.size || 0), 0)
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900">Utilizadores e Documentos</h2>
+          <p className="text-sm text-slate-500">Dados reais guardados no Supabase.</p>
+        </div>
+        <button onClick={() => void load()} className="bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-4 py-2 rounded-xl">
+          Atualizar
+        </button>
+      </div>
+
+      {loading && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 text-slate-500 text-sm">
+          A carregar dados do Supabase...
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-amber-800 text-sm space-y-3">
+          <p className="font-bold">Nao foi possivel carregar os dados reais.</p>
+          <p>{error}</p>
+          <p>
+            Para esta aba funcionar, entra no site com uma conta Supabase e marca essa conta como admin na tabela
+            <code className="mx-1 rounded bg-amber-100 px-1">profiles</code>.
+          </p>
+          <pre className="overflow-x-auto rounded-xl bg-white p-3 text-xs text-slate-700">{`update public.profiles
+set role = 'admin'
+where email = 'o-teu-email@exemplo.pt';`}</pre>
+        </div>
+      )}
+
+      {!loading && !error && (
+        <>
+          <div className="grid md:grid-cols-4 gap-4">
+            <AdminMetric label="Total de contas" value={profiles.length} />
+            <AdminMetric label="Empresas" value={companyCount} />
+            <AdminMetric label="Instituicoes" value={institutionCount} />
+            <AdminMetric label="Documentos" value={documents.length} detail={`${(totalStorage / 1024 / 1024).toFixed(2)} MB`} />
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="p-5 border-b border-slate-100">
+              <h3 className="font-black text-slate-900">Utilizadores</h3>
+              <p className="text-xs text-slate-500">Empresas, instituicoes e administradores.</p>
+            </div>
+            {profiles.length === 0 ? (
+              <p className="p-5 text-sm text-slate-500">Ainda nao existem perfis.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-5 py-3">Nome</th>
+                      <th className="px-5 py-3">Email</th>
+                      <th className="px-5 py-3">Tipo</th>
+                      <th className="px-5 py-3">NIF</th>
+                      <th className="px-5 py-3">Criado em</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {profiles.map(p => (
+                      <tr key={p.id}>
+                        <td className="px-5 py-3 font-semibold text-slate-800">{p.name}</td>
+                        <td className="px-5 py-3 text-slate-600">{p.email}</td>
+                        <td className="px-5 py-3">
+                          <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">{p.role}</span>
+                        </td>
+                        <td className="px-5 py-3 text-slate-600">{p.nif}</td>
+                        <td className="px-5 py-3 text-slate-500">{new Date(p.created_at).toLocaleDateString('pt-PT')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="p-5 border-b border-slate-100">
+              <h3 className="font-black text-slate-900">Documentos</h3>
+              <p className="text-xs text-slate-500">Ficheiros enviados pelos utilizadores.</p>
+            </div>
+            {documents.length === 0 ? (
+              <p className="p-5 text-sm text-slate-500">Ainda nao existem documentos carregados.</p>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {documents.map(d => (
+                  <div key={d.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-5">
+                    <div className="min-w-0">
+                      <p className="truncate font-bold text-slate-800">{d.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {d.category} - {(d.size / 1024).toFixed(1)} KB - {new Date(d.created_at).toLocaleString('pt-PT')}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        {d.profiles?.name || 'Utilizador sem perfil'} - {d.profiles?.email || d.owner_id}
+                      </p>
+                    </div>
+                    {d.public_url ? (
+                      <a href={d.public_url} download={d.name} className="self-start rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 md:self-auto">
+                        Descarregar
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-400">Sem link disponivel</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function AdminMetric({ label, value, detail }: { label: string; value: number; detail?: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-2 text-3xl font-black text-slate-900">{value}</p>
+      {detail && <p className="mt-1 text-xs text-slate-500">{detail}</p>}
+    </div>
+  )
+}
+
+// ─── EDITORS ─────────────────────────────────────
+
+function makeNewRT(): ReportTemplate {
+  return {
+    id: `rt-${Date.now()}`, name: 'Novo Template', accent: '#0f172a', subAccent: '#2563eb', background: '#ffffff',
+    note: '', sections: [
+      { id: 'cover', label: 'Capa', enabled: true }, { id: 'toc', label: 'Índice', enabled: true },
+      { id: 'summary', label: 'Sumário Executivo', enabled: true }, { id: 'overview', label: 'Empresa & Instituição', enabled: true },
+      { id: 'scores', label: 'Impact Score', enabled: true }, { id: 'sdg', label: 'ODS', enabled: true },
+      { id: 'needs', label: 'Necessidades', enabled: true }, { id: 'gallery', label: 'Galeria', enabled: true },
+      { id: 'fiscal', label: 'Dados Fiscais', enabled: true },
+    ],
+    coverTitle: 'Relatório\nde Impacto', coverSubtitle: 'Donativo ao abrigo da Lei do Mecenato',
+    aboutText: 'Relatório gerado para {{empresa}}.', footerText: 'Lei do Mecenato', disclaimer: 'Iniciativa privada independente.',
+    ...defaultReportAdvanced,
+  }
+}
+
+function RTCard({ template: t, onEdit, onDelete }: { template: ReportTemplate; onEdit: () => void; onDelete: () => void }) {
+  const [instIdx, setInstIdx] = useState(0)
+  const [downloading, setDownloading] = useState(false)
+
+  const handleDownload = async () => {
+    setDownloading(true)
+    try {
+      await downloadAdminDemoReport(t.name, instIdx, t)
+    } catch (e) {
+      console.error(e)
+    }
+    setDownloading(false)
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md transition">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-8 h-8 rounded-lg" style={{ backgroundColor: t.accent }} />
+        <div className="w-8 h-8 rounded-lg" style={{ backgroundColor: t.subAccent }} />
+        <div className="flex-1"><h3 className="font-bold text-slate-800">{t.name}</h3></div>
+      </div>
+      <p className="text-xs text-slate-500 mb-2">{t.note}</p>
+      <p className="text-xs text-slate-400 mb-3">{t.sections.filter(s => s.enabled).length} secções ativas</p>
+
+      {/* Instituição para demo */}
+      <div className="mb-3">
+        <label className="block text-[10px] text-slate-400 uppercase tracking-wide font-bold mb-1">Instituição para o exemplo</label>
+        <select value={instIdx} onChange={e => setInstIdx(+e.target.value)}
+          className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
+          {sampleInstitutions.map((inst, i) => (
+            <option key={inst.id} value={i}>{inst.logo} {inst.name} — {inst.category}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex gap-2">
+        <button onClick={onEdit} className="flex-1 bg-blue-50 text-blue-700 text-xs font-bold py-2 rounded-lg hover:bg-blue-100">Editar</button>
+        <button onClick={handleDownload} disabled={downloading}
+          className="flex-1 bg-green-50 text-green-700 text-xs font-bold py-2 rounded-lg hover:bg-green-100 disabled:opacity-50">
+          {downloading ? '⏳...' : '📥 PDF'}
+        </button>
+        <button onClick={onDelete} className="bg-red-50 text-red-600 text-xs font-bold px-3 py-2 rounded-lg hover:bg-red-100">×</button>
+      </div>
+    </div>
+  )
+}
+
+function RTEditor({ template, onSave, onCancel }: { template: ReportTemplate; onSave: (t: ReportTemplate) => void; onCancel: () => void }) {
+  const [t, setT] = useState(template)
+  const update = (patch: Partial<ReportTemplate>) => setT(prev => ({ ...prev, ...patch }))
+  const toggleSection = (id: string) => setT(prev => ({
+    ...prev,
+    sections: prev.sections.map(s => s.id === id ? { ...s, enabled: !s.enabled } : s),
+  }))
+
+  const handleBackgroundUpload = (sectionId: string, file?: File) => {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '')
+      setT(prev => ({
+        ...prev,
+        pageBackgrounds: {
+          ...(prev.pageBackgrounds || {}),
+          [sectionId]: dataUrl,
+        },
+      }))
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const removeBackground = (sectionId: string) => {
+    setT(prev => {
+      const next = { ...(prev.pageBackgrounds || {}) }
+      delete next[sectionId]
+      return { ...prev, pageBackgrounds: next }
+    })
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-black text-slate-900">Editar Template de Relatório</h2>
+        <div className="flex gap-2">
+          <button onClick={onCancel} className="bg-slate-200 text-slate-700 text-sm px-4 py-2 rounded-xl">Cancelar</button>
+          <button onClick={() => onSave(t)} className="bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded-xl">Guardar</button>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-semibold text-slate-600 mb-1">Nome *</label>
+          <input value={t.name} onChange={e => update({ name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-xl" />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-slate-600 mb-1">Descrição</label>
+          <input value={t.note} onChange={e => update({ note: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-xl" />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-slate-600 mb-1">Cor Principal</label>
+          <div className="flex gap-2 items-center">
+            <input type="color" value={t.accent} onChange={e => update({ accent: e.target.value })} className="w-10 h-10 rounded-lg border-0 cursor-pointer" />
+            <input value={t.accent} onChange={e => update({ accent: e.target.value })} className="flex-1 px-3 py-2 border border-slate-300 rounded-xl font-mono text-sm" />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-slate-600 mb-1">Cor Secundária</label>
+          <div className="flex gap-2 items-center">
+            <input type="color" value={t.subAccent} onChange={e => update({ subAccent: e.target.value })} className="w-10 h-10 rounded-lg border-0 cursor-pointer" />
+            <input value={t.subAccent} onChange={e => update({ subAccent: e.target.value })} className="flex-1 px-3 py-2 border border-slate-300 rounded-xl font-mono text-sm" />
+          </div>
+        </div>
+      </div>
+
+      {/* Opções avançadas de layout */}
+      <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200">
+        <h3 className="font-bold text-slate-800 mb-4">⚙️ Opções Avançadas de Layout</h3>
+        <div className="grid md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Estilo de Layout</label>
+            <select value={t.layoutStyle} onChange={e => update({ layoutStyle: e.target.value as ReportTemplate['layoutStyle'] })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm">
+              <option value="corporate">Corporate</option>
+              <option value="editorial">Editorial</option>
+              <option value="magazine">Magazine</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Estilo da Capa</label>
+            <select value={t.coverStyle} onChange={e => update({ coverStyle: e.target.value as ReportTemplate['coverStyle'] })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm">
+              <option value="minimal">Minimal</option>
+              <option value="circles">Círculos ESG</option>
+              <option value="photo-led">Foto em destaque</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Posição do Logótipo</label>
+            <select value={t.logoPosition} onChange={e => update({ logoPosition: e.target.value as ReportTemplate['logoPosition'] })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm">
+              <option value="top-left">Topo esquerdo</option>
+              <option value="top-right">Topo direito</option>
+              <option value="center">Centro</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Tratamento de Imagem</label>
+            <select value={t.imageTreatment} onChange={e => update({ imageTreatment: e.target.value as ReportTemplate['imageTreatment'] })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm">
+              <option value="rounded">Cantos arredondados</option>
+              <option value="framed">Moldura</option>
+              <option value="full-bleed">Full bleed</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Estilo dos KPIs</label>
+            <select value={t.kpiStyle} onChange={e => update({ kpiStyle: e.target.value as ReportTemplate['kpiStyle'] })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm">
+              <option value="cards">Cards</option>
+              <option value="badges">Badges</option>
+              <option value="table">Tabela</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Raio dos Cantos</label>
+            <input type="number" min={0} max={20} value={t.cornerRadius}
+              onChange={e => update({ cornerRadius: Number(e.target.value) || 0 })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Tamanho dos Títulos</label>
+            <input type="number" min={18} max={56} value={t.headingSize}
+              onChange={e => update({ headingSize: Number(e.target.value) || 34 })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Tamanho do Corpo</label>
+            <input type="number" min={7} max={18} value={t.bodySize}
+              onChange={e => update({ bodySize: Number(e.target.value) || 12 })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+          </div>
+          <div className="flex flex-col justify-end gap-2">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" checked={t.showLogo} onChange={e => update({ showLogo: e.target.checked })} className="accent-blue-600" />
+              Mostrar logótipo
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" checked={t.showPageNumbers} onChange={e => update({ showPageNumbers: e.target.checked })} className="accent-blue-600" />
+              Mostrar paginação
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-slate-600 mb-1">Título da Capa (use \n para quebra de linha)</label>
+        <input value={t.coverTitle} onChange={e => update({ coverTitle: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-xl" />
+      </div>
+      <div>
+        <label className="block text-sm font-semibold text-slate-600 mb-1">Subtítulo da Capa</label>
+        <input value={t.coverSubtitle} onChange={e => update({ coverSubtitle: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-xl" />
+      </div>
+      <div>
+        <label className="block text-sm font-semibold text-slate-600 mb-1">Texto "Sobre este relatório"</label>
+        <textarea value={t.aboutText} onChange={e => update({ aboutText: e.target.value })} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-xl resize-none" />
+      </div>
+      <div>
+        <label className="block text-sm font-semibold text-slate-600 mb-1">Rodapé</label>
+        <input value={t.footerText} onChange={e => update({ footerText: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-xl" />
+      </div>
+      <div>
+        <label className="block text-sm font-semibold text-slate-600 mb-1">Disclaimer Legal</label>
+        <textarea value={t.disclaimer} onChange={e => update({ disclaimer: e.target.value })} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-xl resize-none" />
+      </div>
+
+      {/* Textos de secções */}
+      <div className="bg-blue-50 rounded-2xl p-5 border border-blue-200">
+        <h3 className="font-bold text-blue-900 mb-4">✍️ Textos e Labels de Secções</h3>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-blue-700 mb-1">Título da explicação do rating</label>
+            <input value={t.ratingMethodTitle} onChange={e => update({ ratingMethodTitle: e.target.value })} className="w-full px-3 py-2 border border-blue-200 rounded-xl text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-blue-700 mb-1">Título da mensagem de agradecimento</label>
+            <input value={t.thankYouTitle} onChange={e => update({ thankYouTitle: e.target.value })} className="w-full px-3 py-2 border border-blue-200 rounded-xl text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-blue-700 mb-1">Título da galeria</label>
+            <input value={t.galleryTitle} onChange={e => update({ galleryTitle: e.target.value })} className="w-full px-3 py-2 border border-blue-200 rounded-xl text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-blue-700 mb-1">Título das necessidades</label>
+            <input value={t.needsTitle} onChange={e => update({ needsTitle: e.target.value })} className="w-full px-3 py-2 border border-blue-200 rounded-xl text-sm" />
+          </div>
+        </div>
+        <div className="mt-4">
+          <label className="block text-xs font-semibold text-blue-700 mb-1">Texto da metodologia do rating</label>
+          <textarea value={t.ratingMethodText} onChange={e => update({ ratingMethodText: e.target.value })} rows={4} className="w-full px-3 py-2 border border-blue-200 rounded-xl resize-none text-sm" />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-slate-600 mb-3">Secções do PDF</label>
+        <div className="grid grid-cols-3 gap-2">
+          {t.sections.map(s => (
+            <button key={s.id} onClick={() => toggleSection(s.id)}
+              className={`p-3 rounded-xl text-sm font-semibold border-2 transition ${s.enabled ? 'border-green-400 bg-green-50 text-green-700' : 'border-slate-200 text-slate-400 line-through'}`}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Fundos de página */}
+      <div className="bg-purple-50 rounded-2xl p-5 border border-purple-200">
+        <h3 className="font-bold text-purple-900 mb-2">🖼️ Fundos por Página</h3>
+        <p className="text-xs text-purple-700 mb-4">
+          Pode carregar uma imagem JPG/PNG para o fundo de cada página. Recomendado: proporção A4 vertical (ex: 1240×1754 px). Se não carregar imagem, é usada a cor do template/ODS.
+        </p>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {t.sections.map(section => {
+            const bg = t.pageBackgrounds?.[section.id]
+            return (
+              <div key={section.id} className="bg-white border border-purple-100 rounded-xl p-3">
+                <div className="flex justify-between items-start gap-2 mb-2">
+                  <div>
+                    <p className="font-bold text-slate-800 text-sm">{section.label}</p>
+                    <p className="text-[10px] text-slate-400 font-mono">{section.id}</p>
+                  </div>
+                  {bg && <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">com fundo</span>}
+                </div>
+
+                <div className="h-28 rounded-lg border border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center mb-3">
+                  {bg ? (
+                    <img src={bg} alt={`Fundo ${section.label}`} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs text-slate-400 text-center px-2">Sem fundo personalizado</span>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <label className="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold py-2 rounded-lg text-center cursor-pointer">
+                    Carregar
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg"
+                      onChange={e => handleBackgroundUpload(section.id, e.target.files?.[0])}
+                      className="hidden"
+                    />
+                  </label>
+                  {bg && (
+                    <button onClick={() => removeBackground(section.id)} className="bg-red-50 text-red-600 text-xs font-bold px-3 py-2 rounded-lg">
+                      Remover
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}

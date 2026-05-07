@@ -33,6 +33,7 @@ const emptyNeed = (): NeedItem => ({
   supportType: 'dinheiro',
   implementationPhase: 'candidatura',
   quantity: '',
+  projectPhotoUrls: [],
   requestedAmount: undefined,
   productOrService: '',
   totalProjectCost: undefined,
@@ -121,6 +122,27 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
     const reader = new FileReader()
     reader.onload = () => setLogoUrl(String(reader.result || ''))
     reader.readAsDataURL(file)
+  }
+
+  const handleProjectPhotoChange = (needIdx: number, photoIdx: number, file?: File) => {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      setNeeds(prev => prev.map((need, idx) => {
+        if (idx !== needIdx) return need
+        const next = [...(need.projectPhotoUrls || [])].slice(0, 5)
+        next[photoIdx] = String(reader.result || '')
+        return { ...need, projectPhotoUrls: next.filter(Boolean).slice(0, 5) }
+      }))
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const removeProjectPhoto = (needIdx: number, photoIdx: number) => {
+    setNeeds(prev => prev.map((need, idx) => {
+      if (idx !== needIdx) return need
+      return { ...need, projectPhotoUrls: (need.projectPhotoUrls || []).filter((_, i) => i !== photoIdx) }
+    }))
   }
 
   const validateStep = (s: number): string[] => {
@@ -797,6 +819,41 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                             Selecionados: {need.sdgGoals.map(n => SDG_DATA.find(s => s.n === n)?.fullLabel).join(', ')}
                           </div>
                         )}
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-semibold text-slate-600 mb-2">Galeria de fotos do projeto</label>
+                        <p className="text-xs text-slate-400 mb-3">Opcional. Pode carregar até 5 fotos para aparecerem na página pública deste projeto.</p>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                          {Array.from({ length: 5 }).map((_, photoIdx) => {
+                            const photo = need.projectPhotoUrls?.[photoIdx]
+                            return (
+                              <div key={photoIdx} className="rounded-xl border border-slate-200 bg-slate-50 p-2">
+                                <label className="block cursor-pointer">
+                                  <div className="mb-2 flex h-24 items-center justify-center overflow-hidden rounded-lg bg-white">
+                                    {photo ? (
+                                      <img src={photo} alt={`Foto ${photoIdx + 1} do projeto`} className="h-full w-full object-cover" />
+                                    ) : (
+                                      <span className="px-2 text-center text-xs text-slate-400">Foto {photoIdx + 1}</span>
+                                    )}
+                                  </div>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={e => handleProjectPhotoChange(idx, photoIdx, e.target.files?.[0])}
+                                    className="hidden"
+                                  />
+                                  <span className="block text-center text-xs font-bold text-blue-700">{photo ? 'Substituir' : 'Carregar'}</span>
+                                </label>
+                                {photo && (
+                                  <button onClick={() => removeProjectPhoto(idx, photoIdx)} className="mt-1 w-full text-xs font-bold text-red-600">
+                                    Remover
+                                  </button>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
                     </div>
                   </div>

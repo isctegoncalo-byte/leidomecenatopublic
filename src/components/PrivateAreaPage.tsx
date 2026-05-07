@@ -292,6 +292,7 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
     supportType: 'dinheiro',
     implementationPhase: 'candidatura',
     quantity: '',
+    projectPhotoUrls: [],
     requestedAmount: undefined,
     productOrService: '',
     totalProjectCost: undefined,
@@ -314,6 +315,7 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
     supportType: 'dinheiro',
     implementationPhase: 'candidatura',
     quantity: '',
+    projectPhotoUrls: [],
     requestedAmount: undefined,
     productOrService: '',
     totalProjectCost: undefined,
@@ -442,6 +444,23 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
         },
       },
     }))
+  }
+
+  const handleProjectPhotoChange = (photoIdx: number, file?: File) => {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      setForm(prev => {
+        const next = [...(prev.projectPhotoUrls || [])].slice(0, 5)
+        next[photoIdx] = String(reader.result || '')
+        return { ...prev, projectPhotoUrls: next.filter(Boolean).slice(0, 5) }
+      })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const removeProjectPhoto = (photoIdx: number) => {
+    setForm(prev => ({ ...prev, projectPhotoUrls: (prev.projectPhotoUrls || []).filter((_, i) => i !== photoIdx) }))
   }
 
   const MetricInput = ({
@@ -587,6 +606,40 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
             </div>
           </div>
         )}
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+          <h3 className="font-black text-slate-900 mb-2">Galeria de fotos do projeto</h3>
+          <p className="text-xs text-slate-500 mb-4">Opcional. Pode carregar até 5 fotos para aparecerem na página pública deste projeto.</p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {Array.from({ length: 5 }).map((_, photoIdx) => {
+              const photo = form.projectPhotoUrls?.[photoIdx]
+              return (
+                <div key={photoIdx} className="rounded-xl border border-slate-200 bg-white p-2">
+                  <label className="block cursor-pointer">
+                    <div className="mb-2 flex h-24 items-center justify-center overflow-hidden rounded-lg bg-slate-50">
+                      {photo ? (
+                        <img src={photo} alt={`Foto ${photoIdx + 1} do projeto`} className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="px-2 text-center text-xs text-slate-400">Foto {photoIdx + 1}</span>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={e => handleProjectPhotoChange(photoIdx, e.target.files?.[0])}
+                      className="hidden"
+                    />
+                    <span className="block text-center text-xs font-bold text-blue-700">{photo ? 'Substituir' : 'Carregar'}</span>
+                  </label>
+                  {photo && (
+                    <button onClick={() => removeProjectPhoto(photoIdx)} className="mt-1 w-full text-xs font-bold text-red-600">
+                      Remover
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
         <button onClick={addProject} className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl">
           + Adicionar projeto
         </button>
@@ -618,6 +671,7 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
                     </div>
                     <div className="flex flex-wrap gap-1 mt-2">
                       {n.sdgGoals.map(s => <span key={s} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">ODS {s}</span>)}
+                      {(n.projectPhotoUrls || []).length > 0 && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold">{(n.projectPhotoUrls || []).length} foto{(n.projectPhotoUrls || []).length > 1 ? 's' : ''}</span>}
                       {isProjectComplete(n, confirmedProofs, account.name) && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">Concluído</span>}
                     </div>
                   </div>

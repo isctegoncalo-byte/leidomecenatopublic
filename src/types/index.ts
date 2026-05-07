@@ -167,6 +167,7 @@ export interface NeedItem {
   subcategory: string
   description: string
   quantity?: string
+  projectPhotoUrls?: string[]
   requestedAmount?: number
   productOrService?: string
   totalProjectCost?: number

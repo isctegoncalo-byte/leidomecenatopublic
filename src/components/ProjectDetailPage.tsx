@@ -3,6 +3,7 @@ import { findProjectEntry } from '../utils/projectCatalog'
 import { projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
 import { listProofs } from '../utils/proofStore'
 import { findInstitutionRegistration } from '../utils/institutionRegistry'
+import { getProjectGallery } from '../utils/projectGalleries'
 
 interface Props {
   account: Account | null
@@ -31,6 +32,7 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
   const target = projectTarget(project)
   const secured = projectSecured(project, proofs, institution.name)
   const progress = projectProgress(project, proofs, institution.name)
+  const gallery = getProjectGallery(project, institution)
   const socialLinks = [
     { label: 'Site', url: registration?.website },
     { label: 'LinkTree', url: registration?.linktreeUrl },
@@ -120,6 +122,23 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
                 </div>
               </div>
             </article>
+
+            {gallery.length > 0 && (
+              <article className="bg-white border border-slate-200 rounded-2xl p-6">
+                <h2 className="text-2xl font-black text-slate-900 mb-4">Galeria de fotos</h2>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {gallery.map((photo, idx) => (
+                    <div key={`${photo}-${idx}`} className={idx === 0 ? 'md:col-span-2 md:row-span-2' : ''}>
+                      <img
+                        src={photo}
+                        alt={`Fotografia ${idx + 1} do projeto ${project.category}: ${project.subcategory}`}
+                        className={`w-full rounded-2xl object-cover ${idx === 0 ? 'h-72 md:h-full' : 'h-36'}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </article>
+            )}
 
             <article className="bg-white border border-slate-200 rounded-2xl p-6">
               <h2 className="text-2xl font-black text-slate-900 mb-4">ODS e metas a atingir</h2>

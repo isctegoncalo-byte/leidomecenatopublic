@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { SDG_DATA } from '../data/sdgs'
 
 interface SdgIconProps {
@@ -9,7 +9,14 @@ interface SdgIconProps {
 
 export default function SdgIcon({ n, size = 'md', className = '' }: SdgIconProps) {
   const [failed, setFailed] = useState(false)
+  const [imgIndex, setImgIndex] = useState(0)
   const sdg = SDG_DATA.find(s => s.n === n)
+
+  useEffect(() => {
+    setFailed(false)
+    setImgIndex(0)
+  }, [n])
+
   if (!sdg) return null
 
   const sizeClasses = {
@@ -20,13 +27,19 @@ export default function SdgIcon({ n, size = 'md', className = '' }: SdgIconProps
 
   const lines = sdg.label.split('\n')
 
-  if (!failed) {
+  const imgUrls = sdg.imgUrls?.length ? sdg.imgUrls : [sdg.imgUrl]
+  const currentImgUrl = imgUrls[imgIndex]
+
+  if (!failed && currentImgUrl) {
     return (
       <img
-        src={sdg.imgUrl}
+        src={currentImgUrl}
         alt={sdg.fullLabel}
         title={sdg.fullLabel}
-        onError={() => setFailed(true)}
+        onError={() => {
+          if (imgIndex < imgUrls.length - 1) setImgIndex(imgIndex + 1)
+          else setFailed(true)
+        }}
         className={`object-cover rounded-lg shadow-sm ${sizeClasses[size]} ${className}`}
         loading="lazy"
       />

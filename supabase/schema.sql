@@ -19,12 +19,27 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
+alter table public.profiles add column if not exists role text not null default 'empresa';
+alter table public.profiles add column if not exists email text not null default '';
+alter table public.profiles add column if not exists name text not null default '';
+alter table public.profiles add column if not exists nif text not null default '';
+alter table public.profiles add column if not exists company_activity text;
+alter table public.profiles add column if not exists institution_legal_name text;
+alter table public.profiles add column if not exists institution_category text;
+alter table public.profiles add column if not exists institution_logo_url text;
+alter table public.profiles add column if not exists consent_logo_display boolean not null default false;
+alter table public.profiles add column if not exists consent_rgpd boolean not null default false;
+alter table public.profiles add column if not exists created_at timestamptz not null default now();
+alter table public.profiles add column if not exists updated_at timestamptz not null default now();
+
 drop index if exists public.profiles_email_unique;
 drop index if exists public.profiles_nif_unique;
 create index if not exists profiles_email_idx on public.profiles (lower(email));
 create index if not exists profiles_nif_idx on public.profiles (nif);
 
+drop trigger if exists on_auth_user_created on auth.users;
 drop trigger if exists on_auth_user_created_profile on auth.users;
+drop function if exists public.handle_new_user();
 drop function if exists public.handle_new_user_profile();
 
 create table if not exists public.documents (

@@ -1,5 +1,6 @@
 import { Account, AccountRole, UploadedDoc } from '../types'
 import { isSupabaseConfigured, supabase } from './supabaseClient'
+import { User } from '@supabase/supabase-js'
 
 export interface AdminProfile {
   id: string
@@ -96,7 +97,7 @@ export async function loginReal(email: string, password: string): Promise<{ ok: 
     return { ok: false, error: error?.message || 'Nao foi possivel iniciar sessao.' }
   }
 
-  const account = await getRealSessionAccount()
+  const account = await ensureRealProfileAfterLogin(authData.user)
   if (!account) return { ok: false, error: 'Conta encontrada, mas o perfil ainda nao existe.' }
   return { ok: true, account }
 }
@@ -116,15 +117,60 @@ function profileFromPayload(userId: string, payload: SupabaseRegisterPayload) {
   }
 }
 
+function profileFromUser(user: User, fallback?: SupabaseRegisterPayload) {
+  const meta = user.user_metadata || {}
+  return {
+    id: user.id,
+    role: (meta.role || fallback?.role || 'empresa') as AccountRole,
+    email: user.email || fallback?.email.trim().toLowerCase() || '',
+    name: String(meta.name || fallback?.name || user.email?.split('@')[0] || 'Conta'),
+    nif: String(meta.nif || fallback?.nif || user.id),
+    company_activity: meta.company_activity || fallback?.companyActivity || null,
+    institution_legal_name: meta.institution_legal_name || fallback?.institutionLegalName || null,
+    institution_category: meta.institution_category || fallback?.institutionCategory || null,
+    consent_logo_display: meta.consent_logo_display ?? fallback?.consentLogoDisplay ?? false,
+    consent_rgpd: meta.consent_rgpd ?? fallback?.consentRGPD ?? false,
+  }
+}
+
+async function upsertProfileFromUser(user: User, fallback?: SupabaseRegisterPayload): Promise<Account | null> {
+  if (!supabase) return null
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .upsert(profileFromUser(user, fallback), { onConflict: 'id' })
+    .select('*')
+    .single()
+
+  if (error || !data) return null
+  return toAccount(data as AdminProfile)
+}
+
 export async function registerReal(payload: SupabaseRegisterPayload): Promise<{ ok: true; account: Account } | { ok: false; error: string }> {
   if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
 
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: payload.email.trim().toLowerCase(),
     password: payload.password,
+    options: {
+      data: {
+        role: payload.role,
+        name: payload.name.trim(),
+        nif: payload.nif.trim(),
+        company_activity: payload.companyActivity || null,
+        institution_legal_name: payload.institutionLegalName || null,
+        institution_category: payload.institutionCategory || null,
+        consent_logo_display: payload.consentLogoDisplay ?? false,
+        consent_rgpd: payload.consentRGPD ?? false,
+      },
+    },
   })
   if (authError || !authData.user) {
     return { ok: false, error: authError?.message || 'Nao foi possivel criar a conta.' }
+  }
+
+  if (!authData.session) {
+    return { ok: false, error: 'Conta criada. Confirme o email enviado pelo Supabase e depois entre com email e palavra-passe.' }
   }
 
   const { data, error } = await supabase
@@ -142,6 +188,12 @@ export async function registerReal(payload: SupabaseRegisterPayload): Promise<{ 
 
 export async function logoutReal() {
   if (supabase) await supabase.auth.signOut()
+}
+
+export async function ensureRealProfileAfterLogin(user: User): Promise<Account | null> {
+  const existing = await getRealSessionAccount()
+  if (existing) return existing
+  return upsertProfileFromUser(user)
 }
 
 export async function listDocsReal(ownerId: string): Promise<UploadedDoc[]> {

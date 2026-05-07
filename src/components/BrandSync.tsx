@@ -39,6 +39,11 @@ const viewMeta: Partial<Record<ViewType, { title: string; description: string; p
     description: 'Veja o impacto real dos donativos: valor doado, instituições apoiadas, beneficiários e relatórios produzidos.',
     path: '/impacto-real',
   },
+  'rating-impacto': {
+    title: 'Rating de Impacto | Metodologia de cálculo',
+    description: 'Conheça a metodologia de cálculo do Rating de Impacto, incluindo ESG, ODS, beneficiários e cobertura financeira do projeto.',
+    path: '/rating-de-impacto',
+  },
   faq: {
     title: 'FAQ | Lei do Mecenato, Donativos e Relatórios ESG',
     description: 'Perguntas frequentes sobre Lei do Mecenato, donativos empresariais, instituições, relatórios de impacto ESG, RGPD e dedução fiscal em IRC.',

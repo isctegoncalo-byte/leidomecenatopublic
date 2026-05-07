@@ -8,6 +8,7 @@ import CompanyDonationPage from './components/CompanyDonationPage'
 import InstitutionRegisterPage from './components/InstitutionRegisterPage'
 import ImpactContractSuccessPage from './components/ImpactContractSuccessPage'
 import ImpactStoriesPage from './components/ImpactStoriesPage'
+import ImpactRatingPage from './components/ImpactRatingPage'
 import FaqPage from './components/FaqPage'
 import MecenatoLawPage from './components/MecenatoLawPage'
 import LoginPage from './components/LoginPage'
@@ -38,6 +39,7 @@ const pathToView = (path: string): ViewType => {
     '/simulador': 'simulador',
     '/lei-do-mecenato': 'lei-mecenato',
     '/impacto-real': 'impacto-real',
+    '/rating-de-impacto': 'rating-impacto',
     '/faq': 'faq',
     '/entrar': 'login',
     '/area-privada': 'area-privada',
@@ -60,6 +62,7 @@ const viewToPath = (view: ViewType): string => {
     simulador: '/simulador',
     'lei-mecenato': '/lei-do-mecenato',
     'impacto-real': '/impacto-real',
+    'rating-impacto': '/rating-de-impacto',
     faq: '/faq',
     login: '/entrar',
     'area-privada': '/area-privada',
@@ -172,6 +175,7 @@ export default function App() {
         {view === 'home' && <HomePage setCurrentView={setView} />}
         {view === 'lei-mecenato' && <MecenatoLawPage setCurrentView={setView} />}
         {view === 'impacto-real' && <ImpactStoriesPage setCurrentView={setView} />}
+        {view === 'rating-impacto' && <ImpactRatingPage setCurrentView={setView} />}
         {view === 'faq' && <FaqPage setCurrentView={setView} />}
         {view === 'simulador' && <SimulatorPage />}
         {view === 'empresa' && (

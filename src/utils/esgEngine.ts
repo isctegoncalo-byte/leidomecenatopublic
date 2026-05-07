@@ -66,7 +66,8 @@ export function generateESGReport(
   const eScore = scorePillar(relevantNeeds, 'E')
   const sScore = scorePillar(relevantNeeds, 'S')
   const gScore = scorePillar(relevantNeeds, 'G')
-  const totalScore = Math.round(eScore * 0.35 + sScore * 0.45 + gScore * 0.20)
+  const esgBaseScore = eScore * 0.30 + sScore * 0.40 + gScore * 0.15
+  const totalScore = Math.round(esgBaseScore + fitScore * 0.15)
 
   const allSDGs = [...new Set(relevantNeeds.flatMap(n => n.sdgGoals))]
   const totalBeneficiaries = relevantNeeds.reduce((acc, n) => acc + (n.beneficiaries || 0), 0)
@@ -118,7 +119,7 @@ export function generateESGReport(
       sdgAlignment: allSDGs,
       beneficiaries: totalBeneficiaries,
       impactNarrative: contract.donationMode === 'causa-com-projeto' && projectCost
-        ? `O donativo de €${contract.donationAmount.toLocaleString('pt-PT')} foi aplicado numa causa/projeto com custo total de €${projectCost.toLocaleString('pt-PT')}. A cobertura estimada do projeto é de ${coveragePercent?.toFixed(1)}%, com impacto direto em ${totalBeneficiaries.toLocaleString()} beneficiários.`
+        ? `O donativo de €${contract.donationAmount.toLocaleString('pt-PT')} foi aplicado numa causa/projeto com custo total de €${projectCost.toLocaleString('pt-PT')}. A cobertura estimada do projeto é de ${coveragePercent?.toFixed(1)}% e contribuiu diretamente para o Rating de Impacto, com impacto direto em ${totalBeneficiaries.toLocaleString()} beneficiários.`
         : exactMatch
           ? `O donativo em géneros/serviços de €${contract.donationAmount.toLocaleString('pt-PT')} corresponde exatamente a uma necessidade da instituição, simplificando a modelação do impacto e apoiando ${totalBeneficiaries.toLocaleString()} beneficiários.`
           : `O donativo de €${contract.donationAmount.toLocaleString('pt-PT')} — 100% entregue diretamente a ${institution.name} — apoiou ${relevantNeeds.length} necessidade(s) com impacto direto em ${totalBeneficiaries.toLocaleString()} beneficiários.`,

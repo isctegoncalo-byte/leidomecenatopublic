@@ -3,7 +3,7 @@ export type ViewType =
   | 'home' | 'empresa' | 'instituicao' | 'empresas' | 'instituicoes' | 'simulador'
   | 'esg-report' | 'dashboard' | 'lei-mecenato' | 'impacto-real' | 'faq'
   | 'login' | 'area-privada' | 'admin' | 'relatorios'
-  | 'privacidade' | 'termos' | 'cookies'
+  | 'privacidade' | 'termos' | 'cookies' | 'rating-impacto'
 
 export type ESGPillar = 'E' | 'S' | 'G'
 

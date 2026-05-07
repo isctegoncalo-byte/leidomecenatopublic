@@ -102,6 +102,23 @@ export async function loginReal(email: string, password: string): Promise<{ ok: 
   return { ok: true, account }
 }
 
+export async function requestPasswordRecoveryReal(email: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+
+  const redirectTo = `${window.location.origin}/entrar`
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo })
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
+export async function updatePasswordReal(password: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+
+  const { error } = await supabase.auth.updateUser({ password })
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
 function profileFromPayload(userId: string, payload: SupabaseRegisterPayload) {
   return {
     id: userId,

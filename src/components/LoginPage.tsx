@@ -1,19 +1,21 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Account, AccountRole, ViewType } from '../types'
 import { login, registerAccount } from '../utils/authStore'
-import { loginReal, realBackendEnabled, registerReal } from '../utils/supabaseBackend'
+import { loginReal, realBackendEnabled, registerReal, requestPasswordRecoveryReal, updatePasswordReal } from '../utils/supabaseBackend'
+import { supabase } from '../utils/supabaseClient'
 
 interface Props {
   onLogin: (account: Account) => void
   setCurrentView: (v: ViewType) => void
 }
 
-type Mode = 'login' | 'register'
+type Mode = 'login' | 'register' | 'recover' | 'reset'
 
 export default function LoginPage({ onLogin, setCurrentView }: Props) {
   const [mode, setMode] = useState<Mode>('login')
   const [role, setRole] = useState<AccountRole>('empresa')
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
 
   const [email, setEmail] = useState('')
@@ -26,9 +28,24 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
   const [consentLogo, setConsentLogo] = useState(false)
   const [consentRGPD, setConsentRGPD] = useState(false)
 
+  useEffect(() => {
+    if (!supabase) return
+
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setMode('reset')
+        setError('')
+        setSuccess('Pode definir uma nova palavra-passe.')
+      }
+    })
+
+    return () => data.subscription.unsubscribe()
+  }, [])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setSuccess('')
     setLoading(true)
     const res = realBackendEnabled()
       ? await loginReal(email, password)
@@ -41,6 +58,7 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setSuccess('')
     if (!email || !password || !name || !nif) {
       setError('Preencha todos os campos obrigatórios.')
       return
@@ -71,6 +89,42 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
     onLogin(res.account)
   }
 
+  const handleRecover = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setSuccess('')
+    if (!email) {
+      setError('Escreva o email da sua conta.')
+      return
+    }
+    if (!realBackendEnabled()) {
+      setError('A recuperação de palavra-passe só funciona com o Supabase ativo.')
+      return
+    }
+    setLoading(true)
+    const res = await requestPasswordRecoveryReal(email)
+    setLoading(false)
+    if (!res.ok) { setError(res.error); return }
+    setSuccess('Enviámos um email com o link para recuperar a palavra-passe. Verifique também o spam/lixo eletrónico.')
+  }
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setSuccess('')
+    if (password.length < 6) {
+      setError('A nova palavra-passe deve ter pelo menos 6 caracteres.')
+      return
+    }
+    setLoading(true)
+    const res = await updatePasswordReal(password)
+    setLoading(false)
+    if (!res.ok) { setError(res.error); return }
+    setSuccess('Palavra-passe alterada com sucesso. Já pode entrar com a nova palavra-passe.')
+    setPassword('')
+    setMode('login')
+  }
+
   const fillDemo = (kind: AccountRole) => {
     setMode('login')
     setEmail(kind === 'empresa' ? 'empresa@demo.pt' : 'instituicao@demo.pt')
@@ -84,10 +138,17 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
           {/* Form */}
           <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
             <h1 className="text-3xl font-black text-slate-900 mb-2">
-              {mode === 'login' ? 'Iniciar Sessão' : 'Criar Conta'}
+              {mode === 'login' && 'Iniciar Sessão'}
+              {mode === 'register' && 'Criar Conta'}
+              {mode === 'recover' && 'Recuperar Palavra-passe'}
+              {mode === 'reset' && 'Nova Palavra-passe'}
             </h1>
             <p className="text-slate-500 text-sm mb-6">
-              Acede à área privada para gerir documentos, donativos e comprovativos.
+              {mode === 'recover'
+                ? 'Indique o email da sua conta para receber um link de recuperação.'
+                : mode === 'reset'
+                  ? 'Defina uma nova palavra-passe para voltar a entrar na sua conta.'
+                  : 'Acede à área privada para gerir documentos, donativos e comprovativos.'}
             </p>
             <div className={`mb-5 rounded-xl border p-3 text-xs font-semibold ${
               realBackendEnabled()
@@ -102,13 +163,13 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
             {/* Toggle mode */}
             <div className="grid grid-cols-2 gap-2 mb-6 bg-slate-100 rounded-xl p-1">
               <button
-                onClick={() => { setMode('login'); setError('') }}
+                onClick={() => { setMode('login'); setError(''); setSuccess('') }}
                 className={`py-2 rounded-lg font-bold text-sm transition ${mode === 'login' ? 'bg-white text-slate-900 shadow' : 'text-slate-500'}`}
               >
                 Entrar
               </button>
               <button
-                onClick={() => { setMode('register'); setError('') }}
+                onClick={() => { setMode('register'); setError(''); setSuccess('') }}
                 className={`py-2 rounded-lg font-bold text-sm transition ${mode === 'register' ? 'bg-white text-slate-900 shadow' : 'text-slate-500'}`}
               >
                 Registar
@@ -135,8 +196,11 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
             {error && (
               <div className="mb-4 rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>
             )}
+            {success && (
+              <div className="mb-4 rounded-xl bg-green-50 border border-green-200 p-3 text-sm text-green-700">{success}</div>
+            )}
 
-            <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="space-y-4">
+            <form onSubmit={mode === 'login' ? handleLogin : mode === 'register' ? handleRegister : mode === 'recover' ? handleRecover : handlePasswordReset} className="space-y-4">
               {mode === 'register' && (
                 <>
                   <div>
@@ -185,17 +249,23 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
                   )}
                 </>
               )}
-              <div>
-                <label className="block text-sm font-semibold text-slate-600 mb-1">Email *</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-600 mb-1">Palavra-passe *</label>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
-                {mode === 'register' && <p className="text-xs text-slate-400 mt-1">Mínimo 6 caracteres.</p>}
-              </div>
+              {mode !== 'reset' && (
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-1">Email *</label>
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
+                </div>
+              )}
+              {mode !== 'recover' && (
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-1">
+                    {mode === 'reset' ? 'Nova palavra-passe *' : 'Palavra-passe *'}
+                  </label>
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
+                  {(mode === 'register' || mode === 'reset') && <p className="text-xs text-slate-400 mt-1">Mínimo 6 caracteres.</p>}
+                </div>
+              )}
 
               {mode === 'register' && (
                 <div className="space-y-3 pt-2">
@@ -218,9 +288,31 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
 
               <button type="submit" disabled={loading}
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 text-white font-black py-4 rounded-2xl transition">
-                {loading ? 'A processar...' : mode === 'login' ? 'Entrar' : 'Criar Conta'}
+                {loading ? 'A processar...' : mode === 'login' ? 'Entrar' : mode === 'register' ? 'Criar Conta' : mode === 'recover' ? 'Enviar email de recuperação' : 'Guardar nova palavra-passe'}
               </button>
             </form>
+
+            {mode === 'login' && (
+              <div className="mt-4 text-center">
+                <button
+                  onClick={() => { setMode('recover'); setError(''); setSuccess(''); setPassword('') }}
+                  className="text-sm text-slate-600 hover:text-blue-700 font-semibold"
+                >
+                  Esqueci-me da palavra-passe
+                </button>
+              </div>
+            )}
+
+            {(mode === 'recover' || mode === 'reset') && (
+              <div className="mt-4 text-center">
+                <button
+                  onClick={() => { setMode('login'); setError(''); setSuccess('') }}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-semibold"
+                >
+                  Voltar ao login
+                </button>
+              </div>
+            )}
 
             <div className="mt-6 text-center">
               <button onClick={() => setCurrentView('home')} className="text-sm text-blue-600 hover:text-blue-800 font-semibold">

@@ -75,8 +75,18 @@ export default function HomePage({ setCurrentView }: Props) {
 
   const InstitutionMiniCard = ({ inst, mode }: { inst: typeof sampleInstitutions[number]; mode: 'money' | 'product' }) => {
     const needs = inst.needs.filter(need => mode === 'product' ? isProductOrServiceNeed(need) : !isProductOrServiceNeed(need)).slice(0, 1)
+    const firstNeed = needs[0]
+    const openFirstProject = () => {
+      if (!firstNeed) return
+      window.history.pushState({}, '', `/projeto/${projectSlug(inst, firstNeed)}`)
+      setCurrentView('projeto')
+    }
     return (
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-start gap-3 hover:shadow-md transition">
+      <button
+        type="button"
+        onClick={openFirstProject}
+        className="w-full bg-white border border-slate-200 rounded-2xl p-4 flex items-start gap-3 text-left hover:shadow-md hover:border-blue-300 transition focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
         <span className="text-3xl flex-shrink-0">{inst.logo}</span>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
@@ -97,7 +107,7 @@ export default function HomePage({ setCurrentView }: Props) {
             ))}
           </div>
         </div>
-      </div>
+      </button>
     )
   }
 
@@ -176,7 +186,12 @@ export default function HomePage({ setCurrentView }: Props) {
           </div>
 
           {mainNeed && (
-            <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4">
+            <button
+              type="button"
+              onClick={() => openProject(mainNeed.id)}
+              className="mb-5 w-full rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label={`Abrir página do projeto ${mainNeed.category} ${mainNeed.subcategory}`}
+            >
               <div className="mb-2 flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-black uppercase tracking-wide text-slate-400">Progresso do projeto</p>
@@ -191,10 +206,7 @@ export default function HomePage({ setCurrentView }: Props) {
                 <span>Angariado: € {projectSecured(mainNeed, proofs, inst.name).toLocaleString('pt-PT')}</span>
                 <span>Custo total: € {(mainNeed.totalProjectCost || mainNeed.estimatedValue || 0).toLocaleString('pt-PT')}</span>
               </div>
-              <button onClick={() => openProject(mainNeed.id)} className="mt-3 text-xs font-black text-blue-700 underline underline-offset-2">
-                Ver página do projeto
-              </button>
-            </div>
+            </button>
           )}
 
           <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-100">

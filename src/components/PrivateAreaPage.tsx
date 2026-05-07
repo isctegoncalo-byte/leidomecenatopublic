@@ -135,7 +135,7 @@ export default function PrivateAreaPage({ account, onLogout, setCurrentView }: P
           <DocumentsTab account={account} docs={docs} onChange={refresh} />
         )}
         {tab === 'projetos' && account.role === 'instituicao' && (
-          <InstitutionProjectsTab account={account} />
+          <InstitutionProjectsTab account={account} docs={docs} />
         )}
         {tab === 'donativos' && (
           <div className="space-y-6">
@@ -270,9 +270,19 @@ function ChatTab({ account, threads, onChange }: { account: Account; threads: Ch
 }
 
 // ─── PROJECTS / NEEDS (instituições) ──────────────
-function InstitutionProjectsTab({ account }: { account: Account }) {
+const REQUIRED_INSTITUTION_PROJECT_DOCS = [
+  'Comprovativo NIF',
+  'Relatórios de Atividades e Contas (último aprovado)',
+  'Estatutos',
+  'Comprovativo IBAN',
+]
+
+function InstitutionProjectsTab({ account, docs }: { account: Account; docs: UploadedDoc[] }) {
   const existing = findInstitutionRegistration(account.name)
   const confirmedProofs = listProofsForInstitution(account.id)
+  const missingRequiredDocs = REQUIRED_INSTITUTION_PROJECT_DOCS.filter(required =>
+    !docs.some(doc => doc.category === required)
+  )
   const [needs, setNeeds] = useState<NeedItem[]>(existing?.needs || [])
   const [form, setForm] = useState<NeedItem>({
     id: `need-${Date.now()}`,
@@ -353,6 +363,10 @@ function InstitutionProjectsTab({ account }: { account: Account }) {
   }
 
   const addProject = () => {
+    if (missingRequiredDocs.length > 0) {
+      setError(`Antes de criar um novo projeto, carregue os documentos obrigatórios em falta: ${missingRequiredDocs.join(', ')}.`)
+      return
+    }
     if (!form.category || !form.subcategory || !form.description || !form.impactMetric || form.sdgGoals.length === 0 || !form.supportType || !form.implementationPhase) {
       setError('Preencha categoria, subcategoria, descrição, tipo de apoio, fase de implementação, métrica de impacto e pelo menos 1 ODS.')
       return
@@ -463,6 +477,26 @@ function InstitutionProjectsTab({ account }: { account: Account }) {
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 text-blue-700 text-sm">
         <strong>📋 Projetos para apoio:</strong> adicione necessidades/projetos que a sua instituição pretende divulgar a empresas mecenas.
+      </div>
+
+      <div className={`rounded-2xl border p-5 text-sm ${missingRequiredDocs.length ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-green-200 bg-green-50 text-green-800'}`}>
+        <strong>Documentos obrigatórios para criar projetos:</strong>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {REQUIRED_INSTITUTION_PROJECT_DOCS.map(label => {
+            const uploaded = !missingRequiredDocs.includes(label)
+            return (
+              <div key={label} className="flex items-center gap-2 rounded-xl bg-white/70 px-3 py-2">
+                <span className={uploaded ? 'text-green-600' : 'text-amber-600'}>{uploaded ? '✓' : '!'}</span>
+                <span className="font-semibold">{label}</span>
+              </div>
+            )
+          })}
+        </div>
+        {missingRequiredDocs.length > 0 && (
+          <p className="mt-3 text-xs">
+            Para desbloquear a criação de projetos, vá à tab "Documentos" e carregue estes ficheiros nas categorias indicadas.
+          </p>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6">
@@ -680,13 +714,21 @@ function Row({ label, value }: { label: string; value: string }) {
 function DocumentsTab({
   account, docs, onChange,
 }: { account: Account; docs: UploadedDoc[]; onChange: () => void }) {
-  const [category, setCategory] = useState('Outro')
+  const [category, setCategory] = useState(account.role === 'instituicao' ? 'Comprovativo NIF' : 'Outro')
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
 
   const categories = account.role === 'empresa'
     ? ['Documento da empresa', 'Comprovativo de pagamento', 'Comprovativo de transferência', 'Fatura/Recibo', 'Outro']
-    : ['Estatutos', 'Contas aprovadas', 'Reconhecimento de Utilidade Pública', 'Comprovativo de receção', 'Outro']
+    : [
+        'Comprovativo NIF',
+        'Relatórios de Atividades e Contas (último aprovado)',
+        'Estatutos',
+        'Comprovativo IBAN',
+        'Reconhecimento de Utilidade Pública',
+        'Comprovativo de receção',
+        'Outro',
+      ]
 
   const handleUpload = async (file?: File) => {
     if (!file) return
@@ -915,6 +957,9 @@ function ProofsTab({
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 text-blue-700 text-sm">
         <strong>Como funciona:</strong> O comprovativo de donativo é validado quando <strong>ambas as partes</strong> (empresa e instituição) confirmam que o donativo aconteceu. Após a validação, é gerado um certificado em PDF que pode ser descarregado.
+        <p className="mt-2">
+          Quando a empresa confirma o donativo, a instituição recebe uma notificação e deve confirmar a receção ou negar o donativo. Aguarde 2 a 3 dias úteis antes de insistir, porque algumas transferências podem demorar a ser processadas.
+        </p>
       </div>
 
       <div className="space-y-4">
@@ -1115,7 +1160,17 @@ function ProofsTab({
                               recipientRole: 'instituicao',
                               kind: 'company-confirmed',
                               title: 'Empresa confirmou o donativo',
-                              body: `${account.name} confirmou que efetuou o donativo de €${p.amount.toLocaleString('pt-PT')} à ${p.institutionName}. Confirme a receção para que o Relatório ESG fique disponível à empresa.`,
+                              body: `${account.name} confirmou que efetuou o donativo de €${p.amount.toLocaleString('pt-PT')} à ${p.institutionName}. Confirme a receção na página Donativos ou negue o donativo caso o valor não tenha sido recebido. Recomenda-se aguardar 2 a 3 dias úteis para validação, salvaguardando transferências que possam demorar mais tempo a serem processadas.`,
+                              relatedProofId: p.id,
+                              relatedContractId: p.contractId,
+                            })
+                          } else {
+                            createNotification({
+                              recipientRole: 'instituicao',
+                              recipientName: p.institutionName,
+                              kind: 'company-confirmed',
+                              title: 'Empresa confirmou o donativo',
+                              body: `${account.name} confirmou que efetuou o donativo de €${p.amount.toLocaleString('pt-PT')} à ${p.institutionName}. Confirme a receção na página Donativos ou negue o donativo caso o valor não tenha sido recebido. Recomenda-se aguardar 2 a 3 dias úteis para validação, salvaguardando transferências que possam demorar mais tempo a serem processadas.`,
                               relatedProofId: p.id,
                               relatedContractId: p.contractId,
                             })
@@ -1141,7 +1196,7 @@ function ProofsTab({
                     )}
                     {myConfirmed && !otherConfirmed && (
                       <span className="text-sm text-slate-500 self-center">
-                        Confirmado. A aguardar confirmação da {otherLabel}.
+                        Confirmado. A aguardar confirmação da {otherLabel}. Aguarde 2 a 3 dias úteis para validação, salvaguardando transferências que possam demorar mais tempo a serem processadas.
                       </span>
                     )}
                     <button onClick={() => {

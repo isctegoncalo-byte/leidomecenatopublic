@@ -119,6 +119,28 @@ export async function updatePasswordReal(password: string): Promise<{ ok: true }
   return { ok: true }
 }
 
+async function notifyAdminAboutRegistration(payload: SupabaseRegisterPayload) {
+  if (!supabase) return
+
+  try {
+    await supabase.functions.invoke('registration-notification', {
+      body: {
+        to: 'geral@leidomecenato.pt',
+        role: payload.role,
+        email: payload.email.trim().toLowerCase(),
+        name: payload.name.trim(),
+        nif: payload.nif.trim(),
+        companyActivity: payload.companyActivity || '',
+        institutionLegalName: payload.institutionLegalName || '',
+        institutionCategory: payload.institutionCategory || '',
+        registeredAt: new Date().toISOString(),
+      },
+    })
+  } catch (error) {
+    console.warn('Nao foi possivel enviar notificacao de registo.', error)
+  }
+}
+
 function profileFromPayload(userId: string, payload: SupabaseRegisterPayload) {
   return {
     id: userId,
@@ -185,6 +207,8 @@ export async function registerReal(payload: SupabaseRegisterPayload): Promise<{ 
   if (authError || !authData.user) {
     return { ok: false, error: authError?.message || 'Nao foi possivel criar a conta.' }
   }
+
+  await notifyAdminAboutRegistration(payload)
 
   if (!authData.session) {
     return { ok: false, error: 'Conta criada. Confirme o email enviado pelo Supabase e depois entre com email e palavra-passe.' }

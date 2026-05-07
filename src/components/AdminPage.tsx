@@ -225,6 +225,8 @@ export default function AdminPage({ setCurrentView }: Props) {
 function AdminUsersDocumentsTab() {
   const [profiles, setProfiles] = useState<AdminProfile[]>([])
   const [documents, setDocuments] = useState<AdminDocument[]>([])
+  const [selectedRole, setSelectedRole] = useState<'empresa' | 'instituicao'>('empresa')
+  const [selectedProfileId, setSelectedProfileId] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -262,9 +264,25 @@ function AdminUsersDocumentsTab() {
     void load()
   }, [])
 
-  const companyCount = profiles.filter(p => p.role === 'empresa').length
-  const institutionCount = profiles.filter(p => p.role === 'instituicao').length
+  const companyProfiles = profiles.filter(p => p.role === 'empresa')
+  const institutionProfiles = profiles.filter(p => p.role === 'instituicao')
+  const visibleProfiles = selectedRole === 'empresa' ? companyProfiles : institutionProfiles
+  const selectedProfile = visibleProfiles.find(p => p.id === selectedProfileId) || visibleProfiles[0] || null
+  const selectedDocuments = selectedProfile ? documents.filter(d => d.owner_id === selectedProfile.id) : []
+  const companyCount = companyProfiles.length
+  const institutionCount = institutionProfiles.length
   const totalStorage = documents.reduce((sum, d) => sum + (d.size || 0), 0)
+
+  useEffect(() => {
+    const nextProfiles = selectedRole === 'empresa' ? companyProfiles : institutionProfiles
+    if (nextProfiles.length === 0) {
+      setSelectedProfileId('')
+      return
+    }
+    if (!nextProfiles.some(p => p.id === selectedProfileId)) {
+      setSelectedProfileId(nextProfiles[0].id)
+    }
+  }, [profiles, selectedRole, selectedProfileId])
 
   return (
     <div className="space-y-6">
@@ -307,74 +325,107 @@ where email = 'o-teu-email@exemplo.pt';`}</pre>
             <AdminMetric label="Documentos" value={documents.length} detail={`${(totalStorage / 1024 / 1024).toFixed(2)} MB`} />
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div className="p-5 border-b border-slate-100">
-              <h3 className="font-black text-slate-900">Utilizadores</h3>
-              <p className="text-xs text-slate-500">Empresas, instituicoes e administradores.</p>
-            </div>
-            {profiles.length === 0 ? (
-              <p className="p-5 text-sm text-slate-500">Ainda nao existem perfis.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                    <tr>
-                      <th className="px-5 py-3">Nome</th>
-                      <th className="px-5 py-3">Email</th>
-                      <th className="px-5 py-3">Tipo</th>
-                      <th className="px-5 py-3">NIF</th>
-                      <th className="px-5 py-3">Criado em</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {profiles.map(p => (
-                      <tr key={p.id}>
-                        <td className="px-5 py-3 font-semibold text-slate-800">{p.name}</td>
-                        <td className="px-5 py-3 text-slate-600">{p.email}</td>
-                        <td className="px-5 py-3">
-                          <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">{p.role}</span>
-                        </td>
-                        <td className="px-5 py-3 text-slate-600">{p.nif}</td>
-                        <td className="px-5 py-3 text-slate-500">{new Date(p.created_at).toLocaleDateString('pt-PT')}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+              <div className="border-b border-slate-100 p-5">
+                <h3 className="font-black text-slate-900">Utilizadores</h3>
+                <p className="text-xs text-slate-500">Selecione um utilizador para consultar os documentos submetidos.</p>
               </div>
-            )}
-          </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div className="p-5 border-b border-slate-100">
-              <h3 className="font-black text-slate-900">Documentos</h3>
-              <p className="text-xs text-slate-500">Ficheiros enviados pelos utilizadores.</p>
-            </div>
-            {documents.length === 0 ? (
-              <p className="p-5 text-sm text-slate-500">Ainda nao existem documentos carregados.</p>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {documents.map(d => (
-                  <div key={d.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-5">
-                    <div className="min-w-0">
-                      <p className="truncate font-bold text-slate-800">{d.name}</p>
-                      <p className="text-xs text-slate-500">
-                        {d.category} - {(d.size / 1024).toFixed(1)} KB - {new Date(d.created_at).toLocaleString('pt-PT')}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        {d.profiles?.name || 'Utilizador sem perfil'} - {d.profiles?.email || d.owner_id}
-                      </p>
-                    </div>
-                    {d.public_url ? (
-                      <a href={d.public_url} download={d.name} className="self-start rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 md:self-auto">
-                        Descarregar
-                      </a>
-                    ) : (
-                      <span className="text-xs text-slate-400">Sem link disponivel</span>
-                    )}
-                  </div>
-                ))}
+              <div className="grid grid-cols-2 gap-2 bg-slate-100 p-2">
+                <button
+                  onClick={() => setSelectedRole('empresa')}
+                  className={`rounded-xl px-4 py-3 text-sm font-black transition ${selectedRole === 'empresa' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  Empresas ({companyCount})
+                </button>
+                <button
+                  onClick={() => setSelectedRole('instituicao')}
+                  className={`rounded-xl px-4 py-3 text-sm font-black transition ${selectedRole === 'instituicao' ? 'bg-white text-green-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  Instituições ({institutionCount})
+                </button>
               </div>
-            )}
+
+              {visibleProfiles.length === 0 ? (
+                <p className="p-5 text-sm text-slate-500">
+                  Ainda nao existem {selectedRole === 'empresa' ? 'empresas' : 'instituicoes'} registadas.
+                </p>
+              ) : (
+                <div className="max-h-[620px] overflow-y-auto divide-y divide-slate-100">
+                  {visibleProfiles.map(p => {
+                    const docCount = documents.filter(d => d.owner_id === p.id).length
+                    const isSelected = selectedProfile?.id === p.id
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => setSelectedProfileId(p.id)}
+                        className={`w-full px-5 py-4 text-left transition ${isSelected ? 'bg-blue-50' : 'bg-white hover:bg-slate-50'}`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate font-black text-slate-900">{p.name}</p>
+                            <p className="truncate text-sm text-slate-600">{p.email}</p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              NIF {p.nif} - {new Date(p.created_at).toLocaleDateString('pt-PT')}
+                            </p>
+                          </div>
+                          <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-black ${docCount > 0 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                            {docCount} doc.
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+              <div className="border-b border-slate-100 p-5">
+                <h3 className="font-black text-slate-900">Documentos do utilizador</h3>
+                {selectedProfile ? (
+                  <div className="mt-2 rounded-xl bg-slate-50 p-4">
+                    <p className="font-black text-slate-900">{selectedProfile.name}</p>
+                    <p className="text-sm text-slate-600">{selectedProfile.email}</p>
+                    <div className="mt-3 grid gap-2 text-xs text-slate-500 sm:grid-cols-2">
+                      <span><strong>NIF:</strong> {selectedProfile.nif}</span>
+                      <span><strong>Tipo:</strong> {selectedProfile.role === 'empresa' ? 'Empresa' : 'Instituição'}</span>
+                      {selectedProfile.company_activity && <span><strong>Setor:</strong> {selectedProfile.company_activity}</span>}
+                      {selectedProfile.institution_category && <span><strong>Área:</strong> {selectedProfile.institution_category}</span>}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500">Selecione um utilizador na lista.</p>
+                )}
+              </div>
+
+              {!selectedProfile ? (
+                <p className="p-5 text-sm text-slate-500">Sem utilizador selecionado.</p>
+              ) : selectedDocuments.length === 0 ? (
+                <p className="p-5 text-sm text-slate-500">Este utilizador ainda nao submeteu documentos.</p>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {selectedDocuments.map(d => (
+                    <div key={d.id} className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between">
+                      <div className="min-w-0">
+                        <p className="truncate font-bold text-slate-800">{d.name}</p>
+                        <p className="text-xs text-slate-500">
+                          {d.category} - {(d.size / 1024).toFixed(1)} KB - {new Date(d.created_at).toLocaleString('pt-PT')}
+                        </p>
+                      </div>
+                      {d.public_url ? (
+                        <a href={d.public_url} download={d.name} className="self-start rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 md:self-auto">
+                          Descarregar
+                        </a>
+                      ) : (
+                        <span className="text-xs text-slate-400">Sem link disponivel</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </>
       )}

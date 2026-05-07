@@ -1,31 +1,39 @@
-import { NeedItem } from '../types'
+import { DonationProof, NeedItem } from '../types'
 
 export function projectTarget(need: NeedItem): number {
   return need.requestedAmount || need.estimatedValue || need.totalProjectCost || 0
 }
 
-export function projectSecured(need: NeedItem): number {
-  return Math.max(0, need.securedFunding || 0)
+export function confirmedDonationTotal(need: NeedItem, proofs: DonationProof[] = [], institutionName?: string): number {
+  return proofs
+    .filter(proof => proof.status === 'confirmed')
+    .filter(proof => !institutionName || proof.institutionName.trim().toLowerCase() === institutionName.trim().toLowerCase())
+    .filter(proof => proof.selectedNeedIds?.includes(need.id))
+    .reduce((sum, proof) => sum + (proof.confirmedAmount || proof.amount || 0), 0)
 }
 
-export function projectProgress(need: NeedItem): number {
+export function projectSecured(need: NeedItem, proofs: DonationProof[] = [], institutionName?: string): number {
+  return Math.max(0, (need.securedFunding || 0) + confirmedDonationTotal(need, proofs, institutionName))
+}
+
+export function projectProgress(need: NeedItem, proofs: DonationProof[] = [], institutionName?: string): number {
   const target = projectTarget(need)
   if (!target) return 0
-  return Math.min(100, Math.round((projectSecured(need) / target) * 100))
+  return Math.min(100, Math.round((projectSecured(need, proofs, institutionName) / target) * 100))
 }
 
-export function isProjectComplete(need: NeedItem): boolean {
-  return need.status === 'concluido' || projectProgress(need) >= 100
+export function isProjectComplete(need: NeedItem, proofs: DonationProof[] = [], institutionName?: string): boolean {
+  return need.status === 'concluido' || projectProgress(need, proofs, institutionName) >= 100
 }
 
-export function activeProjects(needs: NeedItem[]): NeedItem[] {
-  return needs.filter(need => !isProjectComplete(need))
+export function activeProjects(needs: NeedItem[], proofs: DonationProof[] = [], institutionName?: string): NeedItem[] {
+  return needs.filter(need => !isProjectComplete(need, proofs, institutionName))
 }
 
-export function completedProjects(needs: NeedItem[]): NeedItem[] {
-  return needs.filter(isProjectComplete)
+export function completedProjects(needs: NeedItem[], proofs: DonationProof[] = [], institutionName?: string): NeedItem[] {
+  return needs.filter(need => isProjectComplete(need, proofs, institutionName))
 }
 
 export function supportTypeLabel(need: NeedItem): string {
-  return need.supportType === 'produtos' ? 'Produto/servico' : 'Verba'
+  return need.supportType === 'produtos' ? 'Produto/serviço' : 'Verba'
 }

@@ -272,6 +272,7 @@ function ChatTab({ account, threads, onChange }: { account: Account; threads: Ch
 // ─── PROJECTS / NEEDS (instituições) ──────────────
 function InstitutionProjectsTab({ account }: { account: Account }) {
   const existing = findInstitutionRegistration(account.name)
+  const confirmedProofs = listProofsForInstitution(account.id)
   const [needs, setNeeds] = useState<NeedItem[]>(existing?.needs || [])
   const [form, setForm] = useState<NeedItem>({
     id: `need-${Date.now()}`,
@@ -380,7 +381,7 @@ function InstitutionProjectsTab({ account }: { account: Account }) {
       ...form,
       id: `need-${Date.now()}`,
       estimatedValue: form.requestedAmount || form.totalProjectCost,
-      status: isProjectComplete(form) ? 'concluido' as const : 'ativo' as const,
+      status: isProjectComplete(form, confirmedProofs, account.name) ? 'concluido' as const : 'ativo' as const,
     }
     const next = [...needs, normalized]
     setNeeds(next)
@@ -569,16 +570,16 @@ function InstitutionProjectsTab({ account }: { account: Account }) {
                     </div>
                     <div className="mt-3">
                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
-                        <span>Angariado: € {projectSecured(n).toLocaleString('pt-PT')}</span>
-                        <span>{projectProgress(n)}%</span>
+                        <span>Angariado: € {projectSecured(n, confirmedProofs, account.name).toLocaleString('pt-PT')}</span>
+                        <span>{projectProgress(n, confirmedProofs, account.name)}%</span>
                       </div>
                       <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
-                        <div className={`h-full rounded-full ${isProjectComplete(n) ? 'bg-green-600' : 'bg-blue-600'}`} style={{ width: `${projectProgress(n)}%` }} />
+                        <div className={`h-full rounded-full ${isProjectComplete(n, confirmedProofs, account.name) ? 'bg-green-600' : 'bg-blue-600'}`} style={{ width: `${projectProgress(n, confirmedProofs, account.name)}%` }} />
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-1 mt-2">
                       {n.sdgGoals.map(s => <span key={s} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">ODS {s}</span>)}
-                      {isProjectComplete(n) && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">Concluído</span>}
+                      {isProjectComplete(n, confirmedProofs, account.name) && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">Concluído</span>}
                     </div>
                   </div>
                   <button onClick={() => removeProject(n.id)} className="text-red-600 text-sm font-bold">Remover</button>
@@ -840,6 +841,19 @@ function ProofsTab({
   const [thankYouMessages, setThankYouMessages] = useState<Record<string, string>>({})
   const [companyInvoices, setCompanyInvoices] = useState<Record<string, { name: string; dataUrl: string; size: number }>>({})
   const [institutionReceipts, setInstitutionReceipts] = useState<Record<string, { name: string; dataUrl: string; size: number }>>({})
+  const [confirmedAmounts, setConfirmedAmounts] = useState<Record<string, number>>({})
+
+  const confirmedAmountFor = (proof: DonationProof) =>
+    confirmedAmounts[proof.id] ?? proof.confirmedAmount ?? proof.institutionConfirmedAmount ?? proof.companyConfirmedAmount ?? proof.amount
+
+  const validateConfirmedAmount = (proof: DonationProof) => {
+    const amount = confirmedAmountFor(proof)
+    if (!amount || amount <= 0) {
+      alert('Indique o valor confirmado do donativo. Este valor será usado para atualizar a barra de progresso do projeto.')
+      return null
+    }
+    return amount
+  }
 
   const handleMandatoryDocUpload = async (
     proofId: string,
@@ -871,7 +885,9 @@ function ProofsTab({
       alert('Antes de confirmar, carregue o recibo de donativo emitido ao abrigo da Lei do Mecenato.')
       return
     }
-    setInstitutionConfirmation(proof.id, true, message, receipt)
+    const confirmedAmount = validateConfirmedAmount(proof)
+    if (!confirmedAmount) return
+    setInstitutionConfirmation(proof.id, true, message, receipt, confirmedAmount)
     createNotification({
       recipientAccountId: proof.companyAccountId,
       recipientRole: 'empresa',
@@ -922,6 +938,9 @@ function ProofsTab({
                     </p>
                     <p className="text-sm text-slate-500">
                       € {p.amount.toLocaleString('pt-PT')} • {p.date}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Valor confirmado para progresso: € {(p.confirmedAmount || confirmedAmountFor(p)).toLocaleString('pt-PT')}
                     </p>
                   </div>
                   <span className={`text-xs font-bold px-3 py-1 rounded-full self-start ${status.bg} ${status.color}`}>
@@ -991,6 +1010,24 @@ function ProofsTab({
                   <ConfirmBox label="Empresa" confirmed={p.companyConfirmed} />
                   <ConfirmBox label="Instituição" confirmed={p.institutionConfirmed} />
                 </div>
+
+                {p.status !== 'confirmed' && p.status !== 'rejected' && !myConfirmed && (
+                  <div className="mb-4 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                    <label className="block text-sm font-bold text-slate-800 mb-2">
+                      Valor confirmado do donativo (€) *
+                    </label>
+                    <p className="text-xs text-slate-500 mb-3">
+                      Este é o valor que entra no cálculo da barra de progresso do projeto quando ambas as partes confirmarem.
+                    </p>
+                    <input
+                      type="number"
+                      min="1"
+                      value={confirmedAmountFor(p)}
+                      onChange={e => setConfirmedAmounts(prev => ({ ...prev, [p.id]: Number(e.target.value) || 0 }))}
+                      className="w-full px-4 py-3 border border-slate-300 rounded-xl text-lg font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                )}
 
                 {account.role === 'instituicao' && !p.institutionConfirmed && p.status !== 'rejected' && (
                   <div className="mb-4 bg-green-50 border border-green-200 rounded-xl p-4 space-y-4">
@@ -1069,7 +1106,9 @@ function ProofsTab({
                             alert('Antes de confirmar, carregue a fatura ou documento comprovativo da empresa.')
                             return
                           }
-                          setCompanyConfirmation(p.id, true, invoice)
+                          const confirmedAmount = validateConfirmedAmount(p)
+                          if (!confirmedAmount) return
+                          setCompanyConfirmation(p.id, true, invoice, undefined, confirmedAmount)
                           if (p.institutionAccountId) {
                             createNotification({
                               recipientAccountId: p.institutionAccountId,
@@ -1131,6 +1170,9 @@ function ProofsTab({
                 {p.status === 'confirmed' && (
                   <div className="mt-4 pt-4 border-t border-slate-100">
                     <p className="font-bold text-green-700 text-sm">✅ Donativo confirmado por ambas as partes</p>
+                    <p className="text-xs text-green-700 mt-1">
+                      Valor que atualizou o progresso do projeto: € {(p.confirmedAmount || p.amount).toLocaleString('pt-PT')}
+                    </p>
                     {account.role === 'empresa' && (
                       <p className="text-xs text-slate-500 mt-1">
                         O Relatório ESG está disponível na tab "📊 Relatórios ESG".

@@ -4,6 +4,7 @@ import PartnersBar from './PartnersBar'
 import { sampleInstitutions } from '../data/institutions'
 import SdgIcon from './SdgIcon'
 import { activeProjects, projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
+import { listProofs } from '../utils/proofStore'
 
 interface Props {
   setCurrentView: (v: ViewType) => void
@@ -15,6 +16,7 @@ export default function HomePage({ setCurrentView }: Props) {
   const [institutionView, setInstitutionView] = useState<'list' | 'profiles'>('profiles')
   const [moneyPage, setMoneyPage] = useState(0)
   const [productPage, setProductPage] = useState(0)
+  const proofs = listProofs()
   const pageSize = 6
 
   const tier = REPORT_TIERS.find(t => t.id === selectedTier)!
@@ -37,8 +39,8 @@ export default function HomePage({ setCurrentView }: Props) {
   const sortByName = (items: typeof sampleInstitutions) =>
     [...items].sort((a, b) => a.name.localeCompare(b.name, 'pt-PT'))
 
-  const moneyInstitutions = sortByName(sampleInstitutions.filter(inst => activeProjects(inst.needs).some(need => !isProductOrServiceNeed(need))))
-  const productInstitutions = sortByName(sampleInstitutions.filter(inst => activeProjects(inst.needs).some(isProductOrServiceNeed)))
+  const moneyInstitutions = sortByName(sampleInstitutions.filter(inst => activeProjects(inst.needs, proofs, inst.name).some(need => !isProductOrServiceNeed(need))))
+  const productInstitutions = sortByName(sampleInstitutions.filter(inst => activeProjects(inst.needs, proofs, inst.name).some(isProductOrServiceNeed)))
 
   const pagedMoney = moneyInstitutions.slice(moneyPage * pageSize, (moneyPage + 1) * pageSize)
   const pagedProduct = productInstitutions.slice(productPage * pageSize, (productPage + 1) * pageSize)
@@ -92,7 +94,7 @@ export default function HomePage({ setCurrentView }: Props) {
   }
 
   const InstitutionProfileCard = ({ inst, mode }: { inst: typeof sampleInstitutions[number]; mode: 'money' | 'product' }) => {
-    const filteredNeeds = activeProjects(inst.needs).filter(need => mode === 'product' ? isProductOrServiceNeed(need) : !isProductOrServiceNeed(need))
+    const filteredNeeds = activeProjects(inst.needs, proofs, inst.name).filter(need => mode === 'product' ? isProductOrServiceNeed(need) : !isProductOrServiceNeed(need))
     const topNeeds = filteredNeeds.slice(0, 2)
     const mainNeed = topNeeds[0]
     const ratingLabel = inst.esgScore.total >= 85 ? 'AA+' : inst.esgScore.total >= 75 ? 'AA' : inst.esgScore.total >= 65 ? 'A+' : inst.esgScore.total >= 55 ? 'A' : inst.esgScore.total >= 45 ? 'B+' : 'B'
@@ -166,13 +168,13 @@ export default function HomePage({ setCurrentView }: Props) {
                   <p className="text-xs font-black uppercase tracking-wide text-slate-400">Progresso do projeto</p>
                   <p className="text-sm font-bold text-slate-700">{supportTypeLabel(mainNeed)} pretendida: € {projectTarget(mainNeed).toLocaleString('pt-PT')}</p>
                 </div>
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{projectProgress(mainNeed)}%</span>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{projectProgress(mainNeed, proofs, inst.name)}%</span>
               </div>
               <div className="h-3 overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-emerald-500" style={{ width: `${projectProgress(mainNeed)}%` }} />
+                <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-emerald-500" style={{ width: `${projectProgress(mainNeed, proofs, inst.name)}%` }} />
               </div>
               <div className="mt-2 flex justify-between text-xs font-semibold text-slate-500">
-                <span>Angariado: € {projectSecured(mainNeed).toLocaleString('pt-PT')}</span>
+                <span>Angariado: € {projectSecured(mainNeed, proofs, inst.name).toLocaleString('pt-PT')}</span>
                 <span>Custo total: € {(mainNeed.totalProjectCost || mainNeed.estimatedValue || 0).toLocaleString('pt-PT')}</span>
               </div>
             </div>

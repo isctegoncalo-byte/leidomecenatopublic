@@ -52,10 +52,14 @@ export function createProof(input: Omit<DonationProof, 'id' | 'companyConfirmed'
   return proof
 }
 
-export function setCompanyConfirmation(id: string, confirmed: boolean, invoice?: { name: string; dataUrl: string; size: number }, proofDocId?: string) {
+export function setCompanyConfirmation(id: string, confirmed: boolean, invoice?: { name: string; dataUrl: string; size: number }, proofDocId?: string, confirmedAmount?: number) {
   const proof = getProof(id)
   if (!proof) return
   proof.companyConfirmed = confirmed
+  if (confirmed && confirmedAmount !== undefined) {
+    proof.companyConfirmedAmount = confirmedAmount
+    proof.confirmedAmount = confirmedAmount
+  }
   if (proofDocId) proof.proofDocId = proofDocId
   if (confirmed && invoice) {
     proof.companyInvoiceFileName = invoice.name
@@ -66,11 +70,15 @@ export function setCompanyConfirmation(id: string, confirmed: boolean, invoice?:
   saveProof(proof)
 }
 
-export function setInstitutionConfirmation(id: string, confirmed: boolean, thankYouMessage?: string, receipt?: { name: string; dataUrl: string; size: number }) {
+export function setInstitutionConfirmation(id: string, confirmed: boolean, thankYouMessage?: string, receipt?: { name: string; dataUrl: string; size: number }, confirmedAmount?: number) {
   const proof = getProof(id)
   if (!proof) return
   if (confirmed) {
     proof.institutionThankYouMessage = (thankYouMessage || '').trim()
+    if (confirmedAmount !== undefined) {
+      proof.institutionConfirmedAmount = confirmedAmount
+      proof.confirmedAmount = confirmedAmount
+    }
     if (receipt) {
       proof.institutionReceiptFileName = receipt.name
       proof.institutionReceiptFileDataUrl = receipt.dataUrl
@@ -92,6 +100,7 @@ export function rejectProof(id: string) {
 function recomputeStatus(proof: DonationProof) {
   if (proof.companyConfirmed && proof.institutionConfirmed) {
     proof.status = 'confirmed'
+    proof.confirmedAmount = proof.institutionConfirmedAmount || proof.companyConfirmedAmount || proof.confirmedAmount || proof.amount
     if (!proof.confirmedAt) {
       proof.confirmedAt = new Date().toISOString()
     }

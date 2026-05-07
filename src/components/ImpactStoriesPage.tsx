@@ -10,31 +10,32 @@ interface Props {
 
 export default function ImpactStoriesPage({ setCurrentView }: Props) {
   const proofs = listProofs()
-  const donationCount = proofs.length
-  const donatedValue = proofs.reduce((sum, p) => sum + (p.amount || 0), 0)
-  const supportedInstitutions = new Set(proofs.map(p => p.institutionName)).size
-  const producedReports = proofs.filter(p => p.status === 'confirmed').length
+  const confirmedProofs = proofs.filter(p => p.status === 'confirmed')
+  const donationCount = confirmedProofs.length
+  const donatedValue = confirmedProofs.reduce((sum, p) => sum + (p.confirmedAmount || p.amount || 0), 0)
+  const supportedInstitutions = new Set(confirmedProofs.map(p => p.institutionName)).size
+  const producedReports = confirmedProofs.length
   const registeredCompletedProjects = listInstitutionRegistrations().flatMap(inst =>
-    completedProjects(inst.needs).map(project => ({
+    completedProjects(inst.needs, confirmedProofs, inst.name).map(project => ({
       id: `${inst.nif}-${project.id}`,
       institutionName: inst.name,
       institutionCategory: inst.category,
       title: `${project.category} - ${project.subcategory}`,
       description: project.description,
       sdgGoals: project.sdgGoals,
-      secured: projectSecured(project),
+      secured: projectSecured(project, confirmedProofs, inst.name),
       target: projectTarget(project),
     }))
   )
   const sampleCompletedProjects = sampleInstitutions.flatMap(inst =>
-    completedProjects(inst.needs).map(project => ({
+    completedProjects(inst.needs, confirmedProofs, inst.name).map(project => ({
       id: `${inst.id}-${project.id}`,
       institutionName: inst.name,
       institutionCategory: inst.category,
       title: `${project.category} - ${project.subcategory}`,
       description: project.description,
       sdgGoals: project.sdgGoals,
-      secured: projectSecured(project),
+      secured: projectSecured(project, confirmedProofs, inst.name),
       target: projectTarget(project),
     }))
   )

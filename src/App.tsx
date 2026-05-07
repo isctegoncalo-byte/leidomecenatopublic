@@ -115,6 +115,8 @@ export default function App() {
         companyAccountId,
         institutionAccountId: institutionAccount?.id,
         institutionName: contract.institutionName,
+        donationType: contract.donationType,
+        selectedNeedIds: contract.selectedNeedIds,
         amount: contract.donationAmount,
         date: contract.donationDate,
         description: `Donativo (${contract.donationType === 'dinheiro' ? 'dinheiro' : 'produtos/serviços'}) à ${contract.institutionName}`,

@@ -57,7 +57,12 @@ export interface DonationProof {
   companyAccountId: string
   institutionAccountId?: string
   institutionName: string
+  donationType?: DonationType
+  selectedNeedIds?: string[]
   amount: number
+  confirmedAmount?: number
+  companyConfirmedAmount?: number
+  institutionConfirmedAmount?: number
   date: string
   description: string
   proofDocId?: string          // documento submetido pela empresa

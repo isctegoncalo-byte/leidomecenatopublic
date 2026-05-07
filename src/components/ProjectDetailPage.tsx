@@ -4,6 +4,7 @@ import { projectProgress, projectSecured, projectTarget, supportTypeLabel } from
 import { listProofs } from '../utils/proofStore'
 import { findInstitutionRegistration } from '../utils/institutionRegistry'
 import { getProjectGallery } from '../utils/projectGalleries'
+import { getInstitutionContacts } from '../utils/institutionContacts'
 
 interface Props {
   account: Account | null
@@ -33,13 +34,14 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
   const secured = projectSecured(project, proofs, institution.name)
   const progress = projectProgress(project, proofs, institution.name)
   const gallery = getProjectGallery(project, institution)
+  const contacts = getInstitutionContacts(institution, registration)
   const socialLinks = [
-    { label: 'Site', url: registration?.website },
-    { label: 'LinkTree', url: registration?.linktreeUrl },
-    { label: 'Facebook', url: registration?.facebookUrl },
-    { label: 'Instagram', url: registration?.instagramUrl },
-    { label: 'LinkedIn', url: registration?.linkedinUrl },
-    { label: 'TikTok', url: registration?.tiktokUrl },
+    { label: 'Site', url: contacts.website },
+    { label: 'LinkTree', url: contacts.linktreeUrl },
+    { label: 'Facebook', url: contacts.facebookUrl },
+    { label: 'Instagram', url: contacts.instagramUrl },
+    { label: 'LinkedIn', url: contacts.linkedinUrl },
+    { label: 'TikTok', url: contacts.tiktokUrl },
   ].filter(link => !!link.url?.trim())
 
   const donate = () => {
@@ -100,6 +102,39 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
                       </a>
                     ))}
                   </div>
+                </div>
+              )}
+            </article>
+
+            <article className="bg-white border border-slate-200 rounded-2xl p-6">
+              <h2 className="text-2xl font-black text-slate-900 mb-4">Contactos da instituição</h2>
+              <div className="grid gap-3 md:grid-cols-2">
+                {contacts.email && (
+                  <a href={`mailto:${contacts.email}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-300 hover:bg-blue-50">
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">Email</p>
+                    <p className="mt-1 break-all text-sm font-bold text-slate-800">{contacts.email}</p>
+                  </a>
+                )}
+                {contacts.phone && (
+                  <a href={`tel:${contacts.phone.replace(/\s/g, '')}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-300 hover:bg-blue-50">
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">Telefone</p>
+                    <p className="mt-1 text-sm font-bold text-slate-800">{contacts.phone}</p>
+                  </a>
+                )}
+              </div>
+              {socialLinks.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {socialLinks.map(link => (
+                    <a
+                      key={`contact-${link.label}`}
+                      href={link.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                    >
+                      {link.label}
+                    </a>
+                  ))}
                 </div>
               )}
             </article>

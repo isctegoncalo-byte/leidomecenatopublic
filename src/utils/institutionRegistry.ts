@@ -25,3 +25,7 @@ export function findInstitutionRegistration(name: string) {
   const all = readJson<InstitutionRegistration[]>(INSTITUTIONS_KEY, [])
   return all.find(item => item.name.trim().toLowerCase() === name.trim().toLowerCase() || item.legalName.trim().toLowerCase() === name.trim().toLowerCase()) || null
 }
+
+export function listInstitutionRegistrations() {
+  return readJson<InstitutionRegistration[]>(INSTITUTIONS_KEY, [])
+}

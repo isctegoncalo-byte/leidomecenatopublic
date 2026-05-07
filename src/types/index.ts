@@ -157,10 +157,15 @@ export interface NeedItem {
   // Campos opcionais mantidos para compatibilidade com versões anteriores.
   supportType?: 'dinheiro' | 'produtos'
   status?: 'ativo' | 'concluido'
+  implementationPhase?: 'candidatura' | 'a-decorrer'
   category: string
   subcategory: string
   description: string
   quantity?: string
+  requestedAmount?: number
+  productOrService?: string
+  totalProjectCost?: number
+  securedFunding?: number
   estimatedValue?: number
   urgency: 'alta' | 'media' | 'baixa'
   sdgGoals: number[]

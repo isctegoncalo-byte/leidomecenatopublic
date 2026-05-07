@@ -30,8 +30,15 @@ const emptyNeed = (): NeedItem => ({
   category: '',
   subcategory: '',
   description: '',
+  supportType: 'dinheiro',
+  implementationPhase: 'candidatura',
   quantity: '',
+  requestedAmount: undefined,
+  productOrService: '',
+  totalProjectCost: undefined,
+  securedFunding: 0,
   estimatedValue: undefined,
+  status: 'ativo',
   urgency: 'media',
   sdgGoals: [],
   esgPillar: 'S',
@@ -146,6 +153,12 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
         if (!n.category)                  missing.push(`${tag}: Categoria`)
         if (!n.subcategory)               missing.push(`${tag}: Subcategoria`)
         if (!n.description.trim())        missing.push(`${tag}: Descrição`)
+        if (!n.supportType)               missing.push(`${tag}: Tipo de apoio pretendido`)
+        if (!n.implementationPhase)       missing.push(`${tag}: Fase de Implementação`)
+        if (n.supportType === 'dinheiro' && !n.requestedAmount) missing.push(`${tag}: Verba pretendida`)
+        if (n.supportType === 'produtos' && !n.productOrService?.trim()) missing.push(`${tag}: Produto/serviço pretendido`)
+        if (!n.totalProjectCost)          missing.push(`${tag}: Custo total do projeto`)
+        if (n.securedFunding === undefined) missing.push(`${tag}: Verba já assegurada`)
         if (!n.impactMetric.trim())       missing.push(`${tag}: Métrica de Impacto`)
         if (n.sdgGoals.length === 0)      missing.push(`${tag}: ODS (mínimo 1)`)
       })
@@ -186,6 +199,15 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
 
     setFormError('')
     setSubmitting(true)
+    const normalizedNeeds = needs.map(need => {
+      const target = need.requestedAmount || need.estimatedValue || need.totalProjectCost || 0
+      const progress = target ? ((need.securedFunding || 0) / target) * 100 : 0
+      return {
+        ...need,
+        estimatedValue: target || undefined,
+        status: progress >= 100 ? 'concluido' as const : 'ativo' as const,
+      }
+    })
     setTimeout(() => {
       saveInstitutionRegistration({
         name: identity.name,
@@ -213,7 +235,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
         pastAchievements: mission.pastAchievements,
         logoUrl,
         photoUrls,
-        needs,
+        needs: normalizedNeeds,
         statutes: team.statutes,
         utilidadePublica: team.utilidadePublica,
         lastAccountsApproved: team.lastAccountsApproved,
@@ -659,9 +681,47 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
 
                       {/* Estimated Value */}
                       <div>
-                        <label className="block text-sm font-semibold text-slate-600 mb-2">Valor Estimado (€)</label>
-                        <input type="number" value={need.estimatedValue ?? ''} onChange={e => updateNeed(idx, 'estimatedValue', +e.target.value)}
+                        <label className="block text-sm font-semibold text-slate-600 mb-2">Tipo de apoio pretendido *</label>
+                        <select value={need.supportType || 'dinheiro'} onChange={e => updateNeed(idx, 'supportType', e.target.value)}
+                          className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                          <option value="dinheiro">Dinheiro</option>
+                          <option value="produtos">Produto/serviço</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-600 mb-2">Fase de Implementação *</label>
+                        <select value={need.implementationPhase || 'candidatura'} onChange={e => updateNeed(idx, 'implementationPhase', e.target.value)}
+                          className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                          <option value="candidatura">Em fase de candidatura</option>
+                          <option value="a-decorrer">A decorrer</option>
+                        </select>
+                      </div>
+
+                      {need.supportType === 'produtos' ? (
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-600 mb-2">Produto/serviço pretendido *</label>
+                          <input value={need.productOrService ?? ''} onChange={e => updateNeed(idx, 'productOrService', e.target.value)}
+                            className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="Ex: carrinha frigorífica, software, equipamentos..." />
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-600 mb-2">Verba pretendida (€) *</label>
+                          <input type="number" value={need.requestedAmount ?? ''} onChange={e => updateNeed(idx, 'requestedAmount', +e.target.value || undefined)}
+                            className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="Ex: 15000" />
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-600 mb-2">Custo total do projeto (€) *</label>
+                        <input type="number" value={need.totalProjectCost ?? ''} onChange={e => updateNeed(idx, 'totalProjectCost', +e.target.value || undefined)}
                           className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="Ex: 15000" />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-600 mb-2">Verba já assegurada (€) *</label>
+                        <input type="number" value={need.securedFunding ?? ''} onChange={e => updateNeed(idx, 'securedFunding', +e.target.value || 0)}
+                          className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="Ex: 5000" />
                       </div>
 
                       {/* Beneficiaries */}

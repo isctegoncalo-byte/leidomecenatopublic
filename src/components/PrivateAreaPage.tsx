@@ -17,6 +17,7 @@ import { createNotification, listNotificationsForAccount, markAllNotificationsRe
 import { addMessage, listThreadsForAccount } from '../utils/chatStore'
 import { findInstitutionRegistration, saveInstitutionRegistration } from '../utils/institutionRegistry'
 import { deleteDocReal, listDocsReal, logoutReal, realBackendEnabled, uploadDocReal } from '../utils/supabaseBackend'
+import { isProjectComplete, projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
 import SdgGrid from './SdgGrid'
 import { GENERAL_IMPACT_METRICS, ODS_IMPACT_METRICS, MetricDefinition } from '../data/impactMetrics'
 
@@ -277,8 +278,15 @@ function InstitutionProjectsTab({ account }: { account: Account }) {
     category: '',
     subcategory: '',
     description: '',
+    supportType: 'dinheiro',
+    implementationPhase: 'candidatura',
     quantity: '',
+    requestedAmount: undefined,
+    productOrService: '',
+    totalProjectCost: undefined,
+    securedFunding: 0,
     estimatedValue: undefined,
+    status: 'ativo',
     urgency: 'media',
     sdgGoals: [],
     esgPillar: 'S',
@@ -292,8 +300,15 @@ function InstitutionProjectsTab({ account }: { account: Account }) {
     category: '',
     subcategory: '',
     description: '',
+    supportType: 'dinheiro',
+    implementationPhase: 'candidatura',
     quantity: '',
+    requestedAmount: undefined,
+    productOrService: '',
+    totalProjectCost: undefined,
+    securedFunding: 0,
     estimatedValue: undefined,
+    status: 'ativo',
     urgency: 'media',
     sdgGoals: [],
     esgPillar: 'S',
@@ -337,11 +352,37 @@ function InstitutionProjectsTab({ account }: { account: Account }) {
   }
 
   const addProject = () => {
-    if (!form.category || !form.subcategory || !form.description || !form.impactMetric || form.sdgGoals.length === 0) {
-      setError('Preencha categoria, subcategoria, descrição, métrica de impacto e pelo menos 1 ODS.')
+    if (!form.category || !form.subcategory || !form.description || !form.impactMetric || form.sdgGoals.length === 0 || !form.supportType || !form.implementationPhase) {
+      setError('Preencha categoria, subcategoria, descrição, tipo de apoio, fase de implementação, métrica de impacto e pelo menos 1 ODS.')
       return
     }
-    const next = [...needs, { ...form, id: `need-${Date.now()}` }]
+    if (form.supportType === 'dinheiro' && !form.requestedAmount) {
+      setError('Indique quanto dinheiro pretende angariar para este projeto.')
+      return
+    }
+    if (form.supportType === 'produtos' && !form.productOrService?.trim()) {
+      setError('Especifique que produto ou serviço pretende receber.')
+      return
+    }
+    if (!form.totalProjectCost) {
+      setError('Indique o custo total do projeto específico.')
+      return
+    }
+    if (form.securedFunding === undefined) {
+      setError('Indique a verba já assegurada para este projeto, mesmo que seja 0.')
+      return
+    }
+    if ((form.securedFunding || 0) > form.totalProjectCost) {
+      setError('A verba já assegurada não pode ser superior ao custo total do projeto.')
+      return
+    }
+    const normalized = {
+      ...form,
+      id: `need-${Date.now()}`,
+      estimatedValue: form.requestedAmount || form.totalProjectCost,
+      status: isProjectComplete(form) ? 'concluido' as const : 'ativo' as const,
+    }
+    const next = [...needs, normalized]
     setNeeds(next)
     persist(next)
     resetForm()
@@ -429,7 +470,21 @@ function InstitutionProjectsTab({ account }: { account: Account }) {
         <div className="grid md:grid-cols-2 gap-4">
           <input value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="Categoria *" className="px-4 py-3 border border-slate-300 rounded-xl" />
           <input value={form.subcategory} onChange={e => setForm({ ...form, subcategory: e.target.value })} placeholder="Subcategoria *" className="px-4 py-3 border border-slate-300 rounded-xl" />
-          <input type="number" value={form.estimatedValue ?? ''} onChange={e => setForm({ ...form, estimatedValue: Number(e.target.value) || undefined })} placeholder="Valor estimado (€)" className="px-4 py-3 border border-slate-300 rounded-xl" />
+          <select value={form.supportType || 'dinheiro'} onChange={e => setForm({ ...form, supportType: e.target.value as NeedItem['supportType'] })} className="px-4 py-3 border border-slate-300 rounded-xl">
+            <option value="dinheiro">Pretendo dinheiro</option>
+            <option value="produtos">Pretendo produto/serviço</option>
+          </select>
+          <select value={form.implementationPhase || 'candidatura'} onChange={e => setForm({ ...form, implementationPhase: e.target.value as NeedItem['implementationPhase'] })} className="px-4 py-3 border border-slate-300 rounded-xl">
+            <option value="candidatura">Em fase de candidatura</option>
+            <option value="a-decorrer">A decorrer</option>
+          </select>
+          {form.supportType === 'dinheiro' ? (
+            <input type="number" value={form.requestedAmount ?? ''} onChange={e => setForm({ ...form, requestedAmount: Number(e.target.value) || undefined })} placeholder="Verba pretendida (€) *" className="px-4 py-3 border border-slate-300 rounded-xl" />
+          ) : (
+            <input value={form.productOrService || ''} onChange={e => setForm({ ...form, productOrService: e.target.value })} placeholder="Produto/serviço pretendido *" className="px-4 py-3 border border-slate-300 rounded-xl" />
+          )}
+          <input type="number" value={form.totalProjectCost ?? ''} onChange={e => setForm({ ...form, totalProjectCost: Number(e.target.value) || undefined })} placeholder="Custo total do projeto (€) *" className="px-4 py-3 border border-slate-300 rounded-xl" />
+          <input type="number" value={form.securedFunding ?? ''} onChange={e => setForm({ ...form, securedFunding: e.target.value === '' ? 0 : Number(e.target.value) })} placeholder="Verba já assegurada (€) *" className="px-4 py-3 border border-slate-300 rounded-xl" />
           <input type="number" value={form.beneficiaries ?? ''} onChange={e => setForm({ ...form, beneficiaries: Number(e.target.value) || undefined })} placeholder="Beneficiários diretos" className="px-4 py-3 border border-slate-300 rounded-xl" />
           <select value={form.urgency} onChange={e => setForm({ ...form, urgency: e.target.value as NeedItem['urgency'] })} className="px-4 py-3 border border-slate-300 rounded-xl">
             <option value="alta">Urgência alta</option>
@@ -504,11 +559,26 @@ function InstitutionProjectsTab({ account }: { account: Account }) {
             {needs.map(n => (
               <div key={n.id} className="border border-slate-200 rounded-xl p-4">
                 <div className="flex justify-between gap-3">
-                  <div>
+                  <div className="flex-1">
                     <p className="font-bold text-slate-800">{n.category} › {n.subcategory}</p>
                     <p className="text-sm text-slate-500 mt-1">{n.impactMetric}</p>
+                    <div className="mt-3 grid gap-2 text-xs text-slate-500 md:grid-cols-3">
+                      <span><strong>{supportTypeLabel(n)}:</strong> {n.supportType === 'produtos' ? n.productOrService : `€ ${projectTarget(n).toLocaleString('pt-PT')}`}</span>
+                      <span><strong>Custo total:</strong> € {(n.totalProjectCost || n.estimatedValue || 0).toLocaleString('pt-PT')}</span>
+                      <span><strong>Fase:</strong> {n.implementationPhase === 'a-decorrer' ? 'A decorrer' : 'Em fase de candidatura'}</span>
+                    </div>
+                    <div className="mt-3">
+                      <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                        <span>Angariado: € {projectSecured(n).toLocaleString('pt-PT')}</span>
+                        <span>{projectProgress(n)}%</span>
+                      </div>
+                      <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
+                        <div className={`h-full rounded-full ${isProjectComplete(n) ? 'bg-green-600' : 'bg-blue-600'}`} style={{ width: `${projectProgress(n)}%` }} />
+                      </div>
+                    </div>
                     <div className="flex flex-wrap gap-1 mt-2">
                       {n.sdgGoals.map(s => <span key={s} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">ODS {s}</span>)}
+                      {isProjectComplete(n) && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">Concluído</span>}
                     </div>
                   </div>
                   <button onClick={() => removeProject(n.id)} className="text-red-600 text-sm font-bold">Remover</button>

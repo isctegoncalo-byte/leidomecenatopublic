@@ -3,6 +3,7 @@ import { ViewType, REPORT_TIERS } from '../types'
 import PartnersBar from './PartnersBar'
 import { sampleInstitutions } from '../data/institutions'
 import SdgIcon from './SdgIcon'
+import { activeProjects, projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
 
 interface Props {
   setCurrentView: (v: ViewType) => void
@@ -27,6 +28,8 @@ export default function HomePage({ setCurrentView }: Props) {
   ]
 
   const isProductOrServiceNeed = (need: typeof sampleInstitutions[number]['needs'][number]) => {
+    if (need.supportType === 'produtos') return true
+    if (need.supportType === 'dinheiro') return false
     const text = `${need.category} ${need.subcategory} ${need.description} ${need.quantity || ''}`.toLowerCase()
     return productNeedKeywords.some(keyword => text.includes(keyword))
   }
@@ -34,8 +37,8 @@ export default function HomePage({ setCurrentView }: Props) {
   const sortByName = (items: typeof sampleInstitutions) =>
     [...items].sort((a, b) => a.name.localeCompare(b.name, 'pt-PT'))
 
-  const moneyInstitutions = sortByName(sampleInstitutions.filter(inst => inst.needs.some(need => !isProductOrServiceNeed(need))))
-  const productInstitutions = sortByName(sampleInstitutions.filter(inst => inst.needs.some(isProductOrServiceNeed)))
+  const moneyInstitutions = sortByName(sampleInstitutions.filter(inst => activeProjects(inst.needs).some(need => !isProductOrServiceNeed(need))))
+  const productInstitutions = sortByName(sampleInstitutions.filter(inst => activeProjects(inst.needs).some(isProductOrServiceNeed)))
 
   const pagedMoney = moneyInstitutions.slice(moneyPage * pageSize, (moneyPage + 1) * pageSize)
   const pagedProduct = productInstitutions.slice(productPage * pageSize, (productPage + 1) * pageSize)
@@ -89,8 +92,9 @@ export default function HomePage({ setCurrentView }: Props) {
   }
 
   const InstitutionProfileCard = ({ inst, mode }: { inst: typeof sampleInstitutions[number]; mode: 'money' | 'product' }) => {
-    const filteredNeeds = inst.needs.filter(need => mode === 'product' ? isProductOrServiceNeed(need) : !isProductOrServiceNeed(need))
+    const filteredNeeds = activeProjects(inst.needs).filter(need => mode === 'product' ? isProductOrServiceNeed(need) : !isProductOrServiceNeed(need))
     const topNeeds = filteredNeeds.slice(0, 2)
+    const mainNeed = topNeeds[0]
     const ratingLabel = inst.esgScore.total >= 85 ? 'AA+' : inst.esgScore.total >= 75 ? 'AA' : inst.esgScore.total >= 65 ? 'A+' : inst.esgScore.total >= 55 ? 'A' : inst.esgScore.total >= 45 ? 'B+' : 'B'
     const ratingColor = inst.esgScore.total >= 85 ? 'text-green-600' : inst.esgScore.total >= 75 ? 'text-emerald-600' : inst.esgScore.total >= 65 ? 'text-lime-600' : inst.esgScore.total >= 55 ? 'text-yellow-600' : inst.esgScore.total >= 45 ? 'text-orange-600' : 'text-rose-500'
 
@@ -154,6 +158,25 @@ export default function HomePage({ setCurrentView }: Props) {
               <p className="text-xs text-slate-400 pl-8">+{filteredNeeds.length - 2} mais necessidade{filteredNeeds.length - 2 > 1 ? 's' : ''}</p>
             )}
           </div>
+
+          {mainNeed && (
+            <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="mb-2 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wide text-slate-400">Progresso do projeto</p>
+                  <p className="text-sm font-bold text-slate-700">{supportTypeLabel(mainNeed)} pretendida: € {projectTarget(mainNeed).toLocaleString('pt-PT')}</p>
+                </div>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{projectProgress(mainNeed)}%</span>
+              </div>
+              <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-emerald-500" style={{ width: `${projectProgress(mainNeed)}%` }} />
+              </div>
+              <div className="mt-2 flex justify-between text-xs font-semibold text-slate-500">
+                <span>Angariado: € {projectSecured(mainNeed).toLocaleString('pt-PT')}</span>
+                <span>Custo total: € {(mainNeed.totalProjectCost || mainNeed.estimatedValue || 0).toLocaleString('pt-PT')}</span>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-100">
             <div className="rounded-2xl bg-blue-50 border border-blue-100 p-3 text-center">

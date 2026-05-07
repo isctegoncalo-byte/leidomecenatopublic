@@ -1,5 +1,8 @@
 import { ViewType } from '../types'
 import { listProofs } from '../utils/proofStore'
+import { sampleInstitutions } from '../data/institutions'
+import { listInstitutionRegistrations } from '../utils/institutionRegistry'
+import { completedProjects, projectSecured, projectTarget } from '../utils/projectFunding'
 
 interface Props {
   setCurrentView: (v: ViewType) => void
@@ -11,6 +14,31 @@ export default function ImpactStoriesPage({ setCurrentView }: Props) {
   const donatedValue = proofs.reduce((sum, p) => sum + (p.amount || 0), 0)
   const supportedInstitutions = new Set(proofs.map(p => p.institutionName)).size
   const producedReports = proofs.filter(p => p.status === 'confirmed').length
+  const registeredCompletedProjects = listInstitutionRegistrations().flatMap(inst =>
+    completedProjects(inst.needs).map(project => ({
+      id: `${inst.nif}-${project.id}`,
+      institutionName: inst.name,
+      institutionCategory: inst.category,
+      title: `${project.category} - ${project.subcategory}`,
+      description: project.description,
+      sdgGoals: project.sdgGoals,
+      secured: projectSecured(project),
+      target: projectTarget(project),
+    }))
+  )
+  const sampleCompletedProjects = sampleInstitutions.flatMap(inst =>
+    completedProjects(inst.needs).map(project => ({
+      id: `${inst.id}-${project.id}`,
+      institutionName: inst.name,
+      institutionCategory: inst.category,
+      title: `${project.category} - ${project.subcategory}`,
+      description: project.description,
+      sdgGoals: project.sdgGoals,
+      secured: projectSecured(project),
+      target: projectTarget(project),
+    }))
+  )
+  const completed = [...registeredCompletedProjects, ...sampleCompletedProjects]
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -44,7 +72,7 @@ export default function ImpactStoriesPage({ setCurrentView }: Props) {
               <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Valor doado</p>
             </div>
             <div>
-              <p className="text-2xl md:text-3xl font-black text-green-600">{supportedInstitutions || '—'}</p>
+              <p className="text-2xl md:text-3xl font-black text-green-600">{supportedInstitutions || completed.length || '—'}</p>
               <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Instituições apoiadas</p>
             </div>
             <div>
@@ -58,6 +86,52 @@ export default function ImpactStoriesPage({ setCurrentView }: Props) {
           </div>
         </div>
       </section>
+
+      {/* COMPLETED PROJECTS */}
+      {completed.length > 0 && (
+        <section className="py-16 bg-white border-b border-slate-200">
+          <div className="container mx-auto px-4 max-w-6xl">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-black text-slate-900 mb-3">Projetos concluídos</h2>
+              <p className="text-slate-500">
+                Projetos que atingiram 100% da verba pretendida e deixaram de aparecer na página inicial.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {completed.map(project => (
+                <article key={project.id} className="bg-white rounded-2xl border border-green-200 shadow-sm overflow-hidden">
+                  <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-5 text-white">
+                    <p className="text-xs font-black uppercase tracking-wide text-green-100">Projeto concluído</p>
+                    <h3 className="mt-1 text-lg font-black leading-tight">{project.title}</h3>
+                    <p className="mt-1 text-sm text-green-100">{project.institutionName}</p>
+                  </div>
+                  <div className="p-5">
+                    <div className="mb-4 flex flex-wrap gap-2">
+                      {project.sdgGoals.map(sdg => (
+                        <span key={sdg} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">ODS {sdg}</span>
+                      ))}
+                    </div>
+                    <p className="text-sm text-slate-600 line-clamp-3">{project.description}</p>
+                    <div className="mt-5 rounded-2xl bg-green-50 border border-green-100 p-4">
+                      <div className="flex justify-between text-sm font-black text-green-800">
+                        <span>€ {project.secured.toLocaleString('pt-PT')}</span>
+                        <span>100%</span>
+                      </div>
+                      <div className="mt-2 h-3 overflow-hidden rounded-full bg-green-100">
+                        <div className="h-full rounded-full bg-green-600" style={{ width: '100%' }} />
+                      </div>
+                      <p className="mt-2 text-xs font-semibold text-green-700">
+                        Meta atingida: € {project.target.toLocaleString('pt-PT')}
+                      </p>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* PLACEHOLDER STORIES */}
       <section className="py-16">

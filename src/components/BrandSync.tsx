@@ -44,6 +44,11 @@ const viewMeta: Partial<Record<ViewType, { title: string; description: string; p
     description: 'Conheça a metodologia de cálculo do Rating de Impacto, incluindo ESG, ODS, beneficiários e cobertura financeira do projeto.',
     path: '/rating-de-impacto',
   },
+  projeto: {
+    title: 'Projeto Social | Lei do Mecenato',
+    description: 'Página própria de projeto com resumo executivo, instituição, ODS, metas e acesso ao fluxo de donativo.',
+    path: '/projetos',
+  },
   faq: {
     title: 'FAQ | Lei do Mecenato, Donativos e Relatórios ESG',
     description: 'Perguntas frequentes sobre Lei do Mecenato, donativos empresariais, instituições, relatórios de impacto ESG, RGPD e dedução fiscal em IRC.',

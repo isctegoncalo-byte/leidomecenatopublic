@@ -5,6 +5,7 @@ import { sampleInstitutions } from '../data/institutions'
 import SdgIcon from './SdgIcon'
 import { activeProjects, projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
 import { listProofs } from '../utils/proofStore'
+import { projectSlug } from '../utils/projectCatalog'
 
 interface Props {
   setCurrentView: (v: ViewType) => void
@@ -99,6 +100,12 @@ export default function HomePage({ setCurrentView }: Props) {
     const mainNeed = topNeeds[0]
     const ratingLabel = inst.esgScore.total >= 85 ? 'AA+' : inst.esgScore.total >= 75 ? 'AA' : inst.esgScore.total >= 65 ? 'A+' : inst.esgScore.total >= 55 ? 'A' : inst.esgScore.total >= 45 ? 'B+' : 'B'
     const ratingColor = inst.esgScore.total >= 85 ? 'text-green-600' : inst.esgScore.total >= 75 ? 'text-emerald-600' : inst.esgScore.total >= 65 ? 'text-lime-600' : inst.esgScore.total >= 55 ? 'text-yellow-600' : inst.esgScore.total >= 45 ? 'text-orange-600' : 'text-rose-500'
+    const openProject = (needId: string) => {
+      const need = inst.needs.find(n => n.id === needId)
+      if (!need) return
+      window.history.pushState({}, '', `/projeto/${projectSlug(inst, need)}`)
+      setCurrentView('projeto')
+    }
 
     return (
       <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition group flex flex-col h-full">
@@ -149,11 +156,11 @@ export default function HomePage({ setCurrentView }: Props) {
               const pillarColor = nd.esgPillar === 'E' ? 'bg-green-100 text-green-700' : nd.esgPillar === 'S' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
               const urgColor = nd.urgency === 'alta' ? 'text-red-500' : nd.urgency === 'media' ? 'text-yellow-500' : 'text-green-500'
               return (
-                <div key={nd.id} className="flex items-start gap-2 text-sm">
+                <button key={nd.id} onClick={() => openProject(nd.id)} className="flex w-full items-start gap-2 rounded-xl p-1 text-left text-sm transition hover:bg-blue-50">
                   <span className={`px-2 py-1 rounded-lg text-xs font-black flex-shrink-0 ${pillarColor}`}>{nd.esgPillar}</span>
                   <span className="text-slate-700 flex-1 line-clamp-1">{nd.category} › {nd.subcategory}</span>
                   <span className={`flex-shrink-0 ${urgColor}`}>●</span>
-                </div>
+                </button>
               )
             })}
             {filteredNeeds.length > 2 && (
@@ -177,6 +184,9 @@ export default function HomePage({ setCurrentView }: Props) {
                 <span>Angariado: € {projectSecured(mainNeed, proofs, inst.name).toLocaleString('pt-PT')}</span>
                 <span>Custo total: € {(mainNeed.totalProjectCost || mainNeed.estimatedValue || 0).toLocaleString('pt-PT')}</span>
               </div>
+              <button onClick={() => openProject(mainNeed.id)} className="mt-3 text-xs font-black text-blue-700 underline underline-offset-2">
+                Ver página do projeto
+              </button>
             </div>
           )}
 

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Account, ImpactContract, DonationType, REPORT_TIERS } from '../types'
-import { sampleInstitutions } from '../data/institutions'
 import { esgPillarInfo, sdgInfo } from '../utils/esgEngine'
+import { COMPANY_SECTORS } from '../data/companySectors'
+import { listProjectInstitutions } from '../utils/projectCatalog'
 
 
 interface Props {
@@ -85,10 +86,27 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
     window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })
   }, [step])
 
-  const institution = sampleInstitutions.find(i => i.id === selectedInstitutionId)
+  useEffect(() => {
+    const raw = localStorage.getItem('leidomecenato_pending_project')
+    if (!raw) return
+    try {
+      const pending = JSON.parse(raw) as { institutionId?: string; needId?: string; donationType?: DonationType; amount?: number; projectCost?: number }
+      if (pending.institutionId) setSelectedInstitutionId(pending.institutionId)
+      if (pending.needId) setSelectedNeeds([pending.needId])
+      if (pending.donationType) setDonationType(pending.donationType)
+      if (pending.amount) setAmount(pending.amount)
+      if (pending.projectCost) setProjectCost(pending.projectCost)
+      setStep(3)
+    } catch {
+      localStorage.removeItem('leidomecenato_pending_project')
+    }
+  }, [])
+
   const tier = REPORT_TIERS.find(t => t.id === selectedTierId)!
   const irsDeduction = amount * 1.4
   const ircSavings = irsDeduction * 0.21
+  const institutions = listProjectInstitutions()
+  const institution = institutions.find(i => i.id === selectedInstitutionId)
 
   const toggleNeed = (id: string) => {
     if (donationType === 'dinheiro') {
@@ -98,11 +116,19 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
     setSelectedNeeds(prev => prev.includes(id) ? prev.filter(n => n !== id) : [...prev, id])
   }
 
-  const categories = [...new Set(sampleInstitutions.map(i => i.category))]
-  const filtered = categoryFilter ? sampleInstitutions.filter(i => i.category === categoryFilter) : sampleInstitutions
+  const categories = [...new Set(institutions.map(i => i.category))]
+  const filtered = categoryFilter ? institutions.filter(i => i.category === categoryFilter) : institutions
   const donationDetails = selectedInstitutionId ? institutionDonationDetails[selectedInstitutionId] : null
 
   const handleConfirm = () => {
+    if (!/^\d{9}$/.test(company.nif.trim())) {
+      alert('O NIF da empresa deve ter exatamente 9 dígitos numéricos.')
+      return
+    }
+    if (!company.activity) {
+      alert('Selecione o setor de atividade da empresa.')
+      return
+    }
     if (paymentMethod === 'card' && (!cardName || !cardNumber || !expiry || !cvc)) {
       alert('Preencha os dados do cartão para pagar o serviço de relatório.')
       return
@@ -135,6 +161,7 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
         proofFileSize: proofFile?.size,
       }
       setProcessing(false)
+      localStorage.removeItem('leidomecenato_pending_project')
       onContractComplete(contract)
     }, 2500)
   }
@@ -343,7 +370,8 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-600 mb-2">NIF *</label>
-                  <input value={company.nif} onChange={e => setCompany({...company, nif: e.target.value})} className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input value={company.nif} onChange={e => setCompany({...company, nif: e.target.value.replace(/\D/g, '').slice(0, 9)})} inputMode="numeric" maxLength={9} className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <p className="mt-1 text-xs text-slate-400">9 dígitos, apenas números.</p>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-600 mb-2">Email *</label>
@@ -354,8 +382,11 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
                   <input value={company.contact} onChange={e => setCompany({...company, contact: e.target.value})} className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-600 mb-2">Setor de Atividade</label>
-                  <input value={company.activity} onChange={e => setCompany({...company, activity: e.target.value})} className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Setor de Atividade *</label>
+                  <select value={company.activity} onChange={e => setCompany({...company, activity: e.target.value})} className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="">Selecione...</option>
+                    {COMPANY_SECTORS.map(sector => <option key={sector} value={sector}>{sector}</option>)}
+                  </select>
                 </div>
               </div>
             </div>

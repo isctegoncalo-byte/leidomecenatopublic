@@ -9,6 +9,7 @@ import InstitutionRegisterPage from './components/InstitutionRegisterPage'
 import ImpactContractSuccessPage from './components/ImpactContractSuccessPage'
 import ImpactStoriesPage from './components/ImpactStoriesPage'
 import ImpactRatingPage from './components/ImpactRatingPage'
+import ProjectDetailPage from './components/ProjectDetailPage'
 import FaqPage from './components/FaqPage'
 import MecenatoLawPage from './components/MecenatoLawPage'
 import LoginPage from './components/LoginPage'
@@ -29,6 +30,7 @@ type AppState =
 
 const pathToView = (path: string): ViewType => {
   const clean = path.replace(/\/$/, '') || '/'
+  if (clean.startsWith('/projeto/') || clean.startsWith('/projetos/')) return 'projeto'
   const routes: Record<string, ViewType> = {
     '/': 'home',
     '/empresa/donativo': 'empresa',
@@ -63,6 +65,7 @@ const viewToPath = (view: ViewType): string => {
     'lei-mecenato': '/lei-do-mecenato',
     'impacto-real': '/impacto-real',
     'rating-impacto': '/rating-de-impacto',
+    projeto: window.location.pathname.startsWith('/projeto/') || window.location.pathname.startsWith('/projetos/') ? window.location.pathname : '/projetos',
     faq: '/faq',
     login: '/entrar',
     'area-privada': '/area-privada',
@@ -143,6 +146,11 @@ export default function App() {
 
   const handleLogin = (account: Account) => {
     setSession(account)
+    const pending = localStorage.getItem('leidomecenato_pending_project')
+    if (pending && account.role === 'empresa') {
+      setState({ screen: 'main', view: 'empresa' })
+      return
+    }
     setState({ screen: 'main', view: 'area-privada' })
   }
 
@@ -176,6 +184,7 @@ export default function App() {
         {view === 'lei-mecenato' && <MecenatoLawPage setCurrentView={setView} />}
         {view === 'impacto-real' && <ImpactStoriesPage setCurrentView={setView} />}
         {view === 'rating-impacto' && <ImpactRatingPage setCurrentView={setView} />}
+        {view === 'projeto' && <ProjectDetailPage account={session} setCurrentView={setView} />}
         {view === 'faq' && <FaqPage setCurrentView={setView} />}
         {view === 'simulador' && <SimulatorPage />}
         {view === 'empresa' && (

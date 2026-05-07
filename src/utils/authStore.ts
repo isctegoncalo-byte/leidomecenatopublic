@@ -46,6 +46,9 @@ export function registerAccount(payload: RegisterPayload): { ok: true; account: 
   if (!payload.email || !payload.password || !payload.name || !payload.nif) {
     return { ok: false, error: 'Preencha todos os campos obrigatórios.' }
   }
+  if (!/^\d{9}$/.test(payload.nif.trim())) {
+    return { ok: false, error: 'O NIF deve ter exatamente 9 dígitos numéricos.' }
+  }
   if (findAccountByEmail(payload.email)) {
     return { ok: false, error: 'Já existe uma conta com este email.' }
   }

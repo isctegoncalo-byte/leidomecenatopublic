@@ -128,6 +128,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
       if (!identity.name.trim())         missing.push('Nome Comum')
       if (!identity.legalName.trim())    missing.push('Denominação Legal Completa')
       if (!identity.nif.trim())          missing.push('NIF')
+      if (identity.nif.trim() && !/^\d{9}$/.test(identity.nif.trim())) missing.push('NIF com 9 dígitos numéricos')
       if (!identity.type)                missing.push('Tipo de Entidade')
       if (!identity.category)            missing.push('Área de Atuação')
       if (!identity.address.trim())      missing.push('Morada')
@@ -358,8 +359,9 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-600 mb-2">NIF *</label>
-                  <input value={identity.nif} onChange={e => setIdentity({...identity, nif: e.target.value})}
+                  <input value={identity.nif} onChange={e => setIdentity({...identity, nif: e.target.value.replace(/\D/g, '').slice(0, 9)})} inputMode="numeric" maxLength={9}
                     className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Número de Identificação Fiscal" />
+                  <p className="mt-1 text-xs text-slate-400">9 dígitos, apenas números.</p>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-600 mb-2">Tipo de Entidade *</label>

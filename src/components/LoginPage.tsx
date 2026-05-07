@@ -3,6 +3,7 @@ import { Account, AccountRole, ViewType } from '../types'
 import { login, registerAccount } from '../utils/authStore'
 import { loginReal, realBackendEnabled, registerReal, requestPasswordRecoveryReal, updatePasswordReal } from '../utils/supabaseBackend'
 import { supabase } from '../utils/supabaseClient'
+import { COMPANY_SECTORS } from '../data/companySectors'
 
 interface Props {
   onLogin: (account: Account) => void
@@ -30,6 +31,15 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
   const [institutionCategory, setInstitutionCategory] = useState('')
   const [consentLogo, setConsentLogo] = useState(false)
   const [consentRGPD, setConsentRGPD] = useState(false)
+  const [captchaA, setCaptchaA] = useState(3)
+  const [captchaB, setCaptchaB] = useState(4)
+  const [captchaAnswer, setCaptchaAnswer] = useState('')
+
+  const refreshCaptcha = () => {
+    setCaptchaA(Math.floor(Math.random() * 8) + 2)
+    setCaptchaB(Math.floor(Math.random() * 8) + 2)
+    setCaptchaAnswer('')
+  }
 
   useEffect(() => {
     if (!supabase) return
@@ -49,8 +59,13 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
     e.preventDefault()
     setError('')
     setSuccess('')
-    setLoading(true)
     const isDemoLogin = DEMO_EMAILS.includes(email.trim().toLowerCase())
+    if (!isDemoLogin && Number(captchaAnswer) !== captchaA + captchaB) {
+      setError('Confirme que é humano resolvendo a conta de verificação.')
+      refreshCaptcha()
+      return
+    }
+    setLoading(true)
     const res = realBackendEnabled() && !isDemoLogin
       ? await loginReal(email, password)
       : login(email, password)
@@ -65,6 +80,14 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
     setSuccess('')
     if (!email || !password || !name || !nif) {
       setError('Preencha todos os campos obrigatórios.')
+      return
+    }
+    if (!/^\d{9}$/.test(nif.trim())) {
+      setError('O NIF deve ser um código numérico com exatamente 9 dígitos.')
+      return
+    }
+    if (role === 'empresa' && !companyActivity) {
+      setError('Selecione o setor de atividade da empresa.')
       return
     }
     if (password.length < 6) {
@@ -227,14 +250,18 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-600 mb-1">NIF *</label>
-                    <input value={nif} onChange={e => setNif(e.target.value)} required
+                    <input value={nif} onChange={e => setNif(e.target.value.replace(/\D/g, '').slice(0, 9))} required inputMode="numeric" maxLength={9}
                       className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
+                    <p className="mt-1 text-xs text-slate-400">9 dígitos, apenas números.</p>
                   </div>
                   {role === 'empresa' && (
                     <div>
-                      <label className="block text-sm font-semibold text-slate-600 mb-1">Setor de Atividade</label>
-                      <input value={companyActivity} onChange={e => setCompanyActivity(e.target.value)}
-                        className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
+                      <label className="block text-sm font-semibold text-slate-600 mb-1">Setor de Atividade *</label>
+                      <select value={companyActivity} onChange={e => setCompanyActivity(e.target.value)}
+                        className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="">Selecione...</option>
+                        {COMPANY_SECTORS.map(sector => <option key={sector} value={sector}>{sector}</option>)}
+                      </select>
                     </div>
                   )}
                   {role === 'instituicao' && (
@@ -279,6 +306,21 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
                   <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
                     className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
                   {(mode === 'register' || mode === 'reset') && <p className="text-xs text-slate-400 mt-1">Mínimo 6 caracteres.</p>}
+                </div>
+              )}
+
+              {mode === 'login' && !DEMO_EMAILS.includes(email.trim().toLowerCase()) && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">
+                    Verificação humana: quanto é {captchaA} + {captchaB}?
+                  </label>
+                  <div className="flex gap-2">
+                    <input value={captchaAnswer} onChange={e => setCaptchaAnswer(e.target.value.replace(/\D/g, ''))} inputMode="numeric"
+                      className="flex-1 px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
+                    <button type="button" onClick={refreshCaptcha} className="px-4 py-3 rounded-xl border border-slate-300 text-sm font-bold text-slate-600">
+                      Nova
+                    </button>
+                  </div>
                 </div>
               )}
 

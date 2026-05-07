@@ -64,6 +64,20 @@ function securedFundingScore(needs: NeedItem[], projectCost?: number): number {
   return Math.min(100, Math.round((secured / totalCost) * 100))
 }
 
+function geographicScopeScore(needs: NeedItem[], institution: Institution): number {
+  const text = needs
+    .map(n => String(n.generalImpactMetrics?.geographicScope || '').toLowerCase())
+    .filter(Boolean)
+    .join(' ')
+
+  if (text.includes('nacional') || text.includes('portugal') || text.includes('país') || text.includes('pais')) return 100
+  if (text.includes('regional') || text.includes('intermunicipal') || text.includes('vários concelhos') || text.includes('varios concelhos')) return 82
+  if (text.includes('distrital') || (!!institution.district && text.includes(institution.district.toLowerCase()))) return 70
+  if (text.includes('concelho') || text.includes('municipal') || (!!institution.municipality && text.includes(institution.municipality.toLowerCase()))) return 58
+  if (text.includes('local') || text.includes('bairro') || text.includes('freguesia')) return 45
+  return institution.district ? 55 : 45
+}
+
 export function generateESGReport(
   institution: Institution,
   contract: ImpactContract
@@ -92,7 +106,8 @@ export function generateESGReport(
   const valueScore = projectValueScore(relevantNeeds, projectCost)
   const kpiScore = kpiImpactScore(relevantNeeds)
   const securedScore = securedFundingScore(relevantNeeds, projectCost)
-  const fitScore = Math.round(coverageFitScore * 0.40 + valueScore * 0.20 + kpiScore * 0.25 + securedScore * 0.15)
+  const scopeScore = geographicScopeScore(relevantNeeds, institution)
+  const fitScore = Math.round(coverageFitScore * 0.35 + valueScore * 0.18 + kpiScore * 0.22 + securedScore * 0.13 + scopeScore * 0.12)
 
   const eScore = scorePillar(relevantNeeds, 'E')
   const sScore = scorePillar(relevantNeeds, 'S')

@@ -9,7 +9,7 @@ export default function ImpactRatingPage({ setCurrentView }: Props) {
     { label: 'Impacto social e KPI', weight: '32%', text: 'Beneficiários diretos, metas declaradas, métricas de impacto e profundidade dos KPI indicados pela instituição.' },
     { label: 'Impacto ambiental', weight: '25%', text: 'Contributo ambiental quando o projeto está ligado a ODS ambientais ou redução de externalidades.' },
     { label: 'Governação', weight: '13%', text: 'Qualidade da informação, clareza do projeto, documentação e capacidade de prestação de contas.' },
-    { label: 'Adequação do projeto', weight: '30%', text: 'Combina cobertura do donativo, custo total do projeto, KPI, beneficiários e financiamento já assegurado.' },
+    { label: 'Adequação do projeto', weight: '30%', text: 'Combina cobertura do donativo, custo total, KPI, abrangência geográfica e financiamento já assegurado.' },
   ]
 
   const ratings = [
@@ -28,7 +28,7 @@ export default function ImpactRatingPage({ setCurrentView }: Props) {
           <p className="text-sm font-black uppercase tracking-wide text-emerald-400 mb-3">Metodologia</p>
           <h1 className="text-4xl md:text-5xl font-black mb-4">Como é calculado o Rating de Impacto</h1>
           <p className="text-blue-100 text-lg">
-            O rating combina dados ESG do projeto, ODS, beneficiários, KPI, custo total do projeto, financiamento já assegurado e donativos confirmados.
+            O rating combina dados ESG do projeto, ODS, beneficiários, KPI, área de abrangência, custo total do projeto, financiamento já assegurado e donativos confirmados.
           </p>
         </div>
       </section>
@@ -50,7 +50,7 @@ export default function ImpactRatingPage({ setCurrentView }: Props) {
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-sm text-slate-700 leading-relaxed">
               <p><strong>Rating de Impacto =</strong> Ambiental 25% + Social/KPI 32% + Governação 13% + Adequação do projeto 30%.</p>
               <p className="mt-3">
-                A adequação do projeto valoriza quatro sinais: percentagem coberta pelo donativo confirmado, custo total do projeto, força dos KPI/beneficiários e financiamento já assegurado. Assim, projetos maiores, com métricas mais claras e parte da verba já garantida, recebem uma avaliação mais forte.
+                A adequação do projeto valoriza cinco sinais: percentagem coberta pelo donativo confirmado, custo total do projeto, força dos KPI/beneficiários, área de abrangência e financiamento já assegurado. Assim, projetos maiores, com métricas mais claras, impacto geográfico mais amplo e parte da verba já garantida, recebem uma avaliação mais forte.
               </p>
             </div>
           </div>

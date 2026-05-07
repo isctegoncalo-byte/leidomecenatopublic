@@ -18,6 +18,7 @@ export default function HomePage({ setCurrentView }: Props) {
   const [moneyPage, setMoneyPage] = useState(0)
   const [productPage, setProductPage] = useState(0)
   const [institutionSearch, setInstitutionSearch] = useState('')
+  const [selectedDistrict, setSelectedDistrict] = useState('')
   const proofs = listProofs()
   const pageSize = 6
 
@@ -47,8 +48,13 @@ export default function HomePage({ setCurrentView }: Props) {
     return `${inst.name} ${inst.legalName} ${inst.category} ${inst.municipality} ${inst.district}`.toLowerCase().includes(term)
   }
 
-  const moneyInstitutions = sortByName(sampleInstitutions.filter(inst => matchesInstitutionSearch(inst) && activeProjects(inst.needs, proofs, inst.name).some(need => !isProductOrServiceNeed(need))))
-  const productInstitutions = sortByName(sampleInstitutions.filter(inst => matchesInstitutionSearch(inst) && activeProjects(inst.needs, proofs, inst.name).some(isProductOrServiceNeed)))
+  const allDistricts = [...new Set(sampleInstitutions.map(inst => inst.district).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'pt-PT'))
+  const matchesDistrict = (inst: typeof sampleInstitutions[number]) =>
+    !selectedDistrict || inst.district === selectedDistrict
+
+  const moneyInstitutions = sortByName(sampleInstitutions.filter(inst => matchesInstitutionSearch(inst) && matchesDistrict(inst) && activeProjects(inst.needs, proofs, inst.name).some(need => !isProductOrServiceNeed(need))))
+  const productInstitutions = sortByName(sampleInstitutions.filter(inst => matchesInstitutionSearch(inst) && matchesDistrict(inst) && activeProjects(inst.needs, proofs, inst.name).some(isProductOrServiceNeed)))
 
   const pagedMoney = moneyInstitutions.slice(moneyPage * pageSize, (moneyPage + 1) * pageSize)
   const pagedProduct = productInstitutions.slice(productPage * pageSize, (productPage + 1) * pageSize)
@@ -287,19 +293,37 @@ export default function HomePage({ setCurrentView }: Props) {
                   Perfis ESG
                 </button>
               </div>
-              <div className="mx-auto mt-5 max-w-xl">
-                <label className="sr-only" htmlFor="institution-search">Pesquisar instituição</label>
-                <input
-                  id="institution-search"
-                  value={institutionSearch}
-                  onChange={e => {
-                    setInstitutionSearch(e.target.value)
-                    setMoneyPage(0)
-                    setProductPage(0)
-                  }}
-                  placeholder="Pesquisar instituição por nome, área ou concelho..."
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                />
+              <div className="mx-auto mt-5 grid max-w-3xl gap-3 md:grid-cols-[1fr_220px]">
+                <div>
+                  <label className="sr-only" htmlFor="institution-search">Pesquisar instituição</label>
+                  <input
+                    id="institution-search"
+                    value={institutionSearch}
+                    onChange={e => {
+                      setInstitutionSearch(e.target.value)
+                      setMoneyPage(0)
+                      setProductPage(0)
+                    }}
+                    placeholder="Pesquisar instituição por nome, área ou concelho..."
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
+                <div>
+                  <label className="sr-only" htmlFor="district-filter">Filtrar por distrito</label>
+                  <select
+                    id="district-filter"
+                    value={selectedDistrict}
+                    onChange={e => {
+                      setSelectedDistrict(e.target.value)
+                      setMoneyPage(0)
+                      setProductPage(0)
+                    }}
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  >
+                    <option value="">Todos os distritos</option>
+                    {allDistricts.map(district => <option key={district} value={district}>{district}</option>)}
+                  </select>
+                </div>
               </div>
             </div>
 

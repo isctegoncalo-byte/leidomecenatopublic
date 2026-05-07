@@ -88,10 +88,17 @@ export default function HomePage({ setCurrentView }: Props) {
       setCurrentView('projeto')
     }
     return (
-      <button
-        type="button"
+      <article
+        role="button"
+        tabIndex={0}
         onClick={openFirstProject}
-        className="w-full bg-white border border-slate-200 rounded-2xl p-4 flex items-start gap-3 text-left hover:shadow-md hover:border-blue-300 transition focus:outline-none focus:ring-2 focus:ring-blue-500"
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            openFirstProject()
+          }
+        }}
+        className="w-full cursor-pointer bg-white border border-slate-200 rounded-2xl p-4 flex items-start gap-3 text-left hover:shadow-md hover:border-blue-300 transition focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         <span className="text-3xl flex-shrink-0">{inst.logo}</span>
         <div className="min-w-0 flex-1">
@@ -112,8 +119,20 @@ export default function HomePage({ setCurrentView }: Props) {
               </div>
             ))}
           </div>
+          {firstNeed && (
+            <button
+              type="button"
+              onClick={e => {
+                e.stopPropagation()
+                openFirstProject()
+              }}
+              className="mt-3 rounded-xl bg-blue-600 px-4 py-2 text-xs font-black text-white transition hover:bg-blue-700"
+            >
+              Apoiar
+            </button>
+          )}
         </div>
-      </button>
+      </article>
     )
   }
 
@@ -192,10 +211,17 @@ export default function HomePage({ setCurrentView }: Props) {
           </div>
 
           {mainNeed && (
-            <button
-              type="button"
+            <div
+              role="button"
+              tabIndex={0}
               onClick={() => openProject(mainNeed.id)}
-              className="mb-5 w-full rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  openProject(mainNeed.id)
+                }
+              }}
+              className="mb-5 w-full cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label={`Abrir página do projeto ${mainNeed.category} ${mainNeed.subcategory}`}
             >
               <div className="mb-2 flex items-start justify-between gap-3">
@@ -212,7 +238,17 @@ export default function HomePage({ setCurrentView }: Props) {
                 <span>Angariado: € {projectSecured(mainNeed, proofs, inst.name).toLocaleString('pt-PT')}</span>
                 <span>Custo total: € {(mainNeed.totalProjectCost || mainNeed.estimatedValue || 0).toLocaleString('pt-PT')}</span>
               </div>
-            </button>
+              <button
+                type="button"
+                onClick={e => {
+                  e.stopPropagation()
+                  openProject(mainNeed.id)
+                }}
+                className="mt-4 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white transition hover:bg-blue-700"
+              >
+                Apoiar
+              </button>
+            </div>
           )}
 
           <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-100">

@@ -66,7 +66,8 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
   const [identity, setIdentity] = useState({
     name: '', legalName: '', nif: '', type: '', category: '',
     address: '', municipality: '', district: '', postalCode: '',
-    phone: '', email: '', website: '', founded: '', iban: '',
+    phone: '', email: '', website: '', facebookUrl: '', instagramUrl: '',
+    linkedinUrl: '', tiktokUrl: '', founded: '', iban: '',
   })
 
   // Mission
@@ -226,6 +227,10 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
         phone: identity.phone,
         email: identity.email,
         website: identity.website,
+        facebookUrl: identity.facebookUrl,
+        instagramUrl: identity.instagramUrl,
+        linkedinUrl: identity.linkedinUrl,
+        tiktokUrl: identity.tiktokUrl,
         iban: identity.iban,
         fullTimeStaff: Number(team.fullTimeStaff || 0),
         partTimeStaff: Number(team.partTimeStaff || 0),
@@ -431,6 +436,30 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                   <label className="block text-sm font-semibold text-slate-600 mb-2">Website</label>
                   <input value={identity.website} onChange={e => setIdentity({...identity, website: e.target.value})}
                     className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://www.instituicao.pt" />
+                </div>
+                <div className="md:col-span-2">
+                  <h3 className="text-base font-bold text-slate-800 mt-2 mb-1">Redes sociais</h3>
+                  <p className="text-xs text-slate-400 mb-3">Campos opcionais para apresentar e validar a presença pública da instituição.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Facebook</label>
+                  <input value={identity.facebookUrl} onChange={e => setIdentity({...identity, facebookUrl: e.target.value})}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://www.facebook.com/..." />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">Instagram</label>
+                  <input value={identity.instagramUrl} onChange={e => setIdentity({...identity, instagramUrl: e.target.value})}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://www.instagram.com/..." />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">LinkedIn</label>
+                  <input value={identity.linkedinUrl} onChange={e => setIdentity({...identity, linkedinUrl: e.target.value})}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://www.linkedin.com/company/..." />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-2">TikTok</label>
+                  <input value={identity.tiktokUrl} onChange={e => setIdentity({...identity, tiktokUrl: e.target.value})}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://www.tiktok.com/@..." />
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-slate-600 mb-2">IBAN *</label>

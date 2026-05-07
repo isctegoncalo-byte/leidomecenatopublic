@@ -206,6 +206,10 @@ export interface InstitutionRegistration {
   phone: string
   email: string
   website: string
+  facebookUrl?: string
+  instagramUrl?: string
+  linkedinUrl?: string
+  tiktokUrl?: string
   iban: string
   fullTimeStaff: number
   partTimeStaff: number

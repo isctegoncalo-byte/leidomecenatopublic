@@ -90,75 +90,84 @@ export default function HomePage({ setCurrentView }: Props) {
 
   const InstitutionProfileCard = ({ inst, mode }: { inst: typeof sampleInstitutions[number]; mode: 'money' | 'product' }) => {
     const filteredNeeds = inst.needs.filter(need => mode === 'product' ? isProductOrServiceNeed(need) : !isProductOrServiceNeed(need))
-    const topNeeds = filteredNeeds.slice(0, 1)
+    const topNeeds = filteredNeeds.slice(0, 2)
     const ratingLabel = inst.esgScore.total >= 85 ? 'AA+' : inst.esgScore.total >= 75 ? 'AA' : inst.esgScore.total >= 65 ? 'A+' : inst.esgScore.total >= 55 ? 'A' : inst.esgScore.total >= 45 ? 'B+' : 'B'
     const ratingColor = inst.esgScore.total >= 85 ? 'text-green-600' : inst.esgScore.total >= 75 ? 'text-emerald-600' : inst.esgScore.total >= 65 ? 'text-lime-600' : inst.esgScore.total >= 55 ? 'text-yellow-600' : inst.esgScore.total >= 45 ? 'text-orange-600' : 'text-rose-500'
 
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg transition group flex flex-col h-full">
-        <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-5 py-4 flex items-center gap-3">
-          <span className="text-3xl">{inst.logo}</span>
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition group flex flex-col h-full">
+        <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-6 py-5 flex items-center gap-4">
+          <span className="text-4xl">{inst.logo}</span>
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-white text-sm leading-tight truncate">{inst.name}</h3>
-            <p className="text-xs text-slate-400">{inst.municipality} • {inst.category}</p>
+            <h3 className="font-black text-white text-lg leading-tight">{inst.name}</h3>
+            <p className="text-sm text-slate-300">{inst.municipality} • {inst.category}</p>
           </div>
           {inst.utilidadePublica && (
             <span className="text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">UP</span>
           )}
         </div>
 
-        <div className="p-4 flex-1 flex flex-col">
-          <p className="text-xs text-slate-500 mb-3 line-clamp-2 italic">"{inst.mission}"</p>
+        <div className="p-6 flex-1 flex flex-col">
+          <p className="text-sm text-slate-500 mb-5 line-clamp-3 italic">"{inst.mission}"</p>
 
-          {/* ODS Icons Grid - Embedded for stability */}
-          <div className="flex flex-wrap gap-1 mb-4">
+          <div className="mb-5">
+            <p className="mb-3 text-xs font-black uppercase tracking-wide text-slate-400">ODS alinhados</p>
+            <div className="flex flex-wrap gap-3">
             {inst.esgScore.sdgAlignment.map(sdgNum => (
-              <SdgIcon key={sdgNum} n={sdgNum} size="sm" />
+              <SdgIcon key={sdgNum} n={sdgNum} size="md" className="shadow-md" />
             ))}
+            </div>
           </div>
 
-          <div className="flex items-center gap-3 mb-3 mt-auto">
+          <div className="flex items-center gap-4 mb-5 mt-auto rounded-2xl bg-slate-50 border border-slate-100 p-4">
             <div className="flex-1">
-              <div className="flex justify-between text-[10px] text-slate-400 mb-1">
-                <span>E {inst.esgScore.environmental}</span>
-                <span>S {inst.esgScore.social}</span>
-                <span>G {inst.esgScore.governance}</span>
+              <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
+                <span>Ambiental {inst.esgScore.environmental}</span>
+                <span>Social {inst.esgScore.social}</span>
+                <span>Governação {inst.esgScore.governance}</span>
               </div>
-              <div className="flex gap-0.5 h-2 rounded-full overflow-hidden bg-slate-100">
+              <div className="flex gap-0.5 h-3 rounded-full overflow-hidden bg-slate-200">
                 <div className="bg-green-500 rounded-l-full" style={{ width: `${inst.esgScore.environmental * 0.35}%` }} />
                 <div className="bg-blue-500" style={{ width: `${inst.esgScore.social * 0.45}%` }} />
                 <div className="bg-purple-500 rounded-r-full" style={{ width: `${inst.esgScore.governance * 0.20}%` }} />
               </div>
             </div>
             <div className="text-center flex-shrink-0">
-              <p className={`text-lg font-black ${ratingColor}`}>{ratingLabel}</p>
-              <p className="text-[10px] text-slate-400">{inst.esgScore.total}/100</p>
+              <p className={`text-3xl font-black ${ratingColor}`}>{ratingLabel}</p>
+              <p className="text-xs font-bold text-slate-400">{inst.esgScore.total}/100</p>
             </div>
           </div>
 
-
-
-          <div className="space-y-1.5 mb-3">
+          <div className="space-y-2 mb-5">
             {topNeeds.map(nd => {
               const pillarColor = nd.esgPillar === 'E' ? 'bg-green-100 text-green-700' : nd.esgPillar === 'S' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
               const urgColor = nd.urgency === 'alta' ? 'text-red-500' : nd.urgency === 'media' ? 'text-yellow-500' : 'text-green-500'
               return (
-                <div key={nd.id} className="flex items-start gap-2 text-xs">
-                  <span className={`px-1 py-0.5 rounded text-[10px] font-bold flex-shrink-0 ${pillarColor}`}>{nd.esgPillar}</span>
-                  <span className="text-slate-600 flex-1 line-clamp-1">{nd.category} › {nd.subcategory}</span>
+                <div key={nd.id} className="flex items-start gap-2 text-sm">
+                  <span className={`px-2 py-1 rounded-lg text-xs font-black flex-shrink-0 ${pillarColor}`}>{nd.esgPillar}</span>
+                  <span className="text-slate-700 flex-1 line-clamp-1">{nd.category} › {nd.subcategory}</span>
                   <span className={`flex-shrink-0 ${urgColor}`}>●</span>
                 </div>
               )
             })}
             {filteredNeeds.length > 2 && (
-              <p className="text-[10px] text-slate-400 pl-6">+{filteredNeeds.length - 2} mais necessidade{filteredNeeds.length - 2 > 1 ? 's' : ''}</p>
+              <p className="text-xs text-slate-400 pl-8">+{filteredNeeds.length - 2} mais necessidade{filteredNeeds.length - 2 > 1 ? 's' : ''}</p>
             )}
           </div>
 
-          <div className="flex justify-between items-center pt-2 border-t border-slate-100 text-[10px] text-slate-400">
-            <span>👥 {inst.peopleReachedPerYear.toLocaleString()} benef./ano</span>
-            <span>🤝 {inst.volunteers} voluntários</span>
-            <span>👔 {inst.fullTimeStaff} colaboradores</span>
+          <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-100">
+            <div className="rounded-2xl bg-blue-50 border border-blue-100 p-3 text-center">
+              <p className="text-lg font-black text-blue-700">{inst.peopleReachedPerYear.toLocaleString('pt-PT')}</p>
+              <p className="text-[11px] font-bold text-blue-500 leading-tight">benef./ano</p>
+            </div>
+            <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-3 text-center">
+              <p className="text-lg font-black text-emerald-700">{inst.volunteers}</p>
+              <p className="text-[11px] font-bold text-emerald-500 leading-tight">voluntários</p>
+            </div>
+            <div className="rounded-2xl bg-purple-50 border border-purple-100 p-3 text-center">
+              <p className="text-lg font-black text-purple-700">{inst.fullTimeStaff}</p>
+              <p className="text-[11px] font-bold text-purple-500 leading-tight">colaboradores</p>
+            </div>
           </div>
         </div>
       </div>
@@ -242,7 +251,7 @@ export default function HomePage({ setCurrentView }: Props) {
                     {pagedMoney.map(inst => <InstitutionMiniCard key={inst.id} inst={inst} mode="money" />)}
                   </div>
                 ) : (
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div className="grid lg:grid-cols-2 gap-6">
                     {pagedMoney.map(inst => (
                       <div key={inst.id}>
                         <InstitutionProfileCard inst={inst} mode="money" />
@@ -268,7 +277,7 @@ export default function HomePage({ setCurrentView }: Props) {
                     {pagedProduct.map(inst => <InstitutionMiniCard key={inst.id} inst={inst} mode="product" />)}
                   </div>
                 ) : (
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div className="grid lg:grid-cols-2 gap-6">
                     {pagedProduct.map(inst => (
                       <div key={inst.id}>
                         <InstitutionProfileCard inst={inst} mode="product" />

@@ -68,6 +68,37 @@ as $$
   );
 $$;
 
+create or replace function public.protect_profile_role()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'INSERT' then
+    if new.role = 'admin' and auth.uid() is not null and not public.is_admin() then
+      raise exception 'Only an existing admin can create admin profiles';
+    end if;
+    return new;
+  end if;
+
+  if tg_op = 'UPDATE' then
+    if new.role is distinct from old.role and auth.uid() is not null and not public.is_admin() then
+      raise exception 'Only admins can change profile roles';
+    end if;
+    new.updated_at = now();
+    return new;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists protect_profile_role_trigger on public.profiles;
+create trigger protect_profile_role_trigger
+before insert or update on public.profiles
+for each row execute function public.protect_profile_role();
+
 alter table public.profiles enable row level security;
 alter table public.documents enable row level security;
 
@@ -79,7 +110,10 @@ using (id = auth.uid() or public.is_admin());
 drop policy if exists "profiles_insert_own" on public.profiles;
 create policy "profiles_insert_own"
 on public.profiles for insert
-with check (id = auth.uid());
+with check (
+  id = auth.uid()
+  and role in ('empresa', 'instituicao')
+);
 
 drop policy if exists "profiles_update_own_or_admin" on public.profiles;
 create policy "profiles_update_own_or_admin"
@@ -131,8 +165,7 @@ values (
   array[
     'image/jpeg',
     'image/png',
-    'image/webp',
-    'image/svg+xml'
+    'image/webp'
   ]
 )
 on conflict (id) do update set

@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react'
-import { ViewType } from '../types'
+import { Account, ViewType } from '../types'
 import { ReportTemplate, fillPlaceholders, defaultReportAdvanced } from '../templates/reportTemplates'
-import {
-  isAdminLoggedIn, adminLogin, adminLogout,
-  getReportTemplates, saveReportTemplate, deleteReportTemplate, resetReportTemplates,
-} from '../utils/adminStore'
+import { getReportTemplates, saveReportTemplate, deleteReportTemplate, resetReportTemplates } from '../utils/adminStore'
 import { GeneratedESGReport } from '../types'
 import { downloadAdminDemoReport } from '../utils/adminDemoPdf'
 import { sampleInstitutions } from '../data/institutions'
@@ -16,9 +13,12 @@ import {
   listAdminProfilesReal,
   realBackendEnabled,
 } from '../utils/supabaseBackend'
+import { validateImageUpload } from '../utils/uploadSecurity'
 
 interface Props {
   setCurrentView: (v: ViewType) => void
+  session: Account | null
+  onLogout: () => void
 }
 
 // Mock report for preview
@@ -68,10 +68,7 @@ function buildPlaceholderVars(report: GeneratedESGReport): Record<string, string
 
 type AdminTab = 'users-docs' | 'brand' | 'report-templates' | 'preview'
 
-export default function AdminPage({ setCurrentView }: Props) {
-  const [authed, setAuthed] = useState(isAdminLoggedIn())
-  const [pin, setPin] = useState('')
-  const [pinError, setPinError] = useState('')
+export default function AdminPage({ setCurrentView, session, onLogout }: Props) {
   const [tab, setTab] = useState<AdminTab>('users-docs')
 
   // Report templates
@@ -80,32 +77,39 @@ export default function AdminPage({ setCurrentView }: Props) {
 
   // Preview
   const [previewReportId, setPreviewReportId] = useState('')
+  const isAdmin = session?.role === 'admin'
 
   useEffect(() => {
-    if (authed) {
+    if (isAdmin) {
       setRTemplates(getReportTemplates())
     }
-  }, [authed, tab])
+  }, [isAdmin, tab])
 
-  const handleLogin = () => {
-    if (adminLogin(pin)) { setAuthed(true); setPinError('') }
-    else setPinError('PIN incorreto.')
-  }
-
-  const handleLogout = () => { adminLogout(); setAuthed(false) }
-
-  if (!authed) {
+  if (!isAdmin) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
         <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-sm w-full text-center">
           <div className="text-5xl mb-4">🔐</div>
           <h1 className="text-2xl font-black text-slate-900 mb-2">Administração</h1>
-          <p className="text-slate-500 text-sm mb-6">Introduza o PIN de acesso.</p>
-          {pinError && <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{pinError}</div>}
-          <input type="password" value={pin} onChange={e => setPin(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            className="w-full px-4 py-3 border border-slate-300 rounded-xl text-center text-2xl tracking-widest font-mono mb-4" placeholder="••••••" />
-          <button onClick={handleLogin} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl">Entrar</button>
+          {session ? (
+            <>
+              <p className="text-slate-500 text-sm mb-6">
+                A conta <strong>{session.email}</strong> nao tem permissoes de administrador.
+              </p>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-left text-xs text-amber-800 mb-5">
+                Para ativar esta conta como admin, execute no Supabase SQL Editor:
+                <pre className="mt-2 overflow-x-auto rounded-lg bg-white p-3 text-slate-700">{`update public.profiles
+set role = 'admin'
+where email = '${session.email}';`}</pre>
+              </div>
+              <button onClick={onLogout} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl">Terminar sessao</button>
+            </>
+          ) : (
+            <>
+              <p className="text-slate-500 text-sm mb-6">Inicie sessao com uma conta Supabase que tenha role admin.</p>
+              <button onClick={() => setCurrentView('login')} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl">Entrar com conta admin</button>
+            </>
+          )}
           <button onClick={() => setCurrentView('home')} className="mt-4 text-sm text-blue-600 hover:text-blue-800">← Voltar ao site</button>
         </div>
       </div>
@@ -122,7 +126,7 @@ export default function AdminPage({ setCurrentView }: Props) {
         </div>
         <div className="flex gap-2">
           <button onClick={() => setCurrentView('home')} className="bg-white/10 hover:bg-white/20 text-white text-sm px-4 py-2 rounded-lg">Site</button>
-          <button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 text-white text-sm px-4 py-2 rounded-lg">Sair</button>
+          <button onClick={onLogout} className="bg-red-500 hover:bg-red-600 text-white text-sm px-4 py-2 rounded-lg">Sair</button>
         </div>
       </div>
 
@@ -518,6 +522,11 @@ function RTEditor({ template, onSave, onCancel }: { template: ReportTemplate; on
 
   const handleBackgroundUpload = (sectionId: string, file?: File) => {
     if (!file) return
+    const validationError = validateImageUpload(file)
+    if (validationError) {
+      alert(validationError)
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => {
       const dataUrl = String(reader.result || '')

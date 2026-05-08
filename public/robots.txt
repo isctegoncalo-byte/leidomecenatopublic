@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /area-privada
+Disallow: /entrar
 
 Sitemap: https://leidomecenato.pt/sitemap.xml

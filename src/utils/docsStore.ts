@@ -1,4 +1,5 @@
 import { UploadedDoc } from '../types'
+import { validateDocumentUpload } from './uploadSecurity'
 
 const DOCS_KEY = 'leidomecenato_docs'
 
@@ -40,6 +41,8 @@ export function deleteDoc(id: string) {
 }
 
 export function readFileAsDataUrl(file: File): Promise<string> {
+  const validationError = validateDocumentUpload(file)
+  if (validationError) return Promise.reject(new Error(validationError))
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(String(reader.result || ''))

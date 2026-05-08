@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Account, ImpactContract, DonationType, REPORT_TIERS } from '../types'
-import { esgPillarInfo, sdgInfo } from '../utils/esgEngine'
+import { esgPillarInfo } from '../utils/esgEngine'
 import { COMPANY_SECTORS } from '../data/companySectors'
 import { listProjectInstitutions } from '../utils/projectCatalog'
+import SdgIcon from './SdgIcon'
+import { buildPaymentUrl, getReportPaymentLink, isPaymentLinkConfigured } from '../utils/paymentLinks'
+import { ACCEPTED_DOCUMENT_INPUT, validateDocumentUpload } from '../utils/uploadSecurity'
 
 
 interface Props {
@@ -75,7 +78,7 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
   })
   const [selectedTierId, setSelectedTierId] = useState('premium')
   const [proofFile, setProofFile] = useState<{ name: string; dataUrl: string; size: number } | null>(null)
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'mbway' | 'transfer'>('card')
+  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'card' | 'mbway' | 'transfer'>('stripe')
   const [cardName, setCardName] = useState('')
   const [cardNumber, setCardNumber] = useState('')
   const [expiry, setExpiry] = useState('')
@@ -102,7 +105,23 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
     }
   }, [])
 
+  useEffect(() => {
+    const raw = localStorage.getItem('leidomecenato_simulator_seed')
+    if (!raw) return
+    try {
+      const seed = JSON.parse(raw) as { donationType?: DonationType; amount?: number }
+      if (seed.donationType) setDonationType(seed.donationType)
+      if (seed.amount) setAmount(seed.amount)
+      localStorage.removeItem('leidomecenato_simulator_seed')
+      setStep(1)
+    } catch {
+      localStorage.removeItem('leidomecenato_simulator_seed')
+    }
+  }, [])
+
   const tier = REPORT_TIERS.find(t => t.id === selectedTierId)!
+  const paymentLink = getReportPaymentLink(selectedTierId)
+  const paymentReady = isPaymentLinkConfigured(selectedTierId)
   const irsDeduction = amount * 1.4
   const ircSavings = irsDeduction * 0.21
   const institutions = listProjectInstitutions()
@@ -119,6 +138,71 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
   const categories = [...new Set(institutions.map(i => i.category))]
   const filtered = categoryFilter ? institutions.filter(i => i.category === categoryFilter) : institutions
   const donationDetails = selectedInstitutionId ? institutionDonationDetails[selectedInstitutionId] : null
+  const stepGuidance = [
+    {
+      title: 'Comece pelo tipo de apoio',
+      body: 'Escolha dinheiro, produtos ou servicos para ajustarmos instituicoes, necessidades e comprovativos.',
+    },
+    {
+      title: 'Escolha uma entidade elegivel',
+      body: 'Compare instituicoes por area, localizacao, ODS, verificacao e rating de impacto.',
+    },
+    {
+      title: 'Associe o donativo a uma necessidade',
+      body: 'Quanto mais concreta for a necessidade, melhor fica o relatorio de impacto e a comunicacao ESG.',
+    },
+    {
+      title: 'Registe empresa, valor e comprovativos',
+      body: 'O donativo e feito diretamente a instituicao; a plataforma apenas organiza prova e relatorio.',
+    },
+    {
+      title: 'Confirme e escolha o relatorio',
+      body: 'Revise dados, beneficio fiscal estimado, pagamento do servico e documentos a entregar.',
+    },
+  ]
+
+  const canContinue =
+    step === 0 ? Boolean(donationType) :
+    step === 1 ? Boolean(selectedInstitutionId) :
+    step === 2 ? selectedNeeds.length > 0 :
+    step === 3 ? Boolean(company.name && company.email && company.nif.length === 9 && company.activity && amount > 0) :
+    true
+
+  const nextStep = () => {
+    if (!canContinue) {
+      const messages = [
+        'Escolha o tipo de donativo.',
+        'Selecione uma instituicao.',
+        'Selecione pelo menos uma necessidade apoiada.',
+        'Preencha empresa, NIF, email, setor e valor do donativo.',
+      ]
+      alert(messages[step] || 'Complete os dados obrigatorios.')
+      return
+    }
+    setStep(s => s + 1)
+  }
+
+  const buildContract = (): ImpactContract => ({
+    id: `CTR-${Date.now()}`,
+    company: company.name,
+    nif: company.nif,
+    email: company.email,
+    contact: company.contact,
+    activity: company.activity,
+    institutionId: selectedInstitutionId,
+    institutionName: institution?.name || '',
+    donationType,
+    donationAmount: amount,
+    donationDate: new Date().toLocaleDateString('pt-PT'),
+    reportTier: tier,
+    reportPrice: tier.price,
+    selectedNeedIds: selectedNeeds,
+    donationMode: donationType === 'dinheiro' ? 'causa-com-projeto' : 'necessidade-exata',
+    projectCost: donationType === 'dinheiro' ? projectCost : undefined,
+    proofFileName: proofFile?.name,
+    proofFileDataUrl: proofFile?.dataUrl,
+    proofFileSize: proofFile?.size,
+  })
 
   const handleConfirm = () => {
     if (!/^\d{9}$/.test(company.nif.trim())) {
@@ -129,12 +213,31 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
       alert('Selecione o setor de atividade da empresa.')
       return
     }
-    if (paymentMethod === 'card' && (!cardName || !cardNumber || !expiry || !cvc)) {
+    if (paymentMethod === 'stripe' && !paymentReady) {
+      alert('Configure primeiro o link de pagamento Stripe para este pacote no ficheiro .env.local.')
+      return
+    }
+    if (paymentMethod === 'stripe' && !paymentReady) {
       alert('Preencha os dados do cartão para pagar o serviço de relatório.')
       return
     }
     if (paymentMethod === 'mbway' && !mbwayPhone) {
       alert('Indique o número MB WAY para pagar o serviço de relatório.')
+      return
+    }
+    if (paymentMethod === 'stripe') {
+      const contract = buildContract()
+      const paymentUrl = buildPaymentUrl(paymentLink, {
+        client_reference_id: contract.id,
+        prefilled_email: company.email,
+      })
+      localStorage.setItem('leidomecenato_pending_report_payment', JSON.stringify({
+        contract,
+        paymentProvider: 'stripe',
+        paymentLink,
+        createdAt: new Date().toISOString(),
+      }))
+      window.location.href = paymentUrl
       return
     }
     setProcessing(true)
@@ -168,6 +271,11 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
 
   const handleProofUpload = (file?: File) => {
     if (!file) return
+    const validationError = validateDocumentUpload(file)
+    if (validationError) {
+      alert(validationError)
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => setProofFile({ name: file.name, size: file.size, dataUrl: String(reader.result || '') })
     reader.readAsDataURL(file)
@@ -183,13 +291,38 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
           </p>
         </div>
 
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-8">
+          <p className="text-sm text-blue-800 leading-relaxed">
+            <strong>RGPD:</strong> os dados da empresa, contactos, comprovativos e documentos submetidos serao tratados apenas
+            para gerir o donativo, permitir validacao pela instituicao, produzir o relatorio de impacto e cumprir obrigacoes
+            legais aplicaveis. Evite carregar dados pessoais que nao sejam necessarios.
+          </p>
+        </div>
+
         {/* Progress */}
-        <div className="mb-10">
+        <div className="mb-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-6 grid gap-6 lg:grid-cols-[1fr_320px]">
+            <div>
+              <p className="mb-2 text-xs font-black uppercase tracking-wide text-blue-600">Fluxo guiado para empresas</p>
+              <h1 className="text-3xl font-black text-slate-900 mb-3">Pedir Relatorio de Impacto do Donativo</h1>
+              <p className="text-slate-500 text-sm">
+                Registe um donativo feito ou planeado, associe-o a uma necessidade concreta e escolha o nivel de relatorio.
+                <strong> Nao processamos donativos.</strong> O valor e transferido diretamente para a instituicao.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+              <p className="text-xs font-black uppercase tracking-wide text-blue-600">Passo {step + 1} de {STEPS.length}</p>
+              <h2 className="mt-1 text-lg font-black text-blue-950">{stepGuidance[step].title}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-blue-800">{stepGuidance[step].body}</p>
+            </div>
+          </div>
+          <div className="hidden">
           <h1 className="text-3xl font-black text-slate-900 mb-6">Pedir Relatório de Impacto do Donativo</h1>
           <p className="text-slate-500 text-sm mb-6">
             Registe o donativo que já fez (ou vai fazer) e contrate um serviço de relatório de impacto.
             <strong> Não processamos donativos.</strong> O valor do donativo é transferido diretamente para a instituição.
           </p>
+          </div>
           <div className="flex items-center">
             {STEPS.map((s, i) => (
               <div key={s} className="flex items-center flex-1">
@@ -261,9 +394,9 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
                       <ScoreRing value={inst.esgScore.governance} color="#7c3aed" label="G" />
                       <ScoreRing value={inst.esgScore.total} color="#0f172a" label="T" />
                     </div>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-2">
                       {inst.esgScore.sdgAlignment.slice(0, 5).map(sdg => (
-                        <span key={sdg} title={sdgInfo[sdg]?.name} className="text-xs px-2 py-0.5 rounded-md font-bold text-white" style={{ backgroundColor: sdgInfo[sdg]?.color || '#666' }}>ODS {sdg}</span>
+                        <SdgIcon key={sdg} n={sdg} size="sm" className="rounded-md" />
                       ))}
                     </div>
                   </div>
@@ -494,7 +627,7 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
                       {proofFile ? `${(proofFile.size / 1024).toFixed(1)} KB` : 'PDF, JPG ou PNG'}
                     </p>
                   </div>
-                  <input type="file" accept=".pdf,image/*" className="hidden" onChange={e => handleProofUpload(e.target.files?.[0])} />
+                  <input type="file" accept={ACCEPTED_DOCUMENT_INPUT} className="hidden" onChange={e => handleProofUpload(e.target.files?.[0])} />
                 </label>
                 {proofFile && (
                   <button type="button" onClick={() => setProofFile(null)} className="mt-3 text-xs text-red-600 font-semibold">
@@ -562,7 +695,23 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
                   </div>
                 </div>
                 <p className="text-sm text-purple-700 mb-3">Escolha o método de pagamento:</p>
-                <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('stripe')}
+                    className={`rounded-xl px-3 py-3 text-sm font-bold border-2 transition ${paymentMethod === 'stripe' ? 'border-purple-600 bg-white text-purple-700' : 'border-purple-200 text-purple-500 hover:border-purple-300'}`}
+                  >
+                    Checkout seguro
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('transfer')}
+                    className={`rounded-xl px-3 py-3 text-sm font-bold border-2 transition ${paymentMethod === 'transfer' ? 'border-purple-600 bg-white text-purple-700' : 'border-purple-200 text-purple-500 hover:border-purple-300'}`}
+                  >
+                    Transferencia
+                  </button>
+                </div>
+                <div className="hidden">
                   {([
                     { id: 'card', label: 'Cartão' },
                     { id: 'mbway', label: 'MB WAY' },
@@ -578,6 +727,17 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
                     </button>
                   ))}
                 </div>
+
+                {paymentMethod === 'stripe' && (
+                  <div className={`rounded-xl border p-4 text-sm ${paymentReady ? 'border-green-200 bg-green-50 text-green-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+                    <p className="font-black mb-1">Pagamento seguro do relatorio</p>
+                    <p>
+                      {paymentReady
+                        ? 'Ao confirmar, a empresa sera encaminhada para o checkout seguro configurado para este pacote.'
+                        : 'Falta configurar o Payment Link deste pacote no .env.local. Depois de configurado, este botao abre pagamento real.'}
+                    </p>
+                  </div>
+                )}
 
                 {paymentMethod === 'card' && (
                   <div className="space-y-3">
@@ -626,8 +786,10 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
           <div className="flex justify-between mt-8">
             <button onClick={() => setStep(s => s - 1)} className="px-6 py-3 rounded-xl font-semibold border border-slate-300 text-slate-600 hover:bg-slate-100 transition">← Anterior</button>
             {step < STEPS.length - 1 && (
-              <button onClick={() => { if (step === 1 && !selectedInstitutionId) return alert('Selecione uma instituição'); setStep(s => s + 1) }}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl transition">Próximo →</button>
+              <button onClick={nextStep}
+                className={`px-8 py-3 rounded-xl font-bold transition ${canContinue ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                Proximo passo
+              </button>
             )}
           </div>
         )}

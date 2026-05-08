@@ -3,6 +3,14 @@ import { NeedItem } from '../types'
 import { saveInstitutionRegistration } from '../utils/institutionRegistry'
 import { SDG_DATA } from '../data/sdgs'
 import SdgGrid from './SdgGrid'
+import { ACCEPTED_IMAGE_INPUT, validateImageUpload } from '../utils/uploadSecurity'
+import {
+  PROJECT_TYPE_LIMIT_MESSAGE,
+  ProjectSupportType,
+  duplicateActiveProjectTypeMessage,
+  hasActiveProjectOfType,
+  nextAvailableProjectType,
+} from '../utils/projectLimits'
 
 const NEED_CATEGORIES = [
   { value: 'Educação', label: '📚 Educação', subcategories: ['Material Escolar', 'Tecnologia Educativa', 'Bolsas de Estudo', 'Formação Profissional', 'Programas Escolares'] },
@@ -90,6 +98,24 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
     setNeeds(prev => prev.map((n, i) => i === idx ? { ...n, [field]: value } : n))
   }
 
+  const updateNeedSupportType = (idx: number, value: ProjectSupportType) => {
+    const next = needs.map((n, i) => i === idx
+      ? {
+        ...n,
+        supportType: value,
+        requestedAmount: value === 'produtos' ? undefined : n.requestedAmount,
+        productOrService: value === 'dinheiro' ? '' : n.productOrService,
+      }
+      : n)
+    const limitMessage = duplicateActiveProjectTypeMessage(next)
+    if (limitMessage) {
+      setFormError(limitMessage)
+      return
+    }
+    setFormError('')
+    setNeeds(next)
+  }
+
   const toggleSDG = (idx: number, sdg: number) => {
     setNeeds(prev => prev.map((n, i) => {
       if (i !== idx) return n
@@ -101,11 +127,28 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
     }))
   }
 
-  const addNeed = () => setNeeds(prev => [...prev, emptyNeed()])
+  const addNeed = () => {
+    const nextType = nextAvailableProjectType(needs)
+    if (!nextType) {
+      setFormError(PROJECT_TYPE_LIMIT_MESSAGE)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+    setFormError('')
+    setNeeds(prev => [...prev, { ...emptyNeed(), supportType: nextType }])
+  }
   const removeNeed = (idx: number) => setNeeds(prev => prev.filter((_, i) => i !== idx))
+
+  const hasOtherActiveNeedOfType = (idx: number, type: ProjectSupportType) =>
+    hasActiveProjectOfType(needs.filter((_, i) => i !== idx), type)
 
   const handlePhotoChange = (idx: number, file?: File) => {
     if (!file) return
+    const validationError = validateImageUpload(file)
+    if (validationError) {
+      setFormError(validationError)
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => {
       setPhotoUrls(prev => {
@@ -119,6 +162,11 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
 
   const handleLogoChange = (file?: File) => {
     if (!file) return
+    const validationError = validateImageUpload(file)
+    if (validationError) {
+      setFormError(validationError)
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => setLogoUrl(String(reader.result || ''))
     reader.readAsDataURL(file)
@@ -126,6 +174,11 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
 
   const handleProjectPhotoChange = (needIdx: number, photoIdx: number, file?: File) => {
     if (!file) return
+    const validationError = validateImageUpload(file)
+    if (validationError) {
+      setFormError(validationError)
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => {
       setNeeds(prev => prev.map((need, idx) => {
@@ -172,6 +225,8 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
       // Equipa: nada obrigatório explicitamente marcado com *
     }
     if (s === 3) {
+      const limitMessage = duplicateActiveProjectTypeMessage(needs)
+      if (limitMessage) missing.push(limitMessage)
       needs.forEach((n, i) => {
         const tag = `Necessidade #${i + 1}`
         if (!n.category)                  missing.push(`${tag}: Categoria`)
@@ -232,6 +287,13 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
         status: progress >= 100 ? 'concluido' as const : 'ativo' as const,
       }
     })
+    const limitMessage = duplicateActiveProjectTypeMessage(normalizedNeeds)
+    if (limitMessage) {
+      setFormError(limitMessage)
+      setSubmitting(false)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
     setTimeout(() => {
       saveInstitutionRegistration({
         name: identity.name,
@@ -367,7 +429,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                   </div>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept={ACCEPTED_IMAGE_INPUT}
                     onChange={e => handleLogoChange(e.target.files?.[0])}
                     className="hidden"
                   />
@@ -514,7 +576,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                       </div>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept={ACCEPTED_IMAGE_INPUT}
                         onChange={e => handlePhotoChange(idx, e.target.files?.[0])}
                         className="hidden"
                       />
@@ -741,11 +803,14 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                       {/* Estimated Value */}
                       <div>
                         <label className="block text-sm font-semibold text-slate-600 mb-2">Tipo de apoio pretendido *</label>
-                        <select value={need.supportType || 'dinheiro'} onChange={e => updateNeed(idx, 'supportType', e.target.value)}
+                        <select value={need.supportType || 'dinheiro'} onChange={e => updateNeedSupportType(idx, e.target.value as ProjectSupportType)}
                           className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm">
-                          <option value="dinheiro">Dinheiro</option>
-                          <option value="produtos">Produto/serviço</option>
+                          <option value="dinheiro" disabled={hasOtherActiveNeedOfType(idx, 'dinheiro')}>Dinheiro</option>
+                          <option value="produtos" disabled={hasOtherActiveNeedOfType(idx, 'produtos')}>Produto/serviço</option>
                         </select>
+                        <p className="mt-2 text-xs text-slate-400">
+                          Cada instituição pode ter ativo apenas um projeto por tipo de apoio.
+                        </p>
                       </div>
 
                       <div>
@@ -839,7 +904,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                                   </div>
                                   <input
                                     type="file"
-                                    accept="image/*"
+                                    accept={ACCEPTED_IMAGE_INPUT}
                                     onChange={e => handleProjectPhotoChange(idx, photoIdx, e.target.files?.[0])}
                                     className="hidden"
                                   />
@@ -861,8 +926,9 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
               })}
 
               <button onClick={addNeed}
-                className="w-full border-2 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 font-bold py-4 rounded-2xl transition">
-                + Adicionar Necessidade
+                disabled={!nextAvailableProjectType(needs)}
+                className="w-full border-2 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent disabled:cursor-not-allowed font-bold py-4 rounded-2xl transition">
+                {nextAvailableProjectType(needs) ? '+ Adicionar Necessidade' : 'Limite de projetos ativos atingido'}
               </button>
 
               <div className="bg-green-50 border border-green-200 rounded-xl p-4">

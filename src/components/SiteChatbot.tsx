@@ -22,8 +22,20 @@ const includesAny = (text: string, terms: string[]) => terms.some(term => text.i
 function answerQuestion(question: string): string {
   const text = normalize(question)
 
+  if (includesAny(text, ['quanto', 'simular', 'custa', 'poupo', 'poupanca', 'beneficio', 'deduzir'])) {
+    return 'Comece pelo Simulador: indique o valor do donativo e a taxa de IRC. A plataforma estima a deducao fiscal, o custo real e o preco do relatorio. Depois pode avançar para escolher um projeto com esse valor.'
+  }
+
+  if (includesAny(text, ['sou empresa', 'empresa quer doar', 'primeiro passo', 'por onde comeco'])) {
+    return 'Para uma empresa, o caminho recomendado e: simular beneficio fiscal, escolher um projeto, fazer o donativo diretamente a instituicao, carregar comprovativo e pedir o relatorio de impacto.'
+  }
+
+  if (includesAny(text, ['sou instituicao', 'tenho projeto', 'preciso de apoio', 'publicar necessidade'])) {
+    return 'Para uma instituicao, o caminho recomendado e: registar perfil, carregar documentos, publicar necessidades concretas com valor/impacto/ODS e aguardar empresas interessadas.'
+  }
+
   if (includesAny(text, ['donativo', 'doar', 'apoiar', 'empresa', 'transferencia', 'confirmar'])) {
-    return 'Para apoiar um projeto, a empresa escolhe um projeto, clica em Apoiar, inicia sessao como empresa e regista o donativo. O valor doado e confirmado pela empresa e pela instituicao, para atualizar a barra de progresso do projeto.'
+    return 'Para apoiar um projeto, a empresa escolhe um projeto, clica em Apoiar, inicia sessao como empresa e regista o donativo. O dinheiro ou os produtos seguem diretamente para a instituicao; a plataforma organiza comprovativos, confirmacao e relatorio.'
   }
 
   if (includesAny(text, ['instituicao', 'associacao', 'registo', 'criar projeto', 'candidatura', 'documentos'])) {
@@ -39,7 +51,7 @@ function answerQuestion(question: string): string {
   }
 
   if (includesAny(text, ['lei', 'mecenato', 'beneficio fiscal', 'irc', 'deducao'])) {
-    return 'A pagina Lei do Mecenato resume a lei atual e inclui ligacao para a fonte oficial. A plataforma e uma iniciativa privada independente e os beneficios fiscais devem ser confirmados com contabilista certificado.'
+    return 'A pagina Lei do Mecenato resume o Estatuto dos Beneficios Fiscais, o artigo 62, exemplos de deducao e documentos recomendados. A plataforma e privada e o enquadramento fiscal deve ser validado com contabilista certificado.'
   }
 
   if (includesAny(text, ['login', 'entrar', 'conta', 'password', 'palavra passe', 'recuperar', 'captcha'])) {
@@ -55,7 +67,7 @@ function answerQuestion(question: string): string {
   }
 
   if (includesAny(text, ['cookies', 'privacidade', 'termos', 'dados', 'rgpd'])) {
-    return 'As paginas de Cookies, Privacidade e Termos de Servico estao disponiveis no rodape. O aviso de cookies surge no site para recolher aceitacao.'
+    return 'As paginas de Privacidade e RGPD, Termos de Servico e Cookies explicam dados tratados, bases legais, direitos de acesso/retificacao/apagamento/oposicao/portabilidade, conservacao e contacto para pedidos RGPD. Estao disponiveis no rodape.'
   }
 
   return 'So consigo responder a perguntas diretamente ligadas com a plataforma Lei do Mecenato: donativos, projetos, instituicoes, empresas, documentos, rating de impacto, login, contactos e paginas legais.'
@@ -63,21 +75,21 @@ function answerQuestion(question: string): string {
 
 export default function SiteChatbot({ setCurrentView }: Props) {
   const brand = useBrand()
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 1,
       from: 'bot',
-      text: 'Ola. Sou o assistente da plataforma Lei do Mecenato. Posso ajudar com duvidas sobre donativos, projetos, instituicoes, empresas, documentos, rating de impacto, login e paginas legais.',
+      text: 'Ola. Diga-me se vem como empresa, instituicao ou contabilista. Posso ajudar a decidir o proximo passo: simular beneficio, escolher projeto, preparar documentos ou perceber a Lei do Mecenato.',
     },
   ])
   const nextId = useRef(2)
 
   const quickActions = useMemo(() => [
-    { label: 'Como doar?', question: 'Como posso fazer um donativo?' },
-    { label: 'Registar instituicao', question: 'Como uma instituicao pode registar um projeto?' },
-    { label: 'Rating de Impacto', question: 'Como e calculado o rating de impacto?' },
+    { label: 'Sou empresa', question: 'Sou empresa, por onde comeco?' },
+    { label: 'Simular beneficio', question: 'Quanto posso deduzir no IRC?' },
+    { label: 'Sou instituicao', question: 'Sou instituicao e tenho um projeto' },
   ], [])
 
   const submitQuestion = (question: string) => {
@@ -154,6 +166,18 @@ export default function SiteChatbot({ setCurrentView }: Props) {
               {action.label}
             </button>
           ))}
+          <button
+            onClick={() => setCurrentView('simulador')}
+            className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 hover:border-blue-300 hover:bg-blue-50"
+          >
+            Simulador
+          </button>
+          <button
+            onClick={() => setCurrentView('lei-mecenato')}
+            className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 hover:border-blue-300 hover:bg-blue-50"
+          >
+            Lei
+          </button>
           <button
             onClick={() => setCurrentView('faq')}
             className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 hover:border-blue-300 hover:bg-blue-50"

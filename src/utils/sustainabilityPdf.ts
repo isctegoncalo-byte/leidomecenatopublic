@@ -11,6 +11,7 @@ const W = 210
 const H = 297
 const M = 18
 const CW = W - M * 2
+type SdgImageMap = Record<number, string>
 
 // ─── Helpers ────────────────────────────────────────
 function setFill(doc: jsPDF, hex: string) {
@@ -71,6 +72,60 @@ function addReportImage(doc: jsPDF, photo: string | undefined, x: number, y: num
   doc.setFontSize(9)
   doc.setTextColor(148, 163, 184)
   doc.text(label, x + w / 2, y + h / 2, { align: 'center' })
+}
+
+function imageFormat(dataUrl: string): 'PNG' | 'JPEG' | 'WEBP' {
+  if (dataUrl.includes('image/jpeg') || dataUrl.includes('image/jpg')) return 'JPEG'
+  if (dataUrl.includes('image/webp')) return 'WEBP'
+  return 'PNG'
+}
+
+function addSdgImage(doc: jsPDF, sdgImages: SdgImageMap | undefined, sdg: number, x: number, y: number, w: number, h: number) {
+  const dataUrl = sdgImages?.[sdg]
+  if (!dataUrl) return false
+  try {
+    doc.addImage(dataUrl, imageFormat(dataUrl), x, y, w, h)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function blobToDataUrl(blob: Blob) {
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(blob)
+  })
+}
+
+async function loadImageDataUrl(url: string) {
+  if (!url || url.includes('image/svg+xml')) return null
+  if (url.startsWith('data:image/')) return url
+  try {
+    const response = await fetch(url, { mode: 'cors' })
+    if (!response.ok) return null
+    const blob = await response.blob()
+    if (!blob.type.startsWith('image/') || blob.type.includes('svg')) return null
+    return await blobToDataUrl(blob)
+  } catch {
+    return null
+  }
+}
+
+async function loadSdgImageMap(sdgs: number[]): Promise<SdgImageMap> {
+  const uniqueSdgs = [...new Set(sdgs)].filter(n => n >= 1 && n <= 17)
+  const entries = await Promise.all(uniqueSdgs.map(async n => {
+    const sdg = SDG_DATA.find(item => item.n === n)
+    if (!sdg) return null
+    for (const url of sdg.imgUrls) {
+      const dataUrl = await loadImageDataUrl(url)
+      if (dataUrl) return [n, dataUrl] as const
+    }
+    return null
+  }))
+  return Object.fromEntries(entries.filter(Boolean) as Array<readonly [number, string]>)
 }
 
 function metricLabel(key: string, sdg?: number) {
@@ -556,7 +611,7 @@ function drawScores(doc: jsPDF, report: GeneratedESGReport, palette: SdgPalette,
 }
 
 // ─── PAGE 6: SDG ────────────────────────────────────
-function drawSDG(doc: jsPDF, report: GeneratedESGReport, palette: SdgPalette, template?: ReportTemplate) {
+function drawSDG(doc: jsPDF, report: GeneratedESGReport, palette: SdgPalette, template?: ReportTemplate, sdgImages?: SdgImageMap) {
   newPage(doc, palette, 'ALIGNED SDGs', 'Alinhamento ODS', 6, template, 'sdg')
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
@@ -577,11 +632,12 @@ function drawSDG(doc: jsPDF, report: GeneratedESGReport, palette: SdgPalette, te
     } else {
       doc.setTextColor(60, 60, 60)
     }
+    const hasImage = addSdgImage(doc, sdgImages, sdg, M + 3, y + 2, 10, 10)
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(9)
-    doc.text(`ODS ${sdg}`, M + 6, y + 9)
+    doc.text(`ODS ${sdg}`, M + (hasImage ? 17 : 6), y + 9)
     doc.setFont('helvetica', 'normal')
-    doc.text(`— ${getSdgLabel(sdg)}`, M + 22, y + 9)
+    doc.text(`— ${getSdgLabel(sdg)}`, M + (hasImage ? 33 : 22), y + 9)
     if (isPrimary) {
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(7)
@@ -676,7 +732,7 @@ function drawGallery(doc: jsPDF, report: GeneratedESGReport, palette: SdgPalette
   }
 }
 
-function drawSdgImpactGrid(doc: jsPDF, report: GeneratedESGReport, palette: SdgPalette) {
+function drawSdgImpactGrid(doc: jsPDF, report: GeneratedESGReport, palette: SdgPalette, sdgImages?: SdgImageMap) {
   doc.addPage()
   paintBackground(doc, palette)
   drawCornerCircles(doc, palette)
@@ -706,12 +762,7 @@ function drawSdgImpactGrid(doc: jsPDF, report: GeneratedESGReport, palette: SdgP
       y += bW + gap
     }
 
-    try {
-      // Note: SVG might need conversion or library support for doc.addImage
-      // We use the PNG versions from the same base or similar source for PDF stability
-      const pngUrl = `https://www.un.org/sustainabledevelopment/wp-content/uploads/2019/08/E-Goal-${String(sdg.n).padStart(2, '0')}-1024x1024.png`
-      doc.addImage(pngUrl, 'PNG', x, y, bW, bW)
-    } catch {
+    if (!addSdgImage(doc, sdgImages, sdg.n, x, y, bW, bW)) {
       doc.setFillColor(...hexToRgb(sdg.color))
       doc.rect(x, y, bW, bW, 'F')
       doc.setTextColor(255, 255, 255)
@@ -886,6 +937,9 @@ export async function downloadSustainabilityReport(report: GeneratedESGReport, t
     const logoDataUrl = await getLogoDataUrl()
     console.log('🟢 Logo carregado:', logoDataUrl ? 'OK' : 'em falta (segue sem logo)')
 
+    const sdgImages = await loadSdgImageMap(report.sdgAlignment)
+    console.log('Imagens ODS carregadas:', Object.keys(sdgImages).length)
+
     const doc = new jsPDF({ unit: 'mm', format: 'a4' })
     console.log('🟢 jsPDF instanciado')
 
@@ -900,10 +954,10 @@ export async function downloadSustainabilityReport(report: GeneratedESGReport, t
       drawSummary(doc, report, palette, template)
       drawCompanyInstitution(doc, report, palette, template)
       drawScores(doc, report, palette, template)
-    drawSDG(doc, report, palette, template)
+    drawSDG(doc, report, palette, template, sdgImages)
     drawNeeds(doc, report, palette, template)
     drawGallery(doc, report, palette, template)
-    drawSdgImpactGrid(doc, report, palette) // New Page with SDG Icons
+    drawSdgImpactGrid(doc, report, palette, sdgImages) // New Page with SDG Icons
     drawFiscal(doc, report, palette, template)
     drawPremiumExtraPages(doc, report, palette, template)
     if (hasSocialPack) downloadSocialCopyTxt(report)
@@ -913,7 +967,7 @@ export async function downloadSustainabilityReport(report: GeneratedESGReport, t
     drawCompanyInstitution(doc, report, palette, template)
     drawScores(doc, report, palette, template)
     drawNeeds(doc, report, palette, template)
-    drawSdgImpactGrid(doc, report, palette) // New Page with SDG Icons
+    drawSdgImpactGrid(doc, report, palette, sdgImages) // New Page with SDG Icons
     drawFiscal(doc, report, palette, template)
   }
 

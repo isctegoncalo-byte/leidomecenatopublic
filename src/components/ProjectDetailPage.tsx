@@ -5,6 +5,7 @@ import { listProofs } from '../utils/proofStore'
 import { findInstitutionRegistration } from '../utils/institutionRegistry'
 import { getProjectGallery } from '../utils/projectGalleries'
 import { getInstitutionContacts } from '../utils/institutionContacts'
+import SdgIcon from './SdgIcon'
 
 interface Props {
   account: Account | null
@@ -177,8 +178,8 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
 
             <article className="bg-white border border-slate-200 rounded-2xl p-6">
               <h2 className="text-2xl font-black text-slate-900 mb-4">ODS e metas a atingir</h2>
-              <div className="flex flex-wrap gap-2 mb-5">
-                {project.sdgGoals.map(sdg => <span key={sdg} className="rounded-full bg-slate-100 px-3 py-1 text-sm font-black text-slate-700">ODS {sdg}</span>)}
+              <div className="flex flex-wrap gap-3 mb-5">
+                {project.sdgGoals.map(sdg => <SdgIcon key={sdg} n={sdg} size="md" />)}
               </div>
               <ul className="space-y-3 text-slate-600">
                 <li><strong>Métrica principal:</strong> {project.impactMetric}</li>

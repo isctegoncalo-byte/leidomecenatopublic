@@ -1,11 +1,40 @@
 {
   "name": "leidomecenato.pt",
   "short_name": "Mecenato",
-  "description": "Plataforma Nacional de Donativos com Relatórios de Impacto ESG do Donativo.",
+  "description": "Plataforma para empresas simularem beneficios fiscais, fazerem donativos elegiveis e gerarem relatorios de impacto ESG.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0f172a",
+  "scope": "/",
+  "lang": "pt-PT",
+  "categories": ["business", "finance", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Simulador",
+      "short_name": "Simulador",
+      "description": "Simular beneficios fiscais de donativos empresariais.",
+      "url": "/simulador"
+    },
+    {
+      "name": "Fazer donativo",
+      "short_name": "Donativo",
+      "description": "Registar um donativo empresarial e pedir relatorio de impacto.",
+      "url": "/empresa/donativo"
+    },
+    {
+      "name": "Lei do Mecenato",
+      "short_name": "Lei",
+      "description": "Consultar informacao pratica sobre a Lei do Mecenato.",
+      "url": "/lei-do-mecenato"
+    },
+    {
+      "name": "Registar instituicao",
+      "short_name": "Instituicao",
+      "description": "Registar uma instituicao para receber apoios de empresas.",
+      "url": "/instituicao/registo"
+    }
+  ],
   "icons": [
     {
       "src": "/images/logo-leidomecenato-official.svg",

@@ -52,8 +52,10 @@ Na pasta do projeto, criar um ficheiro chamado:
 Dentro dele colocar:
 
 ```text
-VITE_SUPABASE_URL=colar_aqui_o_project_url
+VITE_SUPABASE_URL=https://pucqlcfqkdxznjeoihkv.supabase.co
 VITE_SUPABASE_ANON_KEY=colar_aqui_a_anon_public_key
+VITE_SUPABASE_ODS_BUCKET=images
+VITE_SUPABASE_ODS_FOLDER=ODS
 ```
 
 Exemplo:
@@ -61,9 +63,15 @@ Exemplo:
 ```text
 VITE_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJ...
+VITE_SUPABASE_ODS_BUCKET=images
+VITE_SUPABASE_ODS_FOLDER=ODS
 ```
 
 Nao usar aspas.
+
+Para as imagens dos ODS, criar no Supabase Storage um bucket publico chamado `images` e uma pasta `ODS`.
+Colocar as 17 imagens nessa pasta. O padrao preferido e `ods-1-pt.png`, `ods-2-pt.png` ... `ods-17-pt.png`.
+O site tambem tenta nomes alternativos como `01.png`, `1.png`, `ODS01.png`, `ODS1.png`, `ODS-01.png`, `ODS_01.png`, `ods-01.png`, `E-WEB-Goal-01.png` ou `S-WEB-Goal-01.png`.
 
 ## 5. Instalar Node.js
 
@@ -126,3 +134,19 @@ Depois enviar o conteudo da pasta `dist/` para o alojamento.
 
 Depois de preencher `.env`, este projeto deixa de guardar documentos so no browser e passa a enviar para o Supabase.
 Sem `.env`, continua em modo demo.
+
+## Segurança aplicada no Supabase
+
+O ficheiro `supabase/schema.sql` deve ser corrido novamente sempre que forem atualizadas as regras de seguranca.
+As regras atuais impedem utilizadores comuns de criarem ou alterarem perfis com `role = admin`, mantem o bucket `documents` privado e limitam uploads aos tipos permitidos.
+
+Para as Edge Functions, configurar tambem:
+
+```text
+RESEND_API_KEY=...
+ADMIN_REGISTRATION_EMAIL=geral@leidomecenato.pt
+ADMIN_NOTIFICATION_FROM=Lei do Mecenato <geral@leidomecenato.pt>
+SITE_ORIGIN=https://leidomecenato.pt
+```
+
+A function `registration-notification` deve ficar com verificacao de JWT ativa. Assim so utilizadores autenticados conseguem disparar notificacoes de registo, e o email enviado tem de corresponder ao email da sessao.

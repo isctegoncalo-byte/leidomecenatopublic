@@ -24,6 +24,20 @@ export default function MecenatoLawPage({ setCurrentView }: Props) {
 
       <section className="py-12">
         <div className="container mx-auto px-4 max-w-5xl">
+          <div className="mb-8 grid gap-4 md:grid-cols-4">
+            {[
+              ['1. Elegibilidade', 'Confirmar entidade beneficiaria, finalidade do donativo e ausencia de contrapartida comercial.'],
+              ['2. Documento', 'Recolher recibo/comprovativo com NIF, valor, data, enquadramento legal e declaracao da entidade.'],
+              ['3. Beneficio', 'Simular majoracao, limites aplicaveis e efeito estimado no IRC com o contabilista.'],
+              ['4. Impacto', 'Registar evidencia, metricas, ODS e narrativa para relatorio ESG e comunicacao.'],
+            ].map(([title, body]) => (
+              <div key={title} className="rounded-2xl border border-slate-200 bg-white p-5">
+                <h2 className="mb-2 text-sm font-black text-slate-900">{title}</h2>
+                <p className="text-xs leading-relaxed text-slate-600">{body}</p>
+              </div>
+            ))}
+          </div>
+
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 md:p-8">
               <h2 className="text-2xl font-black text-slate-900 mb-5">O essencial, sem juridiquês</h2>
@@ -48,6 +62,24 @@ export default function MecenatoLawPage({ setCurrentView }: Props) {
                   title="Validação caso a caso"
                   body="O enquadramento fiscal depende do tipo de entidade, finalidade do donativo, documentação, limites aplicáveis e situação concreta do mecenas. Deve ser validado com contabilista, jurista ou Autoridade Tributária."
                 />
+              </div>
+
+              <div className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <h3 className="mb-4 text-lg font-black text-slate-900">Checklist pratica para empresas</h3>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {[
+                    'Confirmar NIF e natureza juridica da instituicao.',
+                    'Guardar comprovativo bancario ou fatura dos bens/servicos doados.',
+                    'Pedir recibo/documento fiscal da entidade beneficiaria.',
+                    'Confirmar que nao existe contrapartida publicitaria equivalente.',
+                    'Arquivar finalidade, projeto, ODS e metricas de impacto.',
+                    'Validar majoracao e limites com contabilista certificado.',
+                  ].map(item => (
+                    <div key={item} className="rounded-xl bg-white p-3 text-sm font-semibold text-slate-700">
+                      {item}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 

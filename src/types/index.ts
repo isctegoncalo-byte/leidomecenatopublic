@@ -7,7 +7,7 @@ export type ViewType =
 
 export type ESGPillar = 'E' | 'S' | 'G'
 
-export type AccountRole = 'empresa' | 'instituicao'
+export type AccountRole = 'empresa' | 'instituicao' | 'admin'
 
 export interface Account {
   id: string

@@ -1,9 +1,13 @@
 import { useState } from 'react'
-import { REPORT_TIERS } from '../types'
+import { REPORT_TIERS, ViewType } from '../types'
 
 type SimMode = 'dinheiro' | 'produtos'
 
-export default function SimulatorPage() {
+interface Props {
+  setCurrentView?: (view: ViewType) => void
+}
+
+export default function SimulatorPage({ setCurrentView }: Props) {
   const [mode, setMode] = useState<SimMode>('dinheiro')
   const [amount, setAmount] = useState(10000)
   const [irc, setIrc] = useState(21)
@@ -13,6 +17,10 @@ export default function SimulatorPage() {
   const deduction = amount * 1.4
   const ircSavings = deduction * (irc / 100)
   const realCost = amount - ircSavings
+  const startDonation = () => {
+    localStorage.setItem('leidomecenato_simulator_seed', JSON.stringify({ donationType: mode, amount }))
+    setCurrentView?.('empresa')
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 py-12">
@@ -365,6 +373,27 @@ export default function SimulatorPage() {
         )}
 
         {/* Disclaimer (ambos os modos) */}
+        <div className="mt-10 rounded-3xl border border-blue-200 bg-white p-6 shadow-sm">
+          <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+              <p className="mb-2 text-xs font-black uppercase tracking-wide text-blue-600">Proximo passo</p>
+              <h2 className="text-2xl font-black text-slate-900">Use esta simulacao para escolher uma instituicao.</h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                Com um donativo de EUR {amount.toLocaleString('pt-PT')}, a deducao fiscal estimada e EUR {deduction.toLocaleString('pt-PT')}
+                e a poupanca em IRC pode chegar a EUR {ircSavings.toFixed(0)}. Agora associe o valor a um projeto real e gere prova de impacto.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+              <button onClick={startDonation} className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-black text-white transition hover:bg-blue-700">
+                Encontrar projeto para este valor
+              </button>
+              <button onClick={() => setCurrentView?.('lei-mecenato')} className="rounded-2xl border border-slate-300 px-6 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50">
+                Ver enquadramento fiscal
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className="mt-8 p-4 bg-amber-50 rounded-xl border border-amber-200">
           <p className="text-xs text-amber-700">
             <strong>⚠️ Notas importantes:</strong> Esta simulação é meramente informativa. O donativo é feito diretamente da empresa para a instituição — 

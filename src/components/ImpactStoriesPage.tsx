@@ -3,6 +3,7 @@ import { listProofs } from '../utils/proofStore'
 import { sampleInstitutions } from '../data/institutions'
 import { listInstitutionRegistrations } from '../utils/institutionRegistry'
 import { completedProjects, projectSecured, projectTarget } from '../utils/projectFunding'
+import SdgIcon from './SdgIcon'
 
 interface Props {
   setCurrentView: (v: ViewType) => void
@@ -138,7 +139,7 @@ export default function ImpactStoriesPage({ setCurrentView }: Props) {
                   <div className="p-5">
                     <div className="mb-4 flex flex-wrap gap-2">
                       {project.sdgGoals.map(sdg => (
-                        <span key={sdg} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">ODS {sdg}</span>
+                        <SdgIcon key={sdg} n={sdg} size="sm" />
                       ))}
                     </div>
                     <p className="text-sm text-slate-600 line-clamp-3">{project.description}</p>
@@ -181,7 +182,7 @@ export default function ImpactStoriesPage({ setCurrentView }: Props) {
                 <div className="bg-gradient-to-br from-slate-900 to-blue-900 h-44 p-6 text-white flex flex-col justify-between">
                   <div className="flex flex-wrap gap-2">
                     {item.sdgs.map(sdg => (
-                      <span key={sdg} className="bg-white/15 border border-white/20 rounded-full px-3 py-1 text-xs font-black">ODS {sdg}</span>
+                      <SdgIcon key={sdg} n={sdg} size="sm" className="ring-2 ring-white/20" />
                     ))}
                   </div>
                   <div>

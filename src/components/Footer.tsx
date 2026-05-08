@@ -96,7 +96,7 @@ export default function Footer({ setCurrentView }: Props) {
         <div className="border-t border-slate-700 pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-slate-500 text-sm">© {new Date().getFullYear()} {brand.name} — Iniciativa privada independente.</p>
           <div className="flex space-x-6 text-slate-500 text-sm">
-            <button onClick={() => setCurrentView?.('privacidade')} className="hover:text-white transition">Privacidade</button>
+            <button onClick={() => setCurrentView?.('privacidade')} className="hover:text-white transition">Privacidade e RGPD</button>
             <button onClick={() => setCurrentView?.('termos')} className="hover:text-white transition">Termos de Serviço</button>
             <button onClick={() => setCurrentView?.('cookies')} className="hover:text-white transition">Cookies</button>
             {setCurrentView && (
@@ -174,6 +174,12 @@ export default function Footer({ setCurrentView }: Props) {
                   placeholder="Escreva aqui a sua dúvida"
                 />
               </label>
+              <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
+                <p className="text-xs leading-relaxed text-blue-800">
+                  <strong>RGPD:</strong> os dados deste formulario serao usados apenas para responder ao seu pedido.
+                  Nao inclua dados pessoais sensiveis ou informacao de terceiros que nao seja necessaria.
+                </p>
+              </div>
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <button
                   type="button"

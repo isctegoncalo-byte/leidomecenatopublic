@@ -1,6 +1,7 @@
 import { Account, AccountRole, UploadedDoc } from '../types'
 import { isSupabaseConfigured, supabase } from './supabaseClient'
 import { User } from '@supabase/supabase-js'
+import { safeUploadName, validateDocumentUpload } from './uploadSecurity'
 
 export interface AdminProfile {
   id: string
@@ -45,7 +46,7 @@ export interface SupabaseRegisterPayload {
 
 const toAccount = (row: AdminProfile): Account => ({
   id: row.id,
-  role: row.role === 'admin' ? 'empresa' : row.role,
+  role: row.role,
   email: row.email,
   password: '',
   name: row.name,
@@ -258,8 +259,10 @@ export async function listDocsReal(ownerId: string): Promise<UploadedDoc[]> {
 
 export async function uploadDocReal(ownerId: string, category: string, file: File): Promise<{ ok: true; doc: UploadedDoc } | { ok: false; error: string }> {
   if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+  const validationError = validateDocumentUpload(file)
+  if (validationError) return { ok: false, error: validationError }
 
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-')
+  const safeName = safeUploadName(file.name)
   const storagePath = `${ownerId}/${Date.now()}-${safeName}`
   const { error: uploadError } = await supabase.storage
     .from('documents')

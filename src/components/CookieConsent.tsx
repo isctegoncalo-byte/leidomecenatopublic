@@ -35,6 +35,9 @@ export default function CookieConsent({ setCurrentView }: Props) {
               guardar preferências e melhorar o funcionamento da plataforma. Ao continuar, aceita a utilização
               destes mecanismos essenciais.
             </p>
+            <p className="mt-3 text-xs leading-relaxed text-slate-500">
+              Quando cookies ou armazenamento local permitam identificar um utilizador, o tratamento e enquadrado pela Politica de Privacidade e pelo RGPD.
+            </p>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
               <button
                 onClick={accept}

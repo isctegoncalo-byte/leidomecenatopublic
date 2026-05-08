@@ -147,6 +147,10 @@ export default function App() {
 
   const handleLogin = (account: Account) => {
     setSession(account)
+    if (account.role === 'admin') {
+      setState({ screen: 'main', view: 'admin' })
+      return
+    }
     const pending = localStorage.getItem('leidomecenato_pending_project')
     if (pending && account.role === 'empresa') {
       setState({ screen: 'main', view: 'empresa' })
@@ -187,7 +191,7 @@ export default function App() {
         {view === 'rating-impacto' && <ImpactRatingPage setCurrentView={setView} />}
         {view === 'projeto' && <ProjectDetailPage account={session} setCurrentView={setView} />}
         {view === 'faq' && <FaqPage setCurrentView={setView} />}
-        {view === 'simulador' && <SimulatorPage />}
+        {view === 'simulador' && <SimulatorPage setCurrentView={setView} />}
         {view === 'empresa' && (
           <CompanyDonationPage onContractComplete={handleContractComplete} account={session} />
         )}
@@ -215,7 +219,7 @@ export default function App() {
           )
         )}
         {view === 'admin' && (
-          <AdminPage setCurrentView={setView} />
+          <AdminPage setCurrentView={setView} session={session} onLogout={handleLogout} />
         )}
         {view === 'privacidade' && (
           <LegalPage kind="privacidade" setCurrentView={setView} />

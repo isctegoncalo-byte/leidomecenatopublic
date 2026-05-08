@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { BrandIdentity, getBrandIdentity, saveBrandIdentity, resetBrandIdentity, DEFAULT_BRAND } from '../utils/brandIdentity'
 import { importBrandFolder, exportBrandAsJson, exportBrandAsTypeScript, downloadFolderTemplate, ImportReport } from '../utils/brandImporter'
 import { notifyBrandUpdated } from '../hooks/useBrand'
+import { ACCEPTED_IMAGE_INPUT, validateImageUpload } from '../utils/uploadSecurity'
 
 export default function AdminBrandTab() {
   const [brand, setBrand] = useState<BrandIdentity>(DEFAULT_BRAND)
@@ -52,6 +53,11 @@ export default function AdminBrandTab() {
 
   const handleLogoUpload = (file?: File) => {
     if (!file) return
+    const validationError = validateImageUpload(file)
+    if (validationError) {
+      alert(validationError)
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => update('logoUrl', String(reader.result || ''))
     reader.readAsDataURL(file)
@@ -59,6 +65,11 @@ export default function AdminBrandTab() {
 
   const handleLogoMonoUpload = (file?: File) => {
     if (!file) return
+    const validationError = validateImageUpload(file)
+    if (validationError) {
+      alert(validationError)
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => update('logoMonoUrl', String(reader.result || ''))
     reader.readAsDataURL(file)
@@ -458,7 +469,7 @@ function LogoUploader({ label, url, onUpload, help }: { label: string; url: stri
           <p className="font-semibold text-blue-700 text-sm mb-1">{url ? 'Substituir' : 'Carregar'}</p>
           <p className="text-xs text-slate-500">{help}</p>
         </div>
-        <input type="file" accept="image/*" onChange={e => onUpload(e.target.files?.[0])} className="hidden" />
+        <input type="file" accept={ACCEPTED_IMAGE_INPUT} onChange={e => onUpload(e.target.files?.[0])} className="hidden" />
       </label>
     </div>
   )

@@ -272,10 +272,98 @@ export default function HomePage({ setCurrentView }: Props) {
 
   return (
     <div>
+      <section className="relative bg-slate-950 text-white py-20 overflow-hidden">
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_left,#2563eb,transparent_30%),radial-gradient(circle_at_bottom_right,#10b981,transparent_28%)]" />
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+            <div>
+              <p className="mb-4 inline-flex rounded-full border border-blue-400/40 bg-blue-500/10 px-4 py-2 text-xs font-black uppercase tracking-wide text-blue-200">
+                Lei do Mecenato para empresas e instituicoes
+              </p>
+              <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight">
+                Transforme donativos em impacto fiscal, social e ESG.
+              </h1>
+              <p className="text-xl text-slate-200 mb-5 max-w-3xl leading-relaxed">
+                Empresas encontram projetos elegiveis, simulam o beneficio em IRC e recebem relatorios de impacto.
+                Instituicoes apresentam necessidades concretas e recebem 100% do apoio diretamente.
+              </p>
+              <p className="text-base text-blue-200 mb-8 max-w-2xl">
+                Donativos em dinheiro, produtos ou servicos. Enquadramento fiscal, Impact Score, ODS, comprovativos e conteudos de comunicacao num unico fluxo.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button onClick={() => setCurrentView('simulador')}
+                  className="bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-black py-4 px-8 rounded-2xl text-base transition shadow-2xl">
+                  Simular beneficio fiscal
+                </button>
+                <button onClick={() => setCurrentView('empresa')}
+                  className="bg-white/10 hover:bg-white/15 text-white font-black py-4 px-8 rounded-2xl text-base transition border border-white/20">
+                  Encontrar projeto para apoiar
+                </button>
+              </div>
+              <div className="mt-8 grid gap-3 text-sm text-slate-300 sm:grid-cols-3">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <strong className="block text-white">100% direto</strong>
+                  Empresa transfere para a instituicao.
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <strong className="block text-white">IRC e EBF</strong>
+                  Simulacao fiscal para decisao.
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <strong className="block text-white">Impacto ESG</strong>
+                  Relatorios com ODS e metricas.
+                </div>
+              </div>
+            </div>
+            <div className="rounded-[2rem] border border-white/10 bg-white/10 p-5 shadow-2xl backdrop-blur">
+              <div className="rounded-3xl bg-white p-6 text-slate-900">
+                <p className="mb-2 text-xs font-black uppercase tracking-wide text-blue-600">Caminho recomendado</p>
+                <div className="space-y-4">
+                  {[
+                    ['1', 'Simule', 'Veja deducao fiscal, custo real e valor para a causa.'],
+                    ['2', 'Escolha', 'Compare projetos por distrito, ODS, urgencia e rating.'],
+                    ['3', 'Doe diretamente', 'A plataforma nao recebe o donativo.'],
+                    ['4', 'Comprove impacto', 'Receba relatorio, certificado e conteudos ESG.'],
+                  ].map(([num, title, body]) => (
+                    <div key={num} className="flex gap-3">
+                      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white">{num}</span>
+                      <div>
+                        <p className="font-black text-slate-900">{title}</p>
+                        <p className="text-sm text-slate-500">{body}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={() => setCurrentView('instituicao')} className="mt-6 w-full rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700">
+                  Registar instituicao ou projeto
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b border-slate-200 bg-white py-10">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-4">
+            {[
+              ['Empresas', 'Encontram projetos, simulam IRC e documentam impacto.'],
+              ['Instituicoes', 'Publicam necessidades elegiveis e recebem apoio direto.'],
+              ['Contabilistas', 'Tem dados, comprovativos e contexto fiscal reunidos.'],
+              ['Gestores ESG', 'Recebem metricas, ODS, narrativa e evidencias.'],
+            ].map(([title, body]) => (
+              <div key={title} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <h2 className="mb-2 text-sm font-black uppercase tracking-wide text-slate-900">{title}</h2>
+                <p className="text-sm leading-relaxed text-slate-600">{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
       {/* ═══════════════════════════════════════════════
           1. HERO
       ═══════════════════════════════════════════════ */}
-      <section className="relative bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 text-white py-24 overflow-hidden">
+      <section className="hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-10 left-10 w-64 h-64 bg-blue-500 rounded-full blur-3xl" />
           <div className="absolute bottom-10 right-10 w-96 h-96 bg-indigo-500 rounded-full blur-3xl" />

@@ -18,8 +18,11 @@ import { addMessage, listThreadsForAccount } from '../utils/chatStore'
 import { findInstitutionRegistration, saveInstitutionRegistration } from '../utils/institutionRegistry'
 import { deleteDocReal, listDocsReal, logoutReal, realBackendEnabled, uploadDocReal } from '../utils/supabaseBackend'
 import { isProjectComplete, projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
+import { PROJECT_TYPE_LIMIT_MESSAGE, ProjectSupportType, hasActiveProjectOfType, nextAvailableProjectType } from '../utils/projectLimits'
 import SdgGrid from './SdgGrid'
+import SdgIcon from './SdgIcon'
 import { GENERAL_IMPACT_METRICS, ODS_IMPACT_METRICS, MetricDefinition } from '../data/impactMetrics'
+import { ACCEPTED_DOCUMENT_INPUT, ACCEPTED_IMAGE_INPUT, validateDocumentUpload, validateImageUpload } from '../utils/uploadSecurity'
 
 interface Props {
   account: Account
@@ -307,12 +310,24 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
   })
   const [error, setError] = useState('')
 
+  const isCompleteForLimit = (need: NeedItem) => isProjectComplete(need, confirmedProofs, account.name)
+  const hasActiveProjectType = (type: ProjectSupportType) => hasActiveProjectOfType(needs, type, isCompleteForLimit)
+  const nextProjectType = () => nextAvailableProjectType(needs, isCompleteForLimit)
+
+  useEffect(() => {
+    const selectedType = form.supportType === 'produtos' ? 'produtos' : 'dinheiro'
+    if (hasActiveProjectType(selectedType)) {
+      const availableType = nextProjectType()
+      if (availableType) setForm(prev => ({ ...prev, supportType: availableType }))
+    }
+  }, [needs, form.supportType])
+
   const resetForm = () => setForm({
     id: `need-${Date.now()}`,
     category: '',
     subcategory: '',
     description: '',
-    supportType: 'dinheiro',
+    supportType: nextProjectType() || 'dinheiro',
     implementationPhase: 'candidatura',
     quantity: '',
     projectPhotoUrls: [],
@@ -372,6 +387,10 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
   const addProject = () => {
     if (missingRequiredDocs.length > 0) {
       setError(`Antes de criar um novo projeto, carregue os documentos obrigatórios em falta: ${missingRequiredDocs.join(', ')}.`)
+      return
+    }
+    if (form.supportType && hasActiveProjectType(form.supportType as ProjectSupportType)) {
+      setError(PROJECT_TYPE_LIMIT_MESSAGE)
       return
     }
     if (!form.category || !form.subcategory || !form.description || !form.impactMetric || form.sdgGoals.length === 0 || !form.supportType || !form.implementationPhase) {
@@ -448,6 +467,11 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
 
   const handleProjectPhotoChange = (photoIdx: number, file?: File) => {
     if (!file) return
+    const validationError = validateImageUpload(file)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => {
       setForm(prev => {
@@ -530,9 +554,12 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
           <input value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="Categoria *" className="px-4 py-3 border border-slate-300 rounded-xl" />
           <input value={form.subcategory} onChange={e => setForm({ ...form, subcategory: e.target.value })} placeholder="Subcategoria *" className="px-4 py-3 border border-slate-300 rounded-xl" />
           <select value={form.supportType || 'dinheiro'} onChange={e => setForm({ ...form, supportType: e.target.value as NeedItem['supportType'] })} className="px-4 py-3 border border-slate-300 rounded-xl">
-            <option value="dinheiro">Pretendo dinheiro</option>
-            <option value="produtos">Pretendo produto/serviço</option>
+            <option value="dinheiro" disabled={hasActiveProjectType('dinheiro')}>Pretendo dinheiro</option>
+            <option value="produtos" disabled={hasActiveProjectType('produtos')}>Pretendo produto/serviço</option>
           </select>
+          <p className="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-500 md:col-span-2">
+            Cada instituição pode ter no máximo 1 projeto ativo a pedir dinheiro e 1 projeto ativo a pedir produto/serviço.
+          </p>
           <select value={form.implementationPhase || 'candidatura'} onChange={e => setForm({ ...form, implementationPhase: e.target.value as NeedItem['implementationPhase'] })} className="px-4 py-3 border border-slate-300 rounded-xl">
             <option value="candidatura">Em fase de candidatura</option>
             <option value="a-decorrer">A decorrer</option>
@@ -624,7 +651,7 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
                     </div>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept={ACCEPTED_IMAGE_INPUT}
                       onChange={e => handleProjectPhotoChange(photoIdx, e.target.files?.[0])}
                       className="hidden"
                     />
@@ -640,8 +667,12 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
             })}
           </div>
         </div>
-        <button onClick={addProject} className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl">
-          + Adicionar projeto
+        <button
+          onClick={addProject}
+          disabled={!nextProjectType()}
+          className="mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold px-6 py-3 rounded-xl"
+        >
+          {nextProjectType() ? '+ Adicionar projeto' : 'Limite de projetos ativos atingido'}
         </button>
       </div>
 
@@ -669,8 +700,8 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
                         <div className={`h-full rounded-full ${isProjectComplete(n, confirmedProofs, account.name) ? 'bg-green-600' : 'bg-blue-600'}`} style={{ width: `${projectProgress(n, confirmedProofs, account.name)}%` }} />
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {n.sdgGoals.map(s => <span key={s} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">ODS {s}</span>)}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                      {n.sdgGoals.map(s => <SdgIcon key={s} n={s} size="sm" className="rounded-md" />)}
                       {(n.projectPhotoUrls || []).length > 0 && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold">{(n.projectPhotoUrls || []).length} foto{(n.projectPhotoUrls || []).length > 1 ? 's' : ''}</span>}
                       {isProjectComplete(n, confirmedProofs, account.name) && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">Concluído</span>}
                     </div>
@@ -792,6 +823,11 @@ function DocumentsTab({
   const handleUpload = async (file?: File) => {
     if (!file) return
     setError('')
+    const validationError = validateDocumentUpload(file)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
     setUploading(true)
     try {
       if (realBackendEnabled()) {
@@ -855,7 +891,7 @@ function DocumentsTab({
             <div className="border-2 border-dashed border-slate-300 rounded-xl px-4 py-3 bg-slate-50 hover:bg-slate-100 cursor-pointer flex items-center gap-3">
               <span className="text-2xl">📎</span>
               <span className="text-sm text-slate-600 flex-1">{uploading ? 'A carregar...' : 'Selecionar ficheiro (PDF, imagem, doc...)'}</span>
-              <input type="file" className="hidden" disabled={uploading}
+              <input type="file" accept={ACCEPTED_DOCUMENT_INPUT} className="hidden" disabled={uploading}
                 onChange={e => handleUpload(e.target.files?.[0])} />
             </div>
           </label>
@@ -943,6 +979,7 @@ function ProofsTab({
   const [companyInvoices, setCompanyInvoices] = useState<Record<string, { name: string; dataUrl: string; size: number }>>({})
   const [institutionReceipts, setInstitutionReceipts] = useState<Record<string, { name: string; dataUrl: string; size: number }>>({})
   const [confirmedAmounts, setConfirmedAmounts] = useState<Record<string, number>>({})
+  const [uploadError, setUploadError] = useState('')
 
   const confirmedAmountFor = (proof: DonationProof) =>
     confirmedAmounts[proof.id] ?? proof.confirmedAmount ?? proof.institutionConfirmedAmount ?? proof.companyConfirmedAmount ?? proof.amount
@@ -962,6 +999,12 @@ function ProofsTab({
     type: 'company-invoice' | 'institution-receipt'
   ) => {
     if (!file) return
+    const validationError = validateDocumentUpload(file)
+    if (validationError) {
+      setUploadError(validationError)
+      return
+    }
+    setUploadError('')
     const dataUrl = await readFileAsDataUrl(file)
     const payload = { name: file.name, dataUrl, size: file.size }
     if (type === 'company-invoice') {
@@ -1020,6 +1063,7 @@ function ProofsTab({
           Quando a empresa confirma o donativo, a instituição recebe uma notificação e deve confirmar a receção ou negar o donativo. Aguarde 2 a 3 dias úteis antes de insistir, porque algumas transferências podem demorar a ser processadas.
         </p>
       </div>
+      {uploadError && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{uploadError}</div>}
 
       <div className="space-y-4">
         {proofs.length === 0 ? (
@@ -1092,7 +1136,7 @@ function ProofsTab({
                               : 'PDF, JPG ou PNG'}
                         </p>
                       </div>
-                      <input type="file" accept=".pdf,image/*" className="hidden" onChange={e => handleMandatoryDocUpload(p.id, e.target.files?.[0], 'company-invoice')} />
+                      <input type="file" accept={ACCEPTED_DOCUMENT_INPUT} className="hidden" onChange={e => handleMandatoryDocUpload(p.id, e.target.files?.[0], 'company-invoice')} />
                     </label>
                   </div>
                 )}
@@ -1156,7 +1200,7 @@ function ProofsTab({
                                 : 'PDF, JPG ou PNG'}
                           </p>
                         </div>
-                        <input type="file" accept=".pdf,image/*" className="hidden" onChange={e => handleMandatoryDocUpload(p.id, e.target.files?.[0], 'institution-receipt')} />
+                        <input type="file" accept={ACCEPTED_DOCUMENT_INPUT} className="hidden" onChange={e => handleMandatoryDocUpload(p.id, e.target.files?.[0], 'institution-receipt')} />
                       </label>
                     </div>
 

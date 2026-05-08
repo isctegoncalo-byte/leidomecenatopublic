@@ -1,26 +1,8 @@
 import { ReportTemplate, reportTemplates as defaultReportTemplates, defaultReportAdvanced } from '../templates/reportTemplates'
 import { SocialTemplate, socialTemplates as defaultSocialTemplates } from '../templates/socialTemplates'
 
-const ADMIN_PIN = 'mecenato2025'
 const RT_KEY = 'leidomecenato_report_templates'
 const ST_KEY = 'leidomecenato_social_templates'
-const ADMIN_SESSION = 'leidomecenato_admin'
-
-export function adminLogin(pin: string): boolean {
-  if (pin === ADMIN_PIN) {
-    localStorage.setItem(ADMIN_SESSION, '1')
-    return true
-  }
-  return false
-}
-
-export function adminLogout() {
-  localStorage.removeItem(ADMIN_SESSION)
-}
-
-export function isAdminLoggedIn(): boolean {
-  return localStorage.getItem(ADMIN_SESSION) === '1'
-}
 
 // ─── Report templates ────────────────────────────
 function readJson<T>(key: string, fallback: T): T {

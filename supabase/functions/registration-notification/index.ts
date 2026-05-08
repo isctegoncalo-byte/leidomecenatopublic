@@ -1,8 +1,13 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || ''
 const ADMIN_EMAIL = Deno.env.get('ADMIN_REGISTRATION_EMAIL') || 'geral@leidomecenato.pt'
 const FROM_EMAIL = Deno.env.get('ADMIN_NOTIFICATION_FROM') || 'Lei do Mecenato <geral@leidomecenato.pt>'
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || ''
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || ''
+const SITE_ORIGIN = Deno.env.get('SITE_ORIGIN') || '*'
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': SITE_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
@@ -26,6 +31,32 @@ function escapeHtml(value: string) {
     .replaceAll("'", '&#039;')
 }
 
+function badRequest(error: string, status = 400) {
+  return Response.json({ ok: false, error }, { status, headers: corsHeaders })
+}
+
+function clean(value?: string) {
+  return String(value || '').trim().slice(0, 240)
+}
+
+function validEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+async function getAuthenticatedUser(req: Request) {
+  const authorization = req.headers.get('authorization') || ''
+  if (!authorization.toLowerCase().startsWith('bearer ')) return null
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: authorization } },
+    auth: { persistSession: false },
+  })
+  const { data, error } = await supabase.auth.getUser()
+  if (error || !data.user) return null
+  return data.user
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -35,20 +66,34 @@ Deno.serve(async (req) => {
     return new Response('Method not allowed', { status: 405, headers: corsHeaders })
   }
 
-  if (!RESEND_API_KEY) {
-    return Response.json({ ok: false, error: 'Missing RESEND_API_KEY' }, { status: 500, headers: corsHeaders })
+  if (!RESEND_API_KEY || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    return Response.json({ ok: false, error: 'Missing server env vars' }, { status: 500, headers: corsHeaders })
   }
 
-  const payload = await req.json() as RegistrationPayload
+  const user = await getAuthenticatedUser(req)
+  if (!user?.email) return badRequest('Unauthorized', 401)
+
+  let payload: RegistrationPayload
+  try {
+    payload = await req.json() as RegistrationPayload
+  } catch {
+    return badRequest('Invalid JSON')
+  }
+  const email = clean(payload.email).toLowerCase()
+  const name = clean(payload.name)
+  const nif = clean(payload.nif)
+  if (!validEmail(email) || email !== user.email.toLowerCase()) return badRequest('Invalid registration email')
+  if (!name || !/^\d{9}$/.test(nif)) return badRequest('Invalid registration payload')
+
   const role = payload.role === 'instituicao' ? 'Instituicao' : 'Empresa'
   const rows = [
     ['Tipo', role],
-    ['Nome', payload.name || ''],
-    ['Email', payload.email || ''],
-    ['NIF', payload.nif || ''],
-    ['Setor de atividade', payload.companyActivity || ''],
-    ['Denominacao legal', payload.institutionLegalName || ''],
-    ['Area de atuacao', payload.institutionCategory || ''],
+    ['Nome', name],
+    ['Email', email],
+    ['NIF', nif],
+    ['Setor de atividade', clean(payload.companyActivity)],
+    ['Denominacao legal', clean(payload.institutionLegalName)],
+    ['Area de atuacao', clean(payload.institutionCategory)],
     ['Data de registo', payload.registeredAt ? new Date(payload.registeredAt).toLocaleString('pt-PT') : ''],
   ].filter(([, value]) => Boolean(value))
 
@@ -68,7 +113,7 @@ Deno.serve(async (req) => {
     body: JSON.stringify({
       from: FROM_EMAIL,
       to: [ADMIN_EMAIL],
-      subject: `Novo registo na plataforma: ${payload.name || payload.email || role}`,
+      subject: `Novo registo na plataforma: ${name || email || role}`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#0f172a;">
           <h1 style="font-size:22px;margin-bottom:8px;">Novo registo na plataforma</h1>

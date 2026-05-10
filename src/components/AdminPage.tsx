@@ -14,6 +14,9 @@ import {
   realBackendEnabled,
 } from '../utils/supabaseBackend'
 import { validateImageUpload } from '../utils/uploadSecurity'
+import { listProofs } from '../utils/proofStore'
+import { listProjectInstitutions } from '../utils/projectCatalog'
+import { calculateDonationImpactRating, calculateProjectImpactRating, impactRatingLabel, requestedContribution } from '../utils/impactRating'
 
 interface Props {
   setCurrentView: (v: ViewType) => void
@@ -66,7 +69,7 @@ function buildPlaceholderVars(report: GeneratedESGReport): Record<string, string
   }
 }
 
-type AdminTab = 'users-docs' | 'brand' | 'report-templates' | 'preview'
+type AdminTab = 'users-docs' | 'donation-history' | 'brand' | 'report-templates' | 'preview'
 
 export default function AdminPage({ setCurrentView, session, onLogout }: Props) {
   const [tab, setTab] = useState<AdminTab>('users-docs')
@@ -94,7 +97,7 @@ export default function AdminPage({ setCurrentView, session, onLogout }: Props) 
           {session ? (
             <>
               <p className="text-slate-500 text-sm mb-6">
-                A conta <strong>{session.email}</strong> nao tem permissoes de administrador.
+                A conta <strong>{session.email}</strong> não tem permissões de administrador.
               </p>
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-left text-xs text-amber-800 mb-5">
                 Para ativar esta conta como admin, execute no Supabase SQL Editor:
@@ -134,6 +137,7 @@ where email = '${session.email}';`}</pre>
       <div className="bg-white border-b border-slate-200 px-6 flex gap-1 overflow-x-auto">
         {([
           { id: 'users-docs' as const, label: 'Utilizadores e Documentos' },
+          { id: 'donation-history' as const, label: 'Historico de Donativos' },
           { id: 'brand' as const, label: '🎨 Identidade da Marca' },
           { id: 'report-templates' as const, label: '📄 Templates de Relatório' },
           { id: 'preview' as const, label: '👁️ Pré-visualização' },
@@ -147,6 +151,7 @@ where email = '${session.email}';`}</pre>
 
       <div className="p-6 max-w-6xl mx-auto">
         {tab === 'users-docs' && <AdminUsersDocumentsTab />}
+        {tab === 'donation-history' && <AdminDonationHistoryTab />}
         {tab === 'brand' && <AdminBrandTab />}
 
         {/* ─── REPORT TEMPLATES ─── */}
@@ -238,7 +243,7 @@ function AdminUsersDocumentsTab() {
     setLoading(true)
     setError('')
     if (!realBackendEnabled()) {
-      setError('Supabase ainda nao esta ativo no ficheiro .env.')
+      setError('Supabase ainda não está ativo no ficheiro .env.')
       setLoading(false)
       return
     }
@@ -308,7 +313,7 @@ function AdminUsersDocumentsTab() {
 
       {!loading && error && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-amber-800 text-sm space-y-3">
-          <p className="font-bold">Nao foi possivel carregar os dados reais.</p>
+          <p className="font-bold">Não foi possível carregar os dados reais.</p>
           <p>{error}</p>
           <p>
             Para esta aba funcionar, entra no site com uma conta Supabase e marca essa conta como admin na tabela
@@ -353,7 +358,7 @@ where email = 'o-teu-email@exemplo.pt';`}</pre>
 
               {visibleProfiles.length === 0 ? (
                 <p className="p-5 text-sm text-slate-500">
-                  Ainda nao existem {selectedRole === 'empresa' ? 'empresas' : 'instituicoes'} registadas.
+                  Ainda não existem {selectedRole === 'empresa' ? 'empresas' : 'instituições'} registadas.
                 </p>
               ) : (
                 <div className="max-h-[620px] overflow-y-auto divide-y divide-slate-100">
@@ -407,7 +412,7 @@ where email = 'o-teu-email@exemplo.pt';`}</pre>
               {!selectedProfile ? (
                 <p className="p-5 text-sm text-slate-500">Sem utilizador selecionado.</p>
               ) : selectedDocuments.length === 0 ? (
-                <p className="p-5 text-sm text-slate-500">Este utilizador ainda nao submeteu documentos.</p>
+                <p className="p-5 text-sm text-slate-500">Este utilizador ainda não submeteu documentos.</p>
               ) : (
                 <div className="divide-y divide-slate-100">
                   {selectedDocuments.map(d => (
@@ -433,6 +438,281 @@ where email = 'o-teu-email@exemplo.pt';`}</pre>
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+function parseDonationYear(date: string) {
+  const match = String(date || '').match(/(\d{4})/)
+  if (match) return match[1]
+  const parts = String(date || '').split('/')
+  return parts[2] || ''
+}
+
+function exportDonationRatingImage(item: ReturnType<typeof buildDonationHistoryItems>[number]) {
+  const canvas = document.createElement('canvas')
+  canvas.width = 1200
+  canvas.height = 760
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+
+  ctx.fillStyle = '#f8fafc'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.fillStyle = '#0f172a'
+  ctx.fillRect(0, 0, canvas.width, 150)
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '700 34px Arial'
+  ctx.fillText('Rating privado do donativo', 56, 66)
+  ctx.font = '400 22px Arial'
+  ctx.fillText(`${item.companyName} -> ${item.proof.institutionName}`, 56, 108)
+
+  ctx.fillStyle = '#ffffff'
+  ctx.strokeStyle = '#e2e8f0'
+  ctx.lineWidth = 2
+  ctx.roundRect(56, 190, 1088, 500, 28)
+  ctx.fill()
+  ctx.stroke()
+
+  ctx.fillStyle = '#2563eb'
+  ctx.font = '700 92px Arial'
+  ctx.fillText(`${item.donationRating.donationRating}/100`, 80, 310)
+  ctx.fillStyle = '#475569'
+  ctx.font = '700 24px Arial'
+  ctx.fillText('Rating do donativo', 86, 350)
+
+  ctx.fillStyle = '#0f172a'
+  ctx.font = '700 46px Arial'
+  ctx.fillText(`${item.donationRating.projectRating.total}/100`, 480, 300)
+  ctx.font = '700 20px Arial'
+  ctx.fillStyle = '#64748b'
+  ctx.fillText('Rating do projeto', 484, 334)
+
+  ctx.fillStyle = '#059669'
+  ctx.font = '700 46px Arial'
+  ctx.fillText(`${item.donationRating.contributionPercent.toFixed(1)}%`, 805, 300)
+  ctx.font = '700 20px Arial'
+  ctx.fillStyle = '#64748b'
+  ctx.fillText('Cobertura do pedido', 810, 334)
+
+  const rows = [
+    ['Projeto', item.project ? `${item.project.category} - ${item.project.subcategory}` : 'Projeto não identificado'],
+    ['Instituição', item.proof.institutionName],
+    ['Empresa', item.companyName],
+    ['Donativo', `EUR ${item.donationRating.donatedAmount.toLocaleString('pt-PT')}`],
+    ['Contribuicao solicitada', `EUR ${item.donationRating.requestedContribution.toLocaleString('pt-PT')}`],
+    ['Comprovativo', item.proof.proofFileName || item.proof.companyInvoiceFileName || 'Não anexado'],
+  ]
+
+  ctx.font = '700 18px Arial'
+  rows.forEach(([label, value], index) => {
+    const y = 415 + index * 42
+    ctx.fillStyle = '#64748b'
+    ctx.fillText(label, 86, y)
+    ctx.fillStyle = '#0f172a'
+    ctx.fillText(value, 330, y)
+  })
+
+  ctx.fillStyle = '#94a3b8'
+  ctx.font = '400 16px Arial'
+  ctx.fillText('Imagem gerada na área de administração. O rating do donativo não é público.', 56, 728)
+
+  const link = document.createElement('a')
+  link.href = canvas.toDataURL('image/png')
+  link.download = `rating-donativo-${item.proof.id}.png`
+  link.click()
+}
+
+function buildDonationHistoryItems() {
+  const institutions = listProjectInstitutions()
+  return listProofs()
+    .map(proof => {
+      const institution = institutions.find(inst => inst.name === proof.institutionName || inst.id === proof.institutionAccountId)
+      const project = institution?.needs.find(n => proof.selectedNeedIds?.includes(n.id)) || institution?.needs[0]
+      const projectRating = institution && project ? calculateProjectImpactRating(institution, project) : null
+      const donationRating = institution && project ? calculateDonationImpactRating(institution, project, proof) : null
+      return {
+        proof,
+        institution,
+        project,
+        projectRating,
+        donationRating,
+        year: parseDonationYear(proof.confirmedAt || proof.date),
+        companyName: proof.companyName || proof.companyEmail || proof.companyAccountId || 'Empresa não identificada',
+      }
+    })
+    .sort((a, b) => String(b.proof.confirmedAt || b.proof.date).localeCompare(String(a.proof.confirmedAt || a.proof.date)))
+}
+
+function AdminDonationHistoryTab() {
+  const [year, setYear] = useState('')
+  const [institutionFilter, setInstitutionFilter] = useState('')
+  const [companyFilter, setCompanyFilter] = useState('')
+  const [selectedId, setSelectedId] = useState('')
+  const items = buildDonationHistoryItems()
+  const years = [...new Set(items.map(i => i.year).filter(Boolean))].sort((a, b) => b.localeCompare(a))
+  const institutions = [...new Set(items.map(i => i.proof.institutionName).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-PT'))
+  const companies = [...new Set(items.map(i => i.companyName).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-PT'))
+  const filtered = items.filter(item =>
+    (!year || item.year === year) &&
+    (!institutionFilter || item.proof.institutionName === institutionFilter) &&
+    (!companyFilter || item.companyName === companyFilter)
+  )
+  const selected = filtered.find(i => i.proof.id === selectedId) || filtered[0] || null
+
+  useEffect(() => {
+    if (selected && selected.proof.id !== selectedId) setSelectedId(selected.proof.id)
+    if (!selected) setSelectedId('')
+  }, [selected?.proof.id])
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900">Historico de Donativos</h2>
+          <p className="text-sm text-slate-500">Área privada para consultar donativos, comprovativos e rating específico de cada donativo.</p>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <AdminMetric label="Donativos" value={items.length} />
+          <AdminMetric label="Confirmados" value={items.filter(i => i.proof.status === 'confirmed').length} />
+          <AdminMetric label="Com prova" value={items.filter(i => i.proof.proofFileDataUrl || i.proof.companyInvoiceFileDataUrl).length} />
+        </div>
+      </div>
+
+      <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-3">
+        <select value={year} onChange={e => setYear(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+          <option value="">Todos os anos</option>
+          {years.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+        <select value={institutionFilter} onChange={e => setInstitutionFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+          <option value="">Todas as instituições</option>
+          {institutions.map(name => <option key={name} value={name}>{name}</option>)}
+        </select>
+        <select value={companyFilter} onChange={e => setCompanyFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+          <option value="">Todas as empresas</option>
+          {companies.map(name => <option key={name} value={name}>{name}</option>)}
+        </select>
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="border-b border-slate-100 p-5">
+            <h3 className="font-black text-slate-900">Donativos registados</h3>
+            <p className="text-xs text-slate-500">{filtered.length} resultado(s) com os filtros atuais.</p>
+          </div>
+          {filtered.length === 0 ? (
+            <p className="p-5 text-sm text-slate-500">Não existem donativos para estes filtros.</p>
+          ) : (
+            <div className="max-h-[660px] divide-y divide-slate-100 overflow-y-auto">
+              {filtered.map(item => (
+                <button
+                  key={item.proof.id}
+                  onClick={() => setSelectedId(item.proof.id)}
+                  className={`w-full p-5 text-left transition ${selected?.proof.id === item.proof.id ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-black text-slate-900">{item.companyName}</p>
+                      <p className="truncate text-sm text-slate-600">{item.proof.institutionName}</p>
+                      <p className="mt-1 text-xs text-slate-500">{item.proof.date} - EUR {(item.proof.confirmedAmount || item.proof.amount).toLocaleString('pt-PT')}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{item.proof.status}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6">
+          {!selected ? (
+            <p className="text-sm text-slate-500">Selecione um donativo para ver o detalhe.</p>
+          ) : (
+            <div className="space-y-5">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wide text-blue-600">Detalhe privado</p>
+                  <h3 className="text-xl font-black text-slate-900">{selected.companyName}</h3>
+                  <p className="text-sm text-slate-500">{selected.proof.institutionName}</p>
+                </div>
+                {selected.donationRating && (
+                  <button onClick={() => exportDonationRatingImage(selected)} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-black text-white hover:bg-slate-800">
+                    Exportar imagem
+                  </button>
+                )}
+              </div>
+
+              {selected.donationRating ? (
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-2xl bg-blue-50 p-4">
+                    <p className="text-xs font-black uppercase text-blue-700">Rating do donativo</p>
+                    <p className="mt-1 text-3xl font-black text-blue-800">{selected.donationRating.donationRating}/100</p>
+                  </div>
+                  <div className="rounded-2xl bg-emerald-50 p-4">
+                    <p className="text-xs font-black uppercase text-emerald-700">Rating do projeto</p>
+                    <p className="mt-1 text-3xl font-black text-emerald-800">{selected.donationRating.projectRating.total}/100</p>
+                    <p className="text-xs font-bold text-emerald-700">{impactRatingLabel(selected.donationRating.projectRating.total)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-amber-50 p-4">
+                    <p className="text-xs font-black uppercase text-amber-700">Cobertura</p>
+                    <p className="mt-1 text-3xl font-black text-amber-800">{selected.donationRating.contributionPercent.toFixed(1)}%</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                  Não foi possível calcular o rating porque o projeto associado não foi encontrado.
+                </div>
+              )}
+
+              {selected.project && selected.projectRating && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <h4 className="font-black text-slate-900">Projeto apoiado</h4>
+                  <p className="mt-1 text-sm font-bold text-slate-700">{selected.project.category} - {selected.project.subcategory}</p>
+                  <p className="mt-2 text-sm text-slate-600">{selected.project.description}</p>
+                  <div className="mt-4 grid gap-2 text-xs md:grid-cols-2">
+                    <InfoPill label="Abrangencia" value={`${selected.projectRating.scope}/100`} />
+                    <InfoPill label="Benef. diretos" value={`${selected.projectRating.directBeneficiaries}/100`} />
+                    <InfoPill label="Benef. indiretos" value={`${selected.projectRating.indirectBeneficiaries}/100`} />
+                    <InfoPill label="ODS/relevancia" value={`${selected.projectRating.socialRelevance}/100`} />
+                    <InfoPill label="Sustentabilidade" value={`${selected.projectRating.sustainability}/100`} />
+                    <InfoPill label="Evidencia" value={`${selected.projectRating.evidence}/100`} />
+                  </div>
+                </div>
+              )}
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <InfoPill label="Valor doado" value={`EUR ${(selected.proof.confirmedAmount || selected.proof.amount).toLocaleString('pt-PT')}`} />
+                <InfoPill label="Contribuicao solicitada" value={`EUR ${selected.project ? requestedContribution(selected.project, selected.proof).toLocaleString('pt-PT') : '0'}`} />
+                <InfoPill label="Data" value={selected.proof.date} />
+                <InfoPill label="Estado" value={selected.proof.status} />
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 p-4">
+                <h4 className="font-black text-slate-900">Comprovativo de transferencia</h4>
+                {selected.proof.proofFileDataUrl || selected.proof.companyInvoiceFileDataUrl ? (
+                  <a
+                    href={selected.proof.proofFileDataUrl || selected.proof.companyInvoiceFileDataUrl}
+                    download={selected.proof.proofFileName || selected.proof.companyInvoiceFileName || 'comprovativo'}
+                    className="mt-3 inline-flex rounded-xl bg-blue-600 px-4 py-2 text-sm font-black text-white hover:bg-blue-700"
+                  >
+                    Descarregar comprovativo
+                  </a>
+                ) : (
+                  <p className="mt-2 text-sm text-slate-500">Não existe comprovativo anexado a este donativo.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function InfoPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="mt-1 text-sm font-black text-slate-800">{value}</p>
     </div>
   )
 }

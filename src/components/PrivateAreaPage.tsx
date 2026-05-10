@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Account, ViewType, DonationProof, UploadedDoc, PlatformNotification, ChatThread, NeedItem, InstitutionRegistration } from '../types'
+import { Account, ViewType, DonationProof, UploadedDoc, PlatformNotification, ChatThread, NeedItem, InstitutionRegistration, Institution } from '../types'
 import { logout } from '../utils/authStore'
 import { addDoc, deleteDoc, listDocs, readFileAsDataUrl } from '../utils/docsStore'
 import {
@@ -19,9 +19,11 @@ import { findInstitutionRegistration, saveInstitutionRegistration } from '../uti
 import { deleteDocReal, listDocsReal, logoutReal, realBackendEnabled, uploadDocReal } from '../utils/supabaseBackend'
 import { isProjectComplete, projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
 import { PROJECT_TYPE_LIMIT_MESSAGE, ProjectSupportType, hasActiveProjectOfType, nextAvailableProjectType } from '../utils/projectLimits'
+import { calculateProjectImpactRating, impactRatingColorClass, impactRatingLabel, impactRatingMeaning } from '../utils/impactRating'
 import SdgGrid from './SdgGrid'
 import SdgIcon from './SdgIcon'
-import { GENERAL_IMPACT_METRICS, ODS_IMPACT_METRICS, MetricDefinition } from '../data/impactMetrics'
+import { ODS_IMPACT_METRICS, MetricDefinition } from '../data/impactMetrics'
+import { PORTUGAL_DISTRICTS, PORTUGAL_TERRITORY } from '../data/portugalTerritory'
 import { ACCEPTED_DOCUMENT_INPUT, ACCEPTED_IMAGE_INPUT, validateDocumentUpload, validateImageUpload } from '../utils/uploadSecurity'
 
 interface Props {
@@ -52,7 +54,7 @@ export default function PrivateAreaPage({ account, onLogout, setCurrentView }: P
     : listProofsForInstitution(account.id),
   [account.id, account.role, tab])
   const notifications = useMemo(() =>
-    listNotificationsForAccount(account.id, account.role, account.name),
+    listNotificationsForAccount(account.id, account.role === 'admin' ? undefined : account.role, account.name),
   [account.id, account.name, account.role, tab])
   const chatThreads = useMemo(() => listThreadsForAccount(account), [account.id, account.name, tab])
 
@@ -142,8 +144,8 @@ export default function PrivateAreaPage({ account, onLogout, setCurrentView }: P
         )}
         {tab === 'donativos' && (
           <div className="space-y-6">
-            <DonationsTab account={account} proofs={proofs} setCurrentView={setCurrentView} />
-            <ProofsTab account={account} proofs={proofs} onChange={refresh} />
+            <DonationsTab account={account} proofs={proofs} setCurrentView={setCurrentView} onChange={refresh} />
+            {account.role === 'empresa' && <ProofsTab account={account} proofs={proofs} onChange={refresh} />}
           </div>
         )}
         {tab === 'relatorios-esg' && account.role === 'empresa' && (
@@ -280,6 +282,48 @@ const REQUIRED_INSTITUTION_PROJECT_DOCS = [
   'Comprovativo IBAN',
 ]
 
+const TARGET_POPULATIONS = [
+  'Crianças e jovens',
+  'Pessoas idosas',
+  'Pessoas com deficiência',
+  'Famílias em situação de vulnerabilidade',
+  'Pessoas em situação de sem-abrigo',
+  'Migrantes e refugiados',
+  'Comunidade escolar',
+  'Comunidade local',
+  'Público em geral',
+  'Outra',
+]
+
+const PRODUCT_SERVICE_CATEGORIES = [
+  'Alimentação',
+  'Equipamento informático',
+  'Material escolar',
+  'Equipamento médico',
+  'Mobiliário',
+  'Transporte',
+  'Serviços de saúde',
+  'Serviços jurídicos',
+  'Comunicação e marketing',
+  'Obras e manutenção',
+  'Outro',
+]
+
+const DISCLOSURE_METHODS = [
+  'Site institucional',
+  'Redes sociais',
+  'Newsletter',
+  'Relatório anual',
+  'Comunicado de imprensa',
+  'Evento público',
+  'Parceiros locais',
+  'Outro',
+]
+
+const REPORTING_FREQUENCIES = ['Em tempo real', 'Diariamente', 'Semanalmente', 'Mensalmente', 'Trimestralmente', 'Semestralmente', 'Anualmente']
+
+const projectTitle = (project: NeedItem) => project.projectName || [project.category, project.subcategory].filter(Boolean).join(' › ') || 'Projeto sem nome'
+
 function InstitutionProjectsTab({ account, docs }: { account: Account; docs: UploadedDoc[] }) {
   const existing = findInstitutionRegistration(account.name)
   const confirmedProofs = listProofsForInstitution(account.id)
@@ -289,15 +333,23 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
   const [needs, setNeeds] = useState<NeedItem[]>(existing?.needs || [])
   const [form, setForm] = useState<NeedItem>({
     id: `need-${Date.now()}`,
+    projectName: '',
     category: '',
     subcategory: '',
     description: '',
+    executiveSummary: '',
+    rationale: '',
+    targetPopulation: '',
+    targetPopulationOther: '',
+    objectives: '',
     supportType: 'dinheiro',
     implementationPhase: 'candidatura',
     quantity: '',
     projectPhotoUrls: [],
     requestedAmount: undefined,
     productOrService: '',
+    productOrServiceCategory: '',
+    productOrServiceOther: '',
     totalProjectCost: undefined,
     securedFunding: 0,
     estimatedValue: undefined,
@@ -307,8 +359,103 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
     esgPillar: 'S',
     impactMetric: '',
     beneficiaries: undefined,
+    professionalsInvolved: undefined,
+    disclosureMethods: [],
+    disclosurePlan: '',
+    resultsPresentation: '',
+    responsiblePerson: '',
+    donationContactPerson: '',
+    publicEmail: '',
+    publicContacts: '',
+    publicSocialLinks: '',
+    publicWebsite: '',
+    customKpis: [],
   })
   const [error, setError] = useState('')
+
+  const ratingInstitution = useMemo<Institution>(() => ({
+    id: account.id,
+    name: account.name,
+    legalName: account.institutionLegalName || account.name,
+    category: account.institutionCategory || existing?.category || '',
+    description: existing?.description || '',
+    mission: existing?.mission || '',
+    logo: existing?.logoUrl || account.institutionLogoUrl || '',
+    needs,
+    esgScore: {
+      environmental: 0,
+      social: 0,
+      governance: 0,
+      total: 0,
+      sdgAlignment: form.sdgGoals,
+      beneficiaries: form.beneficiaries || existing?.peopleReachedPerYear || 0,
+      impactNarrative: '',
+      highlights: [],
+      risks: [],
+    },
+    municipality: existing?.municipality || '',
+    district: existing?.district || '',
+    peopleReachedPerYear: existing?.peopleReachedPerYear || form.beneficiaries || 0,
+    volunteers: existing?.volunteers || 0,
+    fullTimeStaff: existing?.fullTimeStaff || 0,
+    annualBudget: existing?.annualBudget || '',
+    utilidadePublica: existing?.utilidadePublica || false,
+    verified: missingRequiredDocs.length === 0 || Boolean(existing?.statutes && existing?.lastAccountsApproved),
+  }), [account, existing, form.beneficiaries, form.sdgGoals, missingRequiredDocs.length, needs])
+
+  const liveRating = calculateProjectImpactRating(ratingInstitution, form)
+  const liveRatingGrade = impactRatingLabel(liveRating.total)
+  const liveRatingColor = impactRatingColorClass(liveRating.total)
+  const liveRatingFactors = [
+    {
+      label: 'Abrangencia',
+      score: liveRating.scope,
+      weight: '20%',
+      hint: form.generalImpactMetrics?.geographicScope
+        ? `Ambito indicado: ${form.generalImpactMetrics.geographicScope}.`
+        : 'Indique a abrangência geográfica nas métricas gerais.',
+    },
+    {
+      label: 'Beneficiarios diretos',
+      score: liveRating.directBeneficiaries,
+      weight: '25%',
+      hint: form.beneficiaries
+        ? `${form.beneficiaries.toLocaleString('pt-PT')} beneficiários diretos indicados.`
+        : 'Preencha o número de beneficiários diretos.',
+    },
+    {
+      label: 'Beneficiarios indiretos',
+      score: liveRating.indirectBeneficiaries,
+      weight: '15%',
+      hint: form.generalImpactMetrics?.indirectBeneficiaries
+        ? `${Number(form.generalImpactMetrics.indirectBeneficiaries).toLocaleString('pt-PT')} beneficiários indiretos indicados.`
+        : 'Indique beneficiários indiretos nas métricas gerais.',
+    },
+    {
+      label: 'Relevancia social / ODS',
+      score: liveRating.socialRelevance,
+      weight: '20%',
+      hint: form.sdgGoals.length
+        ? `${form.sdgGoals.length} ODS selecionado${form.sdgGoals.length > 1 ? 's' : ''}; detalhe bem a necessidade social.`
+        : 'Selecione pelo menos um ODS e descreva a necessidade.',
+    },
+    {
+      label: 'Sustentabilidade',
+      score: liveRating.sustainability,
+      weight: '10%',
+      hint: form.generalImpactMetrics?.durationMonths || form.generalImpactMetrics?.reportingFrequency
+        ? 'Duração, fase e periodicidade de reporte ajudam este fator.'
+        : 'Indique duração prevista e periodicidade de reporte.',
+    },
+    {
+      label: 'Evidência',
+      score: liveRating.evidence,
+      weight: '10%',
+      hint: form.generalImpactMetrics?.evidenceMethod || (form.projectPhotoUrls || []).length
+        ? 'Método de evidência, métricas e fotos reforçam a transparência.'
+        : 'Adicione método de evidência, métricas ODS e fotografias.',
+    },
+  ]
 
   const isCompleteForLimit = (need: NeedItem) => isProjectComplete(need, confirmedProofs, account.name)
   const hasActiveProjectType = (type: ProjectSupportType) => hasActiveProjectOfType(needs, type, isCompleteForLimit)
@@ -324,15 +471,23 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
 
   const resetForm = () => setForm({
     id: `need-${Date.now()}`,
+    projectName: '',
     category: '',
     subcategory: '',
     description: '',
+    executiveSummary: '',
+    rationale: '',
+    targetPopulation: '',
+    targetPopulationOther: '',
+    objectives: '',
     supportType: nextProjectType() || 'dinheiro',
     implementationPhase: 'candidatura',
     quantity: '',
     projectPhotoUrls: [],
     requestedAmount: undefined,
     productOrService: '',
+    productOrServiceCategory: '',
+    productOrServiceOther: '',
     totalProjectCost: undefined,
     securedFunding: 0,
     estimatedValue: undefined,
@@ -342,10 +497,22 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
     esgPillar: 'S',
     impactMetric: '',
     beneficiaries: undefined,
+    professionalsInvolved: undefined,
+    disclosureMethods: [],
+    disclosurePlan: '',
+    resultsPresentation: '',
+    responsiblePerson: '',
+    donationContactPerson: '',
+    publicEmail: '',
+    publicContacts: '',
+    publicSocialLinks: '',
+    publicWebsite: '',
+    customKpis: [],
   })
 
   const persist = (nextNeeds: NeedItem[]) => {
     const registration: InstitutionRegistration = {
+      accountId: account.id,
       name: account.name,
       legalName: account.institutionLegalName || account.name,
       nif: account.nif,
@@ -393,35 +560,59 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
       setError(PROJECT_TYPE_LIMIT_MESSAGE)
       return
     }
-    if (!form.category || !form.subcategory || !form.description || !form.impactMetric || form.sdgGoals.length === 0 || !form.supportType || !form.implementationPhase) {
-      setError('Preencha categoria, subcategoria, descrição, tipo de apoio, fase de implementação, métrica de impacto e pelo menos 1 ODS.')
+    if (!form.projectName?.trim() || !form.executiveSummary?.trim() || !form.rationale?.trim() || !form.objectives?.trim() || !form.targetPopulation || !form.supportType || !form.implementationPhase) {
+      setError('Preencha nome do projeto, resumo executivo, fundamentação, população-alvo, objetivos, estado atual e tipo de donativo pretendido.')
+      return
+    }
+    if (form.targetPopulation === 'Outra' && !form.targetPopulationOther?.trim()) {
+      setError('Indique qual é a população-alvo quando seleciona "Outra".')
       return
     }
     if (form.supportType === 'dinheiro' && !form.requestedAmount) {
-      setError('Indique quanto dinheiro pretende angariar para este projeto.')
+      setError('Indique o valor pretendido para este projeto.')
       return
     }
-    if (form.supportType === 'produtos' && !form.productOrService?.trim()) {
-      setError('Especifique que produto ou serviço pretende receber.')
+    if (form.supportType === 'produtos' && (!form.productOrServiceCategory || (form.productOrServiceCategory === 'Outro' && !form.productOrServiceOther?.trim()) || !form.productOrService?.trim())) {
+      setError('Indique a categoria e o detalhe do produto ou serviço pretendido.')
       return
     }
-    if (!form.totalProjectCost) {
+    if (form.supportType === 'dinheiro' && !form.totalProjectCost) {
       setError('Indique o custo total do projeto específico.')
       return
     }
-    if (form.securedFunding === undefined) {
+    if (form.supportType === 'dinheiro' && form.securedFunding === undefined) {
       setError('Indique a verba já assegurada para este projeto, mesmo que seja 0.')
       return
     }
-    if ((form.securedFunding || 0) > form.totalProjectCost) {
+    if (form.supportType === 'dinheiro' && (form.securedFunding || 0) > (form.totalProjectCost || 0)) {
       setError('A verba já assegurada não pode ser superior ao custo total do projeto.')
+      return
+    }
+    if (form.projectStartDate && !form.projectEndDate && !form.continuousProject) {
+      setError('Indique a data de fim ou selecione projeto de continuidade.')
+      return
+    }
+    if (!form.disclosurePlan?.trim()) {
+      setError('Descreva como será divulgado o projeto.')
+      return
+    }
+    if (!form.resultsPresentation?.trim()) {
+      setError('Descreva como serão apresentados os resultados.')
+      return
+    }
+    if (!form.generalImpactMetrics?.reportingFrequency) {
+      setError('Selecione a frequência de apresentação de resultados.')
       return
     }
     const normalized = {
       ...form,
       id: `need-${Date.now()}`,
+      category: form.projectName.trim(),
+      subcategory: form.supportType === 'dinheiro' ? 'Projeto financeiro' : 'Produto/serviço',
+      description: form.executiveSummary || form.description,
+      impactMetric: form.impactMetric || form.objectives || form.resultsPresentation || 'Resultados declarados pela instituição',
       estimatedValue: form.requestedAmount || form.totalProjectCost,
-      status: isProjectComplete(form, confirmedProofs, account.name) ? 'concluido' as const : 'ativo' as const,
+      status: form.implementationPhase === 'inativo' ? 'inativo' as const : isProjectComplete(form, confirmedProofs, account.name) ? 'concluido' as const : 'ativo' as const,
     }
     const next = [...needs, normalized]
     setNeeds(next)
@@ -439,6 +630,63 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
   const toggleSDG = (sdg: number) => {
     setForm(prev => ({ ...prev, sdgGoals: prev.sdgGoals.includes(sdg) ? prev.sdgGoals.filter(s => s !== sdg) : [...prev.sdgGoals, sdg] }))
   }
+
+  const toggleDisclosureMethod = (method: string) => {
+    setForm(prev => {
+      const current = prev.disclosureMethods || []
+      return { ...prev, disclosureMethods: current.includes(method) ? current.filter(item => item !== method) : [...current, method] }
+    })
+  }
+
+  const toggleDistrict = (district: string) => {
+    setForm(prev => {
+      const current = prev.territorialScope?.districts || []
+      const nextDistricts = current.includes(district) ? current.filter(item => item !== district) : [...current, district]
+      const allowedMunicipalities = nextDistricts.flatMap(item => PORTUGAL_TERRITORY[item] || [])
+      return {
+        ...prev,
+        territorialScope: {
+          ...(prev.territorialScope || {}),
+          districts: nextDistricts,
+          municipalities: (prev.territorialScope?.municipalities || []).filter(item => allowedMunicipalities.includes(item)),
+        },
+      }
+    })
+  }
+
+  const toggleAllDistrictMunicipalities = (district: string) => {
+    setForm(prev => {
+      const current = prev.territorialScope?.municipalities || []
+      const districtMunicipalities = PORTUGAL_TERRITORY[district] || []
+      const allSelected = districtMunicipalities.every(item => current.includes(item))
+      return {
+        ...prev,
+        territorialScope: {
+          ...(prev.territorialScope || {}),
+          municipalities: allSelected
+            ? current.filter(item => !districtMunicipalities.includes(item))
+            : [...new Set([...current, ...districtMunicipalities])],
+        },
+      }
+    })
+  }
+
+  const toggleMunicipality = (municipality: string) => {
+    setForm(prev => {
+      const current = prev.territorialScope?.municipalities || []
+      return {
+        ...prev,
+        territorialScope: {
+          ...(prev.territorialScope || {}),
+          municipalities: current.includes(municipality) ? current.filter(item => item !== municipality) : [...current, municipality],
+        },
+      }
+    })
+  }
+
+  const addCustomKpi = () => setForm(prev => ({ ...prev, customKpis: [...(prev.customKpis || []), ''] }))
+  const updateCustomKpi = (index: number, value: string) => setForm(prev => ({ ...prev, customKpis: (prev.customKpis || []).map((item, i) => i === index ? value : item) }))
+  const removeCustomKpi = (index: number) => setForm(prev => ({ ...prev, customKpis: (prev.customKpis || []).filter((_, i) => i !== index) }))
 
   const parseMetricValue = (value: string, type: MetricDefinition['type']) => type === 'number' ? (Number(value) || '') : value
 
@@ -547,69 +795,147 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
         )}
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-6">
-        <h2 className="text-xl font-black text-slate-900 mb-4">Novo projeto / necessidade</h2>
-        {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 text-sm">{error}</div>}
-        <div className="grid md:grid-cols-2 gap-4">
-          <input value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="Categoria *" className="px-4 py-3 border border-slate-300 rounded-xl" />
-          <input value={form.subcategory} onChange={e => setForm({ ...form, subcategory: e.target.value })} placeholder="Subcategoria *" className="px-4 py-3 border border-slate-300 rounded-xl" />
-          <select value={form.supportType || 'dinheiro'} onChange={e => setForm({ ...form, supportType: e.target.value as NeedItem['supportType'] })} className="px-4 py-3 border border-slate-300 rounded-xl">
-            <option value="dinheiro" disabled={hasActiveProjectType('dinheiro')}>Pretendo dinheiro</option>
-            <option value="produtos" disabled={hasActiveProjectType('produtos')}>Pretendo produto/serviço</option>
-          </select>
-          <p className="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-500 md:col-span-2">
-            Cada instituição pode ter no máximo 1 projeto ativo a pedir dinheiro e 1 projeto ativo a pedir produto/serviço.
-          </p>
-          <select value={form.implementationPhase || 'candidatura'} onChange={e => setForm({ ...form, implementationPhase: e.target.value as NeedItem['implementationPhase'] })} className="px-4 py-3 border border-slate-300 rounded-xl">
-            <option value="candidatura">Em fase de candidatura</option>
-            <option value="a-decorrer">A decorrer</option>
-          </select>
-          {form.supportType === 'dinheiro' ? (
-            <input type="number" value={form.requestedAmount ?? ''} onChange={e => setForm({ ...form, requestedAmount: Number(e.target.value) || undefined })} placeholder="Verba pretendida (€) *" className="px-4 py-3 border border-slate-300 rounded-xl" />
-          ) : (
-            <input value={form.productOrService || ''} onChange={e => setForm({ ...form, productOrService: e.target.value })} placeholder="Produto/serviço pretendido *" className="px-4 py-3 border border-slate-300 rounded-xl" />
-          )}
-          <input type="number" value={form.totalProjectCost ?? ''} onChange={e => setForm({ ...form, totalProjectCost: Number(e.target.value) || undefined })} placeholder="Custo total do projeto (€) *" className="px-4 py-3 border border-slate-300 rounded-xl" />
-          <input type="number" value={form.securedFunding ?? ''} onChange={e => setForm({ ...form, securedFunding: e.target.value === '' ? 0 : Number(e.target.value) })} placeholder="Verba já assegurada (€) *" className="px-4 py-3 border border-slate-300 rounded-xl" />
-          <input type="number" value={form.beneficiaries ?? ''} onChange={e => setForm({ ...form, beneficiaries: Number(e.target.value) || undefined })} placeholder="Beneficiários diretos" className="px-4 py-3 border border-slate-300 rounded-xl" />
-          <select value={form.urgency} onChange={e => setForm({ ...form, urgency: e.target.value as NeedItem['urgency'] })} className="px-4 py-3 border border-slate-300 rounded-xl">
-            <option value="alta">Urgência alta</option>
-            <option value="media">Urgência média</option>
-            <option value="baixa">Urgência baixa</option>
-          </select>
-          <select value={form.esgPillar} onChange={e => setForm({ ...form, esgPillar: e.target.value as NeedItem['esgPillar'] })} className="px-4 py-3 border border-slate-300 rounded-xl">
-            <option value="E">Ambiental</option>
-            <option value="S">Social</option>
-            <option value="G">Governação</option>
-          </select>
-          <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Descrição detalhada *" className="md:col-span-2 px-4 py-3 border border-slate-300 rounded-xl resize-none" />
-          <input value={form.impactMetric} onChange={e => setForm({ ...form, impactMetric: e.target.value })} placeholder="Métrica de impacto *" className="md:col-span-2 px-4 py-3 border border-slate-300 rounded-xl" />
-          <input value={form.quantity || ''} onChange={e => setForm({ ...form, quantity: e.target.value })} placeholder="Quantidade / unidade" className="md:col-span-2 px-4 py-3 border border-slate-300 rounded-xl" />
-        </div>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+        <div className="bg-white rounded-2xl border border-slate-200 p-6">
+          <h2 className="text-xl font-black text-slate-900 mb-4">Novo projeto / necessidade</h2>
+          {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 text-sm">{error}</div>}
+          <div className="grid md:grid-cols-2 gap-4">
+            <input value={form.projectName || ''} onChange={e => setForm({ ...form, projectName: e.target.value })} placeholder="Nome do projeto *" className="md:col-span-2 px-4 py-3 border border-slate-300 rounded-xl" />
+            <textarea value={form.executiveSummary || ''} onChange={e => setForm({ ...form, executiveSummary: e.target.value, description: e.target.value })} rows={3} placeholder="Resumo executivo *" className="md:col-span-2 px-4 py-3 border border-slate-300 rounded-xl resize-none" />
+            <textarea value={form.rationale || ''} onChange={e => setForm({ ...form, rationale: e.target.value })} rows={3} placeholder="Fundamentação *" className="md:col-span-2 px-4 py-3 border border-slate-300 rounded-xl resize-none" />
+            <select value={form.targetPopulation || ''} onChange={e => setForm({ ...form, targetPopulation: e.target.value, targetPopulationOther: e.target.value === 'Outra' ? form.targetPopulationOther : '' })} className="px-4 py-3 border border-slate-300 rounded-xl">
+              <option value="">População-alvo *</option>
+              {TARGET_POPULATIONS.map(option => <option key={option} value={option}>{option}</option>)}
+            </select>
+            {form.targetPopulation === 'Outra' && (
+              <input value={form.targetPopulationOther || ''} onChange={e => setForm({ ...form, targetPopulationOther: e.target.value })} placeholder="Qual?" className="px-4 py-3 border border-slate-300 rounded-xl" />
+            )}
+            <textarea value={form.objectives || ''} onChange={e => setForm({ ...form, objectives: e.target.value, impactMetric: e.target.value })} rows={3} placeholder="Objetivo(s) *" className="md:col-span-2 px-4 py-3 border border-slate-300 rounded-xl resize-none" />
+            <select value={form.implementationPhase || 'candidatura'} onChange={e => setForm({ ...form, implementationPhase: e.target.value as NeedItem['implementationPhase'] })} className="px-4 py-3 border border-slate-300 rounded-xl">
+              <option value="candidatura">Em fase de candidatura</option>
+              <option value="a-decorrer">A decorrer</option>
+              <option value="inativo">Inativo</option>
+            </select>
+            <select value={form.supportType || 'dinheiro'} onChange={e => setForm({ ...form, supportType: e.target.value as NeedItem['supportType'] })} className="px-4 py-3 border border-slate-300 rounded-xl">
+              <option value="dinheiro" disabled={hasActiveProjectType('dinheiro')}>Financeiro</option>
+              <option value="produtos" disabled={hasActiveProjectType('produtos')}>Produto/Serviço</option>
+            </select>
+            {form.supportType === 'dinheiro' ? (
+              <>
+                <input type="number" value={form.totalProjectCost ?? ''} onChange={e => setForm({ ...form, totalProjectCost: Number(e.target.value) || undefined })} placeholder="Custo total do projeto (€) *" className="px-4 py-3 border border-slate-300 rounded-xl" />
+                <input type="number" value={form.securedFunding ?? ''} onChange={e => setForm({ ...form, securedFunding: e.target.value === '' ? 0 : Number(e.target.value) })} placeholder="Financiamento assegurado (€) *" className="px-4 py-3 border border-slate-300 rounded-xl" />
+                <input type="number" value={form.requestedAmount ?? ''} onChange={e => setForm({ ...form, requestedAmount: Number(e.target.value) || undefined })} placeholder="Valor pretendido (€) *" className="px-4 py-3 border border-slate-300 rounded-xl" />
+              </>
+            ) : (
+              <>
+                <select value={form.productOrServiceCategory || ''} onChange={e => setForm({ ...form, productOrServiceCategory: e.target.value, productOrServiceOther: e.target.value === 'Outro' ? form.productOrServiceOther : '' })} className="px-4 py-3 border border-slate-300 rounded-xl">
+                  <option value="">Tipo de produto/serviço *</option>
+                  {PRODUCT_SERVICE_CATEGORIES.map(option => <option key={option} value={option}>{option}</option>)}
+                </select>
+                {form.productOrServiceCategory === 'Outro' && (
+                  <input value={form.productOrServiceOther || ''} onChange={e => setForm({ ...form, productOrServiceOther: e.target.value })} placeholder="Qual?" className="px-4 py-3 border border-slate-300 rounded-xl" />
+                )}
+                <input value={form.productOrService || ''} onChange={e => setForm({ ...form, productOrService: e.target.value })} placeholder="Descrição do produto/serviço pretendido *" className="md:col-span-2 px-4 py-3 border border-slate-300 rounded-xl" />
+              </>
+            )}
+            <p className="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-500 md:col-span-2">
+              Cada instituição pode ter no máximo 1 projeto ativo financeiro e 1 projeto ativo de produto/serviço.
+            </p>
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <h3 className="font-black text-slate-900 mb-4">Dados gerais do projeto</h3>
+            <div className="grid gap-4 md:grid-cols-2">
+              <input type="date" value={form.projectStartDate || ''} onChange={e => setForm({ ...form, projectStartDate: e.target.value })} className="px-4 py-3 border border-slate-300 rounded-xl" />
+              {form.projectStartDate && (
+                <div className="flex flex-col gap-2">
+                  <input type="date" value={form.projectEndDate || ''} disabled={form.continuousProject} onChange={e => setForm({ ...form, projectEndDate: e.target.value })} className="px-4 py-3 border border-slate-300 rounded-xl disabled:bg-slate-100" />
+                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                    <input type="checkbox" checked={Boolean(form.continuousProject)} onChange={e => setForm({ ...form, continuousProject: e.target.checked, projectEndDate: e.target.checked ? '' : form.projectEndDate })} />
+                    Projeto de continuidade
+                  </label>
+                </div>
+              )}
+              <input type="number" value={form.generalImpactMetrics?.volunteersInvolved ?? ''} onChange={e => updateGeneralMetric({ key: 'volunteersInvolved', label: '', type: 'number' }, e.target.value)} placeholder="N.º de voluntários envolvidos" className="px-4 py-3 border border-slate-300 rounded-xl" />
+              <input type="number" value={form.professionalsInvolved ?? ''} onChange={e => setForm({ ...form, professionalsInvolved: Number(e.target.value) || undefined })} placeholder="N.º de profissionais envolvidos" className="px-4 py-3 border border-slate-300 rounded-xl" />
+              <input type="number" value={form.beneficiaries ?? ''} onChange={e => setForm({ ...form, beneficiaries: Number(e.target.value) || undefined })} placeholder="N.º de beneficiários diretos" className="px-4 py-3 border border-slate-300 rounded-xl" />
+              <input type="number" value={form.generalImpactMetrics?.indirectBeneficiaries ?? ''} onChange={e => updateGeneralMetric({ key: 'indirectBeneficiaries', label: '', type: 'number' }, e.target.value)} placeholder="N.º de beneficiários indiretos" className="px-4 py-3 border border-slate-300 rounded-xl" />
+              <select value={form.generalImpactMetrics?.reportingFrequency || ''} onChange={e => updateGeneralMetric({ key: 'reportingFrequency', label: '', type: 'select' }, e.target.value)} className="md:col-span-2 px-4 py-3 border border-slate-300 rounded-xl">
+                <option value="">Frequência de apresentação de resultados *</option>
+                {REPORTING_FREQUENCIES.map(option => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <h3 className="font-black text-slate-900 mb-4">Abrangência territorial</h3>
+            <div className="mb-4 flex flex-wrap gap-3">
+              <label className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-bold text-slate-700">
+                <input type="checkbox" checked={Boolean(form.territorialScope?.national)} onChange={e => setForm({ ...form, territorialScope: { ...(form.territorialScope || {}), national: e.target.checked } })} />
+                Nacional
+              </label>
+              <label className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-bold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={Boolean(form.territorialScope?.districtLevel)}
+                  onChange={e => setForm({
+                    ...form,
+                    territorialScope: {
+                      ...(form.territorialScope || {}),
+                      districtLevel: e.target.checked,
+                      districts: e.target.checked ? form.territorialScope?.districts || [] : [],
+                      municipalities: e.target.checked ? form.territorialScope?.municipalities || [] : [],
+                    },
+                  })}
+                />
+                Distrital
+              </label>
+            </div>
+            {form.territorialScope?.districtLevel && (
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {PORTUGAL_DISTRICTS.map(district => (
+                  <label key={district} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-700">
+                    <input type="checkbox" checked={(form.territorialScope?.districts || []).includes(district)} onChange={() => toggleDistrict(district)} />
+                    {district}
+                  </label>
+                ))}
+              </div>
+            )}
+            {form.territorialScope?.districtLevel && (form.territorialScope?.districts || []).length > 0 && (
+              <div className="mt-4 space-y-4">
+                {(form.territorialScope?.districts || []).map(district => (
+                  <div key={district} className="rounded-xl bg-white p-3">
+                    <p className="mb-2 text-xs font-black uppercase text-slate-500">{district}</p>
+                    <label className="mb-3 flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs font-black text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={(PORTUGAL_TERRITORY[district] || []).every(municipality => (form.territorialScope?.municipalities || []).includes(municipality))}
+                        onChange={() => toggleAllDistrictMunicipalities(district)}
+                      />
+                      Todos os concelhos de {district}
+                    </label>
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {PORTUGAL_TERRITORY[district].map(municipality => (
+                        <label key={`${district}-${municipality}`} className="flex items-center gap-2 text-xs text-slate-600">
+                          <input type="checkbox" checked={(form.territorialScope?.municipalities || []).includes(municipality)} onChange={() => toggleMunicipality(municipality)} />
+                          {municipality}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         <div className="mt-5">
           <p className="text-sm font-bold text-slate-700 mb-3">ODS alinhados *</p>
           <SdgGrid selected={form.sdgGoals} onToggle={toggleSDG} />
         </div>
 
-        <div className="mt-6 bg-slate-50 border border-slate-200 rounded-2xl p-5">
-          <h3 className="font-black text-slate-900 mb-2">Métricas gerais do projeto</h3>
-          <p className="text-xs text-slate-500 mb-4">Estas métricas são transversais a todos os projetos e serão usadas no Relatório de Impacto ESG.</p>
-          <div className="grid md:grid-cols-2 gap-4">
-            {GENERAL_IMPACT_METRICS.map(metric => (
-              <MetricInput
-                key={metric.key}
-                metric={metric}
-                value={form.generalImpactMetrics?.[metric.key as keyof typeof form.generalImpactMetrics] as string | number | undefined}
-                onChange={value => updateGeneralMetric(metric, value)}
-              />
-            ))}
-          </div>
-        </div>
-
         {form.sdgGoals.length > 0 && (
           <div className="mt-6 bg-blue-50 border border-blue-200 rounded-2xl p-5">
-            <h3 className="font-black text-blue-900 mb-2">Métricas específicas por ODS</h3>
-            <p className="text-xs text-blue-700 mb-4">Estas métricas mudam consoante os ODS selecionados e enriquecem o relatório final.</p>
+            <h3 className="font-black text-blue-900 mb-2">KPI específicos por ODS</h3>
+            <p className="text-xs text-blue-700 mb-4">Estas métricas mudam consoante os ODS selecionados. Pode ainda acrescentar KPI próprios do projeto.</p>
             <div className="space-y-5">
               {form.sdgGoals.map(sdg => {
                 const metrics = ODS_IMPACT_METRICS[sdg] || []
@@ -631,8 +957,58 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
                 )
               })}
             </div>
+            <div className="mt-5 rounded-xl bg-white p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-sm font-black text-slate-800">KPI adicionais</p>
+                <button onClick={addCustomKpi} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-black text-white">Adicionar KPI</button>
+              </div>
+              <div className="space-y-2">
+                {(form.customKpis || []).map((kpi, index) => (
+                  <div key={index} className="flex gap-2">
+                    <input value={kpi} onChange={e => updateCustomKpi(index, e.target.value)} placeholder="Novo KPI" className="flex-1 px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                    <button onClick={() => removeCustomKpi(index)} className="px-3 py-2 text-xs font-bold text-red-600">Remover</button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+          <h3 className="font-black text-slate-900 mb-3">Divulgação e apresentação de resultados</h3>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {DISCLOSURE_METHODS.map(method => (
+              <label key={method} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-700">
+                <input type="checkbox" checked={(form.disclosureMethods || []).includes(method)} onChange={() => toggleDisclosureMethod(method)} />
+                {method}
+              </label>
+            ))}
+          </div>
+          {(form.disclosureMethods || []).includes('Outro') && (
+            <input value={form.disclosureOther || ''} onChange={e => setForm({ ...form, disclosureOther: e.target.value })} placeholder="Outra forma de divulgação" className="mt-3 w-full px-4 py-3 border border-slate-300 rounded-xl" />
+          )}
+          <textarea value={form.disclosurePlan || ''} onChange={e => setForm({ ...form, disclosurePlan: e.target.value })} rows={3} placeholder="Como será divulgado o projeto? *" className="mt-4 w-full px-4 py-3 border border-slate-300 rounded-xl resize-none" />
+          <textarea value={form.resultsPresentation || ''} onChange={e => setForm({ ...form, resultsPresentation: e.target.value })} rows={3} placeholder="Como serão apresentados os resultados? *" className="mt-4 w-full px-4 py-3 border border-slate-300 rounded-xl resize-none" />
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+          <h3 className="font-black text-slate-900 mb-3">Dados ocultos para utilizadores não registados</h3>
+          <div className="grid gap-4 md:grid-cols-2">
+            <input value={form.responsiblePerson || ''} onChange={e => setForm({ ...form, responsiblePerson: e.target.value })} placeholder="Pessoa responsável pelo projeto" className="px-4 py-3 border border-slate-300 rounded-xl" />
+            <input value={form.donationContactPerson || ''} onChange={e => setForm({ ...form, donationContactPerson: e.target.value })} placeholder="Pessoa de contacto para donativos" className="px-4 py-3 border border-slate-300 rounded-xl" />
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+          <h3 className="font-black text-slate-900 mb-3">Dados públicos opcionais</h3>
+          <p className="mb-4 text-xs text-slate-500">Estes campos só aparecem publicamente se forem preenchidos.</p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <input value={form.publicContacts || ''} onChange={e => setForm({ ...form, publicContacts: e.target.value })} placeholder="Contactos" className="px-4 py-3 border border-slate-300 rounded-xl" />
+            <input value={form.publicEmail || ''} onChange={e => setForm({ ...form, publicEmail: e.target.value })} placeholder="Email" className="px-4 py-3 border border-slate-300 rounded-xl" />
+            <input value={form.publicSocialLinks || ''} onChange={e => setForm({ ...form, publicSocialLinks: e.target.value })} placeholder="Redes sociais" className="px-4 py-3 border border-slate-300 rounded-xl" />
+            <input value={form.publicWebsite || ''} onChange={e => setForm({ ...form, publicWebsite: e.target.value })} placeholder="Site" className="px-4 py-3 border border-slate-300 rounded-xl" />
+          </div>
+        </div>
+
         <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
           <h3 className="font-black text-slate-900 mb-2">Galeria de fotos do projeto</h3>
           <p className="text-xs text-slate-500 mb-4">Opcional. Pode carregar até 5 fotos para aparecerem na página pública deste projeto.</p>
@@ -667,29 +1043,71 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
             })}
           </div>
         </div>
-        <button
-          onClick={addProject}
-          disabled={!nextProjectType()}
-          className="mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold px-6 py-3 rounded-xl"
-        >
-          {nextProjectType() ? '+ Adicionar projeto' : 'Limite de projetos ativos atingido'}
-        </button>
+          <button
+            onClick={addProject}
+            disabled={!nextProjectType()}
+            className="mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold px-6 py-3 rounded-xl"
+          >
+            {nextProjectType() ? '+ Adicionar projeto' : 'Limite de projetos ativos atingido'}
+          </button>
+        </div>
+
+        <aside className="lg:sticky lg:top-36 rounded-2xl border border-blue-200 bg-blue-50 p-5">
+          <p className="text-xs font-black uppercase tracking-wide text-blue-700">Rating em tempo real</p>
+          <div className="mt-3 flex items-end justify-between gap-3">
+            <div>
+              <p className={`text-5xl font-black leading-none ${liveRatingColor}`}>{liveRatingGrade}</p>
+              <p className="mt-1 text-sm font-bold text-slate-700">{liveRating.total}/100 pontos</p>
+            </div>
+            <div className="h-24 w-24 rounded-full border-[10px] border-white bg-white shadow-inner flex items-center justify-center">
+              <span className={`text-2xl font-black ${liveRatingColor}`}>{liveRating.total}</span>
+            </div>
+          </div>
+          <p className="mt-3 text-xs leading-relaxed text-blue-900">{impactRatingMeaning(liveRating.total)}</p>
+          <div className="mt-5 space-y-3">
+            {liveRatingFactors.map(factor => (
+              <div key={factor.label} className="rounded-xl bg-white p-3 border border-blue-100">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <p className="text-xs font-black text-slate-800">{factor.label}</p>
+                  <span className="text-[11px] font-bold text-slate-500">{factor.weight}</span>
+                </div>
+                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-full rounded-full bg-blue-600" style={{ width: `${factor.score}%` }} />
+                </div>
+                <div className="mt-1 flex items-start justify-between gap-2">
+                  <p className="text-[11px] leading-snug text-slate-500">{factor.hint}</p>
+                  <span className="text-[11px] font-black text-slate-700">{factor.score}/100</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 rounded-xl bg-white/80 p-3 text-[11px] leading-relaxed text-blue-900">
+            O rating aumenta quando o projeto fica mais completo: âmbito geográfico, beneficiários, ODS, duração, evidências e métricas específicas tornam a avaliação mais robusta.
+          </p>
+        </aside>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6">
         <h2 className="text-xl font-black text-slate-900 mb-4">Projetos atuais ({needs.length})</h2>
         {needs.length === 0 ? <p className="text-slate-500 text-sm">Ainda não existem projetos registados.</p> : (
           <div className="space-y-3">
-            {needs.map(n => (
+            {needs.map(n => {
+              const currentRating = calculateProjectImpactRating(ratingInstitution, n)
+              return (
               <div key={n.id} className="border border-slate-200 rounded-xl p-4">
                 <div className="flex justify-between gap-3">
                   <div className="flex-1">
-                    <p className="font-bold text-slate-800">{n.category} › {n.subcategory}</p>
-                    <p className="text-sm text-slate-500 mt-1">{n.impactMetric}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-bold text-slate-800">{projectTitle(n)}</p>
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-700">
+                        Rating {impactRatingLabel(currentRating.total)} - {currentRating.total}/100
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-500 mt-1">{n.executiveSummary || n.description || n.impactMetric}</p>
                     <div className="mt-3 grid gap-2 text-xs text-slate-500 md:grid-cols-3">
                       <span><strong>{supportTypeLabel(n)}:</strong> {n.supportType === 'produtos' ? n.productOrService : `€ ${projectTarget(n).toLocaleString('pt-PT')}`}</span>
                       <span><strong>Custo total:</strong> € {(n.totalProjectCost || n.estimatedValue || 0).toLocaleString('pt-PT')}</span>
-                      <span><strong>Fase:</strong> {n.implementationPhase === 'a-decorrer' ? 'A decorrer' : 'Em fase de candidatura'}</span>
+                      <span><strong>Estado:</strong> {n.implementationPhase === 'a-decorrer' ? 'A decorrer' : n.implementationPhase === 'inativo' ? 'Inativo' : 'Em fase de candidatura'}</span>
                     </div>
                     <div className="mt-3">
                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
@@ -709,7 +1127,7 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
                   <button onClick={() => removeProject(n.id)} className="text-red-600 text-sm font-bold">Remover</button>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>
@@ -928,8 +1346,68 @@ function DocumentsTab({
 
 // ─── DONATIONS ──────────────────────────────────
 function DonationsTab({
-  account, proofs, setCurrentView,
-}: { account: Account; proofs: DonationProof[]; setCurrentView: (v: ViewType) => void }) {
+  account, proofs, setCurrentView, onChange,
+}: { account: Account; proofs: DonationProof[]; setCurrentView: (v: ViewType) => void; onChange: () => void }) {
+  const [institutionReceipts, setInstitutionReceipts] = useState<Record<string, { name: string; dataUrl: string; size: number }>>({})
+  const [amountMatches, setAmountMatches] = useState<Record<string, boolean>>({})
+  const [receivedAmounts, setReceivedAmounts] = useState<Record<string, number>>({})
+  const [uploadError, setUploadError] = useState('')
+
+  const confirmedAmountFor = (proof: DonationProof) =>
+    amountMatches[proof.id]
+      ? proof.amount
+      : receivedAmounts[proof.id] ?? proof.institutionConfirmedAmount ?? proof.confirmedAmount ?? proof.amount
+
+  const handleReceiptUpload = async (proofId: string, file?: File) => {
+    if (!file) return
+    const validationError = validateDocumentUpload(file)
+    if (validationError) {
+      setUploadError(validationError)
+      return
+    }
+    setUploadError('')
+    const dataUrl = await readFileAsDataUrl(file)
+    setInstitutionReceipts(prev => ({ ...prev, [proofId]: { name: file.name, dataUrl, size: file.size } }))
+  }
+
+  const canInstitutionConfirm = (proof: DonationProof) => {
+    const hasReceipt = Boolean(institutionReceipts[proof.id] || proof.institutionReceiptFileDataUrl)
+    const hasAmount = amountMatches[proof.id] || (receivedAmounts[proof.id] || 0) > 0
+    return hasReceipt && hasAmount
+  }
+
+  const confirmInstitutionDonation = (proof: DonationProof) => {
+    if (!institutionReceipts[proof.id] && !proof.institutionReceiptFileDataUrl) {
+      alert('Submeta o recibo/declaração de donativo ao abrigo da Lei do Mecenato antes de confirmar.')
+      return
+    }
+    if (!amountMatches[proof.id] && !(receivedAmounts[proof.id] > 0)) {
+      alert('Confirme que o valor recebido corresponde ao valor identificado no site ou indique o valor efetivamente recebido.')
+      return
+    }
+    const confirmedAmount = confirmedAmountFor(proof)
+    setInstitutionConfirmation(proof.id, true, proof.institutionThankYouMessage || '', institutionReceipts[proof.id], confirmedAmount)
+    createNotification({
+      recipientAccountId: proof.companyAccountId,
+      recipientRole: 'empresa',
+      kind: 'institution-confirmed',
+      title: 'Instituição confirmou o donativo',
+      body: `${account.name} confirmou a receção do donativo de €${confirmedAmount.toLocaleString('pt-PT')} e submeteu o recibo ao abrigo da Lei do Mecenato.`,
+      relatedProofId: proof.id,
+      relatedContractId: proof.contractId,
+    })
+    createNotification({
+      recipientAccountId: proof.companyAccountId,
+      recipientRole: 'empresa',
+      kind: 'report-available',
+      title: 'Relatório ESG disponível',
+      body: `O donativo à ${proof.institutionName} foi confirmado. O valor de €${confirmedAmount.toLocaleString('pt-PT')} atualizou o progresso do projeto apoiado.`,
+      relatedProofId: proof.id,
+      relatedContractId: proof.contractId,
+    })
+    onChange()
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
@@ -942,6 +1420,7 @@ function DonationsTab({
             </button>
           )}
         </div>
+        {uploadError && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{uploadError}</div>}
         {proofs.length === 0 ? (
           <p className="text-slate-500 text-sm">Ainda não existem donativos registados.</p>
         ) : (
@@ -950,9 +1429,9 @@ function DonationsTab({
               const status = STATUS_LABEL[p.status]
               return (
                 <li key={p.id} className="py-4">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
                     <div>
-                      <p className="font-bold text-slate-800">{p.institutionName}</p>
+                      <p className="font-bold text-slate-800">{account.role === 'empresa' ? p.institutionName : p.companyName || p.companyEmail || 'Empresa mecenas'}</p>
                       <p className="text-xs text-slate-500">
                         € {p.amount.toLocaleString('pt-PT')} • {p.date}
                       </p>
@@ -961,6 +1440,85 @@ function DonationsTab({
                       {status.text}
                     </span>
                   </div>
+                  {account.role === 'instituicao' && (
+                    <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
+                      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                        <p className="text-xs font-black uppercase tracking-wide text-blue-700">Comprovativo de transferência do donativo</p>
+                        {p.proofFileDataUrl && p.proofFileName ? (
+                          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-white p-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-bold text-slate-800">{p.proofFileName}</p>
+                              {p.proofFileSize && <p className="text-xs text-slate-500">{(p.proofFileSize / 1024).toFixed(1)} KB</p>}
+                            </div>
+                            <a href={p.proofFileDataUrl} download={p.proofFileName} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-black text-white hover:bg-blue-700">
+                              Descarregar
+                            </a>
+                          </div>
+                        ) : (
+                          <p className="mt-3 text-sm text-blue-800">Sem comprovativo anexado.</p>
+                        )}
+                      </div>
+
+                      {p.institutionConfirmed ? (
+                        <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+                          <p className="text-sm font-black text-green-800">Donativo confirmado</p>
+                          <p className="mt-1 text-xs text-green-700">
+                            Valor recebido: € {(p.confirmedAmount || p.institutionConfirmedAmount || p.amount).toLocaleString('pt-PT')}
+                          </p>
+                          {p.institutionReceiptFileDataUrl && p.institutionReceiptFileName && (
+                            <a href={p.institutionReceiptFileDataUrl} download={p.institutionReceiptFileName} className="mt-3 inline-flex rounded-lg bg-green-600 px-3 py-2 text-xs font-black text-white hover:bg-green-700">
+                              Descarregar recibo
+                            </a>
+                          )}
+                        </div>
+                      ) : p.status !== 'rejected' ? (
+                        <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+                          <label className="block text-sm font-black text-green-900">Recibo ao abrigo da Lei do Mecenato *</label>
+                          <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-green-300 bg-white p-3 hover:bg-green-50">
+                            <span className="text-2xl">🧾</span>
+                            <span className="flex-1 text-sm font-bold text-slate-800">
+                              {institutionReceipts[p.id]?.name || p.institutionReceiptFileName || 'Submeter recibo obrigatório'}
+                            </span>
+                            <input type="file" accept={ACCEPTED_DOCUMENT_INPUT} className="hidden" onChange={e => handleReceiptUpload(p.id, e.target.files?.[0])} />
+                          </label>
+
+                          <label className="mt-4 flex items-start gap-2 text-sm font-semibold text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(amountMatches[p.id])}
+                              onChange={e => {
+                                setAmountMatches(prev => ({ ...prev, [p.id]: e.target.checked }))
+                                if (e.target.checked) setReceivedAmounts(prev => ({ ...prev, [p.id]: p.amount }))
+                              }}
+                            />
+                            Confirmo que o valor recebido corresponde ao valor identificado no site (€ {p.amount.toLocaleString('pt-PT')}).
+                          </label>
+
+                          {!amountMatches[p.id] && (
+                            <div className="mt-3">
+                              <label className="block text-xs font-bold text-slate-600">Se não corresponder, qual foi o valor recebido?</label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={receivedAmounts[p.id] ?? ''}
+                                onChange={e => setReceivedAmounts(prev => ({ ...prev, [p.id]: Number(e.target.value) || 0 }))}
+                                placeholder="Valor recebido (€)"
+                                className="mt-1 w-full rounded-xl border border-green-300 px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-green-500"
+                              />
+                            </div>
+                          )}
+
+                          <button
+                            onClick={() => confirmInstitutionDonation(p)}
+                            disabled={!canInstitutionConfirm(p)}
+                            className="mt-4 w-full rounded-xl bg-green-600 px-4 py-3 text-sm font-black text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                          >
+                            Donativo confirmado
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                 </li>
               )
             })}
@@ -1261,16 +1819,6 @@ function ProofsTab({
                             createNotification({
                               recipientAccountId: p.institutionAccountId,
                               recipientRole: 'instituicao',
-                              kind: 'company-confirmed',
-                              title: 'Empresa confirmou o donativo',
-                              body: `${account.name} confirmou que efetuou o donativo de €${p.amount.toLocaleString('pt-PT')} à ${p.institutionName}. Confirme a receção na página Donativos ou negue o donativo caso o valor não tenha sido recebido. Recomenda-se aguardar 2 a 3 dias úteis para validação, salvaguardando transferências que possam demorar mais tempo a serem processadas.`,
-                              relatedProofId: p.id,
-                              relatedContractId: p.contractId,
-                            })
-                          } else {
-                            createNotification({
-                              recipientRole: 'instituicao',
-                              recipientName: p.institutionName,
                               kind: 'company-confirmed',
                               title: 'Empresa confirmou o donativo',
                               body: `${account.name} confirmou que efetuou o donativo de €${p.amount.toLocaleString('pt-PT')} à ${p.institutionName}. Confirme a receção na página Donativos ou negue o donativo caso o valor não tenha sido recebido. Recomenda-se aguardar 2 a 3 dias úteis para validação, salvaguardando transferências que possam demorar mais tempo a serem processadas.`,

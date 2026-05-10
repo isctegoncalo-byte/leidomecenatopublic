@@ -19,7 +19,7 @@ import LegalPage from './components/LegalPage'
 import CookieConsent from './components/CookieConsent'
 import SiteChatbot from './components/SiteChatbot'
 import BrandSync from './components/BrandSync'
-import { getSession, findAccountByEmail } from './utils/authStore'
+import { getSession, listAccounts } from './utils/authStore'
 import { getRealSessionAccount, realBackendEnabled } from './utils/supabaseBackend'
 import { createProof, getProofByContractId } from './utils/proofStore'
 import { createCompanyDonationRegisteredNotification, createDonationIntentNotification } from './utils/notificationStore'
@@ -78,6 +78,19 @@ const viewToPath = (view: ViewType): string => {
   return routes[view] || '/'
 }
 
+const resolveInstitutionAccountId = (institutionId: string): string | undefined => {
+  const accounts = listAccounts()
+  const sampleAccount = accounts.find(account => account.role === 'instituicao' && account.id === `acc-i${institutionId}`)
+  if (sampleAccount) return sampleAccount.id
+
+  if (institutionId.startsWith('reg-')) {
+    const nif = institutionId.slice(4)
+    return accounts.find(account => account.role === 'instituicao' && account.nif === nif)?.id
+  }
+
+  return /^\d+$/.test(institutionId) ? undefined : institutionId || undefined
+}
+
 export default function App() {
   const [state, setState] = useState<AppState>(() => ({ screen: 'main', view: pathToView(window.location.pathname) }))
   const [session, setSession] = useState<Account | null>(null)
@@ -115,24 +128,27 @@ export default function App() {
   const handleContractComplete = (contract: ImpactContract) => {
     if (!getProofByContractId(contract.id)) {
       const companyAccountId = session?.role === 'empresa' ? session.id : 'guest-' + contract.nif
-      const institutionAccount = findAccountByEmail(`institucao-${contract.institutionId}@demo.pt`)
-        || findAccountByEmail('instituicao@demo.pt')
+      const institutionAccountId = resolveInstitutionAccountId(contract.institutionId)
       const proof = createProof({
         contractId: contract.id,
         companyAccountId,
-        institutionAccountId: institutionAccount?.id,
+        companyName: contract.company,
+        companyNif: contract.nif,
+        companyEmail: contract.email,
+        institutionAccountId,
         institutionName: contract.institutionName,
         donationType: contract.donationType,
         selectedNeedIds: contract.selectedNeedIds,
         amount: contract.donationAmount,
+        projectCost: contract.projectCost,
         date: contract.donationDate,
         description: `Donativo (${contract.donationType === 'dinheiro' ? 'dinheiro' : 'produtos/serviços'}) à ${contract.institutionName}`,
         proofFileName: contract.proofFileName,
         proofFileDataUrl: contract.proofFileDataUrl,
         proofFileSize: contract.proofFileSize,
       })
-      createThread(contract, session?.role === 'empresa' ? session : null, institutionAccount?.id, proof.id)
-      createDonationIntentNotification(contract, institutionAccount?.id)
+      createThread(contract, session?.role === 'empresa' ? session : null, institutionAccountId, proof.id)
+      createDonationIntentNotification(contract, institutionAccountId)
       createCompanyDonationRegisteredNotification(contract, session?.role === 'empresa' ? session.id : undefined)
     }
     setState({ screen: 'contract-success', contract })

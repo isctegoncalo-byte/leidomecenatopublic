@@ -99,11 +99,6 @@ export default function Footer({ setCurrentView }: Props) {
             <button onClick={() => setCurrentView?.('privacidade')} className="hover:text-white transition">Privacidade e RGPD</button>
             <button onClick={() => setCurrentView?.('termos')} className="hover:text-white transition">Termos de Serviço</button>
             <button onClick={() => setCurrentView?.('cookies')} className="hover:text-white transition">Cookies</button>
-            {setCurrentView && (
-              <button onClick={() => setCurrentView('admin')} className="hover:text-white transition flex items-center gap-1">
-                <span>⚙️</span> <span>Administração</span>
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -177,7 +172,7 @@ export default function Footer({ setCurrentView }: Props) {
               <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
                 <p className="text-xs leading-relaxed text-blue-800">
                   <strong>RGPD:</strong> os dados deste formulario serao usados apenas para responder ao seu pedido.
-                  Nao inclua dados pessoais sensiveis ou informacao de terceiros que nao seja necessaria.
+                  Não inclua dados pessoais sensíveis ou informação de terceiros que não seja necessária.
                 </p>
               </div>
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

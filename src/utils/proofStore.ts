@@ -41,12 +41,15 @@ export function saveProof(proof: DonationProof) {
 }
 
 export function createProof(input: Omit<DonationProof, 'id' | 'companyConfirmed' | 'institutionConfirmed' | 'status'>): DonationProof {
+  const companyConfirmed = Boolean(input.proofFileDataUrl)
   const proof: DonationProof = {
     ...input,
     id: `proof-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    companyConfirmed: false,
+    companyConfirmed,
+    companyConfirmedAmount: companyConfirmed ? input.amount : undefined,
+    confirmedAmount: companyConfirmed ? input.amount : input.confirmedAmount,
     institutionConfirmed: false,
-    status: 'pending-company',
+    status: companyConfirmed ? 'pending-institution' : 'pending-company',
   }
   saveProof(proof)
   return proof

@@ -6,6 +6,7 @@ import SdgIcon from './SdgIcon'
 import { activeProjects, projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
 import { listProofs } from '../utils/proofStore'
 import { projectSlug } from '../utils/projectCatalog'
+import { calculateProjectImpactRating, impactRatingColorClass, impactRatingLabel } from '../utils/impactRating'
 
 interface Props {
   setCurrentView: (v: ViewType) => void
@@ -31,6 +32,9 @@ export default function HomePage({ setCurrentView }: Props) {
     'veículo', 'carrinha', 'mobiliário', 'computadores', 'tablets', 'drones',
     'sensores', 'software', 'kit', 'kits', 'árvores', 'canis', 'painéis', 'estantes',
   ]
+
+  const projectTitle = (need: typeof sampleInstitutions[number]['needs'][number]) =>
+    need.projectName || [need.category, need.subcategory].filter(Boolean).join(' › ') || 'Projeto'
 
   const isProductOrServiceNeed = (need: typeof sampleInstitutions[number]['needs'][number]) => {
     if (need.supportType === 'produtos') return true
@@ -82,6 +86,7 @@ export default function HomePage({ setCurrentView }: Props) {
   const InstitutionMiniCard = ({ inst, mode }: { inst: typeof sampleInstitutions[number]; mode: 'money' | 'product' }) => {
     const needs = inst.needs.filter(need => mode === 'product' ? isProductOrServiceNeed(need) : !isProductOrServiceNeed(need)).slice(0, 1)
     const firstNeed = needs[0]
+    const projectRating = firstNeed ? calculateProjectImpactRating(inst, firstNeed).total : inst.esgScore.total
     const openFirstProject = () => {
       if (!firstNeed) return
       window.history.pushState({}, '', `/projeto/${projectSlug(inst, firstNeed)}`)
@@ -108,14 +113,14 @@ export default function HomePage({ setCurrentView }: Props) {
               <p className="text-xs text-slate-500">{inst.category} • {inst.municipality}</p>
             </div>
             <span className="text-[10px] font-black text-slate-500 bg-slate-100 rounded-lg px-2 py-1 flex-shrink-0">
-              {inst.esgScore.total}/100
+              {projectRating}/100
             </span>
           </div>
           <div className="mt-3 space-y-1.5">
             {needs.map(need => (
               <div key={need.id} className="text-xs text-slate-600 flex items-start gap-2">
                 <span className={mode === 'product' ? 'text-green-600' : 'text-blue-600'}>{mode === 'product' ? '📦' : '💶'}</span>
-                <span className="line-clamp-2">{need.category} › {need.subcategory}</span>
+                <span className="line-clamp-2">{projectTitle(need)}</span>
               </div>
             ))}
           </div>
@@ -140,17 +145,34 @@ export default function HomePage({ setCurrentView }: Props) {
     const filteredNeeds = activeProjects(inst.needs, proofs, inst.name).filter(need => mode === 'product' ? isProductOrServiceNeed(need) : !isProductOrServiceNeed(need))
     const topNeeds = filteredNeeds.slice(0, 2)
     const mainNeed = topNeeds[0]
-    const ratingLabel = inst.esgScore.total >= 85 ? 'AA+' : inst.esgScore.total >= 75 ? 'AA' : inst.esgScore.total >= 65 ? 'A+' : inst.esgScore.total >= 55 ? 'A' : inst.esgScore.total >= 45 ? 'B+' : 'B'
-    const ratingColor = inst.esgScore.total >= 85 ? 'text-green-600' : inst.esgScore.total >= 75 ? 'text-emerald-600' : inst.esgScore.total >= 65 ? 'text-lime-600' : inst.esgScore.total >= 55 ? 'text-yellow-600' : inst.esgScore.total >= 45 ? 'text-orange-600' : 'text-rose-500'
+    const mainProjectRating = mainNeed ? calculateProjectImpactRating(inst, mainNeed).total : inst.esgScore.total
+    const ratingLabel = impactRatingLabel(mainProjectRating)
+    const ratingColor = impactRatingColorClass(mainProjectRating)
     const openProject = (needId: string) => {
       const need = inst.needs.find(n => n.id === needId)
       if (!need) return
       window.history.pushState({}, '', `/projeto/${projectSlug(inst, need)}`)
       setCurrentView('projeto')
     }
+    const openMainProject = () => {
+      if (mainNeed) openProject(mainNeed.id)
+    }
 
     return (
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition group flex flex-col h-full">
+      <article
+        role="button"
+        tabIndex={mainNeed ? 0 : -1}
+        onClick={openMainProject}
+        onKeyDown={e => {
+          if (!mainNeed) return
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            openMainProject()
+          }
+        }}
+        aria-label={mainNeed ? `Abrir página do projeto ${projectTitle(mainNeed)}` : undefined}
+        className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl hover:border-blue-300 transition group flex flex-col h-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
         <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-6 py-5 flex items-center gap-4">
           <span className="text-4xl">{inst.logo}</span>
           <div className="flex-1 min-w-0">
@@ -189,19 +211,27 @@ export default function HomePage({ setCurrentView }: Props) {
             </div>
             <div className="text-center flex-shrink-0">
               <p className={`text-3xl font-black ${ratingColor}`}>{ratingLabel}</p>
-              <p className="text-xs font-bold text-slate-400">{inst.esgScore.total}/100</p>
+              <p className="text-xs font-bold text-slate-400">{mainProjectRating}/100</p>
             </div>
           </div>
 
           <div className="space-y-2 mb-5">
             {topNeeds.map(nd => {
               const pillarColor = nd.esgPillar === 'E' ? 'bg-green-100 text-green-700' : nd.esgPillar === 'S' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
-              const urgColor = nd.urgency === 'alta' ? 'text-red-500' : nd.urgency === 'media' ? 'text-yellow-500' : 'text-green-500'
+              const statusColor = nd.implementationPhase === 'a-decorrer' ? 'text-green-500' : nd.implementationPhase === 'inativo' ? 'text-slate-400' : 'text-blue-500'
               return (
-                <button key={nd.id} onClick={() => openProject(nd.id)} className="flex w-full items-start gap-2 rounded-xl p-1 text-left text-sm transition hover:bg-blue-50">
+                <button
+                  key={nd.id}
+                  type="button"
+                  onClick={e => {
+                    e.stopPropagation()
+                    openProject(nd.id)
+                  }}
+                  className="flex w-full items-start gap-2 rounded-xl p-1 text-left text-sm transition hover:bg-blue-50"
+                >
                   <span className={`px-2 py-1 rounded-lg text-xs font-black flex-shrink-0 ${pillarColor}`}>{nd.esgPillar}</span>
-                  <span className="text-slate-700 flex-1 line-clamp-1">{nd.category} › {nd.subcategory}</span>
-                  <span className={`flex-shrink-0 ${urgColor}`}>●</span>
+                  <span className="text-slate-700 flex-1 line-clamp-1">{projectTitle(nd)}</span>
+                  <span className={`flex-shrink-0 ${statusColor}`}>●</span>
                 </button>
               )
             })}
@@ -212,20 +242,22 @@ export default function HomePage({ setCurrentView }: Props) {
 
           {mainNeed && (
             <div
-              role="button"
-              tabIndex={0}
-              onClick={() => openProject(mainNeed.id)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  openProject(mainNeed.id)
-                }
-              }}
-              className="mb-5 w-full cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label={`Abrir página do projeto ${mainNeed.category} ${mainNeed.subcategory}`}
+              className="mb-5 w-full rounded-2xl border border-slate-200 bg-white p-4 text-left transition group-hover:border-blue-200"
             >
+              {[mainNeed.publicContacts && ['Contactos', mainNeed.publicContacts], mainNeed.publicEmail && ['Email', mainNeed.publicEmail], mainNeed.publicSocialLinks && ['Redes Sociais', mainNeed.publicSocialLinks], mainNeed.publicWebsite && ['Site', mainNeed.publicWebsite]]
+                .filter(Boolean)
+                .map(item => {
+                  const [label, value] = item as string[]
+                  return (
+                    <div key={label} className="mb-2 text-xs text-slate-600">
+                      <span className="font-black text-slate-700">{label}:</span> <span className="break-all">{value}</span>
+                    </div>
+                  )
+                })}
               <div className="mb-2 flex items-start justify-between gap-3">
                 <div>
+                  <p className="text-xs font-black uppercase tracking-wide text-blue-700">{inst.name}</p>
+                  <p className="mt-1 text-base font-black text-slate-900 leading-tight">{projectTitle(mainNeed)}</p>
                   <p className="text-xs font-black uppercase tracking-wide text-slate-400">Progresso do projeto</p>
                   <p className="text-sm font-bold text-slate-700">{supportTypeLabel(mainNeed)} pretendida: € {projectTarget(mainNeed).toLocaleString('pt-PT')}</p>
                 </div>
@@ -266,7 +298,7 @@ export default function HomePage({ setCurrentView }: Props) {
             </div>
           </div>
         </div>
-      </div>
+      </article>
     )
   }
 
@@ -278,22 +310,22 @@ export default function HomePage({ setCurrentView }: Props) {
           <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
             <div>
               <p className="mb-4 inline-flex rounded-full border border-blue-400/40 bg-blue-500/10 px-4 py-2 text-xs font-black uppercase tracking-wide text-blue-200">
-                Lei do Mecenato para empresas e instituicoes
+                Lei do Mecenato para empresas e instituições
               </p>
               <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight">
                 Transforme donativos em impacto fiscal, social e ESG.
               </h1>
               <p className="text-xl text-slate-200 mb-5 max-w-3xl leading-relaxed">
-                Empresas encontram projetos elegiveis, simulam o beneficio em IRC e recebem relatorios de impacto.
-                Instituicoes apresentam necessidades concretas e recebem 100% do apoio diretamente.
+                Empresas encontram projetos elegíveis, simulam o benefício em IRC e recebem relatórios de impacto.
+                Instituições apresentam necessidades concretas e recebem 100% do apoio diretamente.
               </p>
               <p className="text-base text-blue-200 mb-8 max-w-2xl">
-                Donativos em dinheiro, produtos ou servicos. Enquadramento fiscal, Impact Score, ODS, comprovativos e conteudos de comunicacao num unico fluxo.
+                Donativos em dinheiro, produtos ou serviços. Enquadramento fiscal, Impact Score, ODS, comprovativos e conteúdos de comunicação num único fluxo.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <button onClick={() => setCurrentView('simulador')}
                   className="bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-black py-4 px-8 rounded-2xl text-base transition shadow-2xl">
-                  Simular beneficio fiscal
+                  Simular benefício fiscal
                 </button>
                 <button onClick={() => setCurrentView('empresa')}
                   className="bg-white/10 hover:bg-white/15 text-white font-black py-4 px-8 rounded-2xl text-base transition border border-white/20">
@@ -303,15 +335,15 @@ export default function HomePage({ setCurrentView }: Props) {
               <div className="mt-8 grid gap-3 text-sm text-slate-300 sm:grid-cols-3">
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <strong className="block text-white">100% direto</strong>
-                  Empresa transfere para a instituicao.
+                  Empresa transfere para a instituição.
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <strong className="block text-white">IRC e EBF</strong>
-                  Simulacao fiscal para decisao.
+                  Simulação fiscal para decisão.
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <strong className="block text-white">Impacto ESG</strong>
-                  Relatorios com ODS e metricas.
+                  Relatórios com ODS e métricas.
                 </div>
               </div>
             </div>
@@ -320,10 +352,10 @@ export default function HomePage({ setCurrentView }: Props) {
                 <p className="mb-2 text-xs font-black uppercase tracking-wide text-blue-600">Caminho recomendado</p>
                 <div className="space-y-4">
                   {[
-                    ['1', 'Simule', 'Veja deducao fiscal, custo real e valor para a causa.'],
-                    ['2', 'Escolha', 'Compare projetos por distrito, ODS, urgencia e rating.'],
-                    ['3', 'Doe diretamente', 'A plataforma nao recebe o donativo.'],
-                    ['4', 'Comprove impacto', 'Receba relatorio, certificado e conteudos ESG.'],
+                    ['1', 'Simule', 'Veja dedução fiscal, custo real e valor para a causa.'],
+                    ['2', 'Escolha', 'Compare projetos por distrito, ODS, urgência e rating.'],
+                    ['3', 'Doe diretamente', 'A plataforma não recebe o donativo.'],
+                    ['4', 'Comprove impacto', 'Receba relatório, certificado e conteúdos ESG.'],
                   ].map(([num, title, body]) => (
                     <div key={num} className="flex gap-3">
                       <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white">{num}</span>
@@ -335,7 +367,7 @@ export default function HomePage({ setCurrentView }: Props) {
                   ))}
                 </div>
                 <button onClick={() => setCurrentView('instituicao')} className="mt-6 w-full rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700">
-                  Registar instituicao ou projeto
+                  Registar instituição ou projeto
                 </button>
               </div>
             </div>
@@ -348,9 +380,9 @@ export default function HomePage({ setCurrentView }: Props) {
           <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-4">
             {[
               ['Empresas', 'Encontram projetos, simulam IRC e documentam impacto.'],
-              ['Instituicoes', 'Publicam necessidades elegiveis e recebem apoio direto.'],
-              ['Contabilistas', 'Tem dados, comprovativos e contexto fiscal reunidos.'],
-              ['Gestores ESG', 'Recebem metricas, ODS, narrativa e evidencias.'],
+              ['Instituições', 'Publicam necessidades elegíveis e recebem apoio direto.'],
+              ['Contabilistas', 'Têm dados, comprovativos e contexto fiscal reunidos.'],
+              ['Gestores ESG', 'Recebem métricas, ODS, narrativa e evidências.'],
             ].map(([title, body]) => (
               <div key={title} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <h2 className="mb-2 text-sm font-black uppercase tracking-wide text-slate-900">{title}</h2>

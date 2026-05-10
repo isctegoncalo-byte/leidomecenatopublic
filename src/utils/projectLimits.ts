@@ -9,7 +9,7 @@ export const projectSupportType = (need: Pick<NeedItem, 'supportType'>): Project
   need.supportType === 'produtos' ? 'produtos' : 'dinheiro'
 
 export const isStoredProjectActive = (need: Pick<NeedItem, 'status'>): boolean =>
-  (need.status || 'ativo') !== 'concluido'
+  (need.status || 'ativo') !== 'concluido' && (need.status || 'ativo') !== 'inativo'
 
 export const activeProjectTypes = (
   needs: NeedItem[],

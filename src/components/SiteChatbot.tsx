@@ -23,43 +23,43 @@ function answerQuestion(question: string): string {
   const text = normalize(question)
 
   if (includesAny(text, ['quanto', 'simular', 'custa', 'poupo', 'poupanca', 'beneficio', 'deduzir'])) {
-    return 'Comece pelo Simulador: indique o valor do donativo e a taxa de IRC. A plataforma estima a deducao fiscal, o custo real e o preco do relatorio. Depois pode avançar para escolher um projeto com esse valor.'
+    return 'Comece pelo Simulador: indique o valor do donativo e a taxa de IRC. A plataforma estima a dedução fiscal, o custo real e o preço do relatório. Depois pode avançar para escolher um projeto com esse valor.'
   }
 
   if (includesAny(text, ['sou empresa', 'empresa quer doar', 'primeiro passo', 'por onde comeco'])) {
-    return 'Para uma empresa, o caminho recomendado e: simular beneficio fiscal, escolher um projeto, fazer o donativo diretamente a instituicao, carregar comprovativo e pedir o relatorio de impacto.'
+    return 'Para uma empresa, o caminho recomendado é: simular benefício fiscal, escolher um projeto, fazer o donativo diretamente à instituição, carregar comprovativo e pedir o relatório de impacto.'
   }
 
   if (includesAny(text, ['sou instituicao', 'tenho projeto', 'preciso de apoio', 'publicar necessidade'])) {
-    return 'Para uma instituicao, o caminho recomendado e: registar perfil, carregar documentos, publicar necessidades concretas com valor/impacto/ODS e aguardar empresas interessadas.'
+    return 'Para uma instituição, o caminho recomendado é: registar perfil, carregar documentos, publicar necessidades concretas com valor/impacto/ODS e aguardar empresas interessadas.'
   }
 
   if (includesAny(text, ['donativo', 'doar', 'apoiar', 'empresa', 'transferencia', 'confirmar'])) {
-    return 'Para apoiar um projeto, a empresa escolhe um projeto, clica em Apoiar, inicia sessao como empresa e regista o donativo. O dinheiro ou os produtos seguem diretamente para a instituicao; a plataforma organiza comprovativos, confirmacao e relatorio.'
+    return 'Para apoiar um projeto, a empresa escolhe um projeto, clica em Apoiar, inicia sessão como empresa e regista o donativo. O dinheiro ou os produtos seguem diretamente para a instituição; a plataforma organiza comprovativos, confirmação e relatório.'
   }
 
   if (includesAny(text, ['instituicao', 'associacao', 'registo', 'criar projeto', 'candidatura', 'documentos'])) {
-    return 'As instituicoes podem registar-se e candidatar projetos. Para criar um novo projeto, devem ter os documentos obrigatorios carregados: Comprovativo NIF, Relatorios de Atividades e Contas, Estatutos e Comprovativo IBAN.'
+    return 'As instituições podem registar-se e candidatar projetos. Para criar um novo projeto, devem ter os documentos obrigatórios carregados: Comprovativo NIF, Relatórios de Atividades e Contas, Estatutos e Comprovativo IBAN.'
   }
 
   if (includesAny(text, ['projeto', 'ods', 'kpi', 'meta', 'galeria', 'foto', 'fotos'])) {
-    return 'Cada projeto tem uma pagina propria com apresentacao da instituicao, resumo executivo, ODS, metas, KPI, galeria de fotos, contactos e botao Apoiar. Os projetos concluidos passam para a pagina Impacto Real.'
+    return 'Cada projeto tem uma página própria com apresentação da instituição, resumo executivo, ODS, metas, KPI, galeria de fotos, contactos e botão Apoiar. Os projetos concluídos passam para a página Impacto Real.'
   }
 
   if (includesAny(text, ['rating', 'impacto', 'calculo', 'avaliacao', 'abrangencia', 'custo total'])) {
-    return 'O Rating de Impacto valoriza o custo total do projeto, os KPI previstos, a verba ja assegurada e a area de abrangencia. Pode consultar a explicacao completa na pagina Rating de Impacto.'
+    return 'O Rating de Impacto valoriza o custo total do projeto, os KPI previstos, a verba já assegurada e a área de abrangência. Pode consultar a explicação completa na página Rating de Impacto.'
   }
 
   if (includesAny(text, ['lei', 'mecenato', 'beneficio fiscal', 'irc', 'deducao'])) {
-    return 'A pagina Lei do Mecenato resume o Estatuto dos Beneficios Fiscais, o artigo 62, exemplos de deducao e documentos recomendados. A plataforma e privada e o enquadramento fiscal deve ser validado com contabilista certificado.'
+    return 'A página Lei do Mecenato resume o Estatuto dos Benefícios Fiscais, o artigo 62.º, exemplos de dedução e documentos recomendados. A plataforma é privada e o enquadramento fiscal deve ser validado com contabilista certificado.'
   }
 
   if (includesAny(text, ['login', 'entrar', 'conta', 'password', 'palavra passe', 'recuperar', 'captcha'])) {
-    return 'Na pagina Entrar pode iniciar sessao, criar conta e recuperar a palavra-passe. O captcha existe para reduzir registos automaticos e confirmar que o acesso esta a ser feito por uma pessoa.'
+    return 'Na página Entrar pode iniciar sessão, criar conta e recuperar a palavra-passe. O captcha existe para reduzir registos automáticos e confirmar que o acesso está a ser feito por uma pessoa.'
   }
 
   if (includesAny(text, ['admin', 'administracao', 'utilizadores', 'documentos', 'empresa', 'instituicoes'])) {
-    return 'No painel de administracao pode consultar utilizadores, separados por empresa e instituicao, e abrir cada utilizador para ver os documentos submetidos.'
+    return 'No painel de administração pode consultar utilizadores, separados por empresa e instituição, e abrir cada utilizador para ver os documentos submetidos.'
   }
 
   if (includesAny(text, ['contacto', 'contato', 'email', 'fala connosco', 'duvida', 'mensagem'])) {
@@ -67,10 +67,10 @@ function answerQuestion(question: string): string {
   }
 
   if (includesAny(text, ['cookies', 'privacidade', 'termos', 'dados', 'rgpd'])) {
-    return 'As paginas de Privacidade e RGPD, Termos de Servico e Cookies explicam dados tratados, bases legais, direitos de acesso/retificacao/apagamento/oposicao/portabilidade, conservacao e contacto para pedidos RGPD. Estao disponiveis no rodape.'
+    return 'As páginas de Privacidade e RGPD, Termos de Serviço e Cookies explicam dados tratados, bases legais, direitos de acesso/retificação/apagamento/oposição/portabilidade, conservação e contacto para pedidos RGPD. Estão disponíveis no rodapé.'
   }
 
-  return 'So consigo responder a perguntas diretamente ligadas com a plataforma Lei do Mecenato: donativos, projetos, instituicoes, empresas, documentos, rating de impacto, login, contactos e paginas legais.'
+  return 'Só consigo responder a perguntas diretamente ligadas com a plataforma Lei do Mecenato: donativos, projetos, instituições, empresas, documentos, rating de impacto, login, contactos e páginas legais.'
 }
 
 export default function SiteChatbot({ setCurrentView }: Props) {
@@ -81,15 +81,15 @@ export default function SiteChatbot({ setCurrentView }: Props) {
     {
       id: 1,
       from: 'bot',
-      text: 'Ola. Diga-me se vem como empresa, instituicao ou contabilista. Posso ajudar a decidir o proximo passo: simular beneficio, escolher projeto, preparar documentos ou perceber a Lei do Mecenato.',
+      text: 'Olá. Diga-me se vem como empresa, instituição ou contabilista. Posso ajudar a decidir o próximo passo: simular benefício, escolher projeto, preparar documentos ou perceber a Lei do Mecenato.',
     },
   ])
   const nextId = useRef(2)
 
   const quickActions = useMemo(() => [
     { label: 'Sou empresa', question: 'Sou empresa, por onde comeco?' },
-    { label: 'Simular beneficio', question: 'Quanto posso deduzir no IRC?' },
-    { label: 'Sou instituicao', question: 'Sou instituicao e tenho um projeto' },
+    { label: 'Simular benefício', question: 'Quanto posso deduzir no IRC?' },
+    { label: 'Sou instituição', question: 'Sou instituição e tenho um projeto' },
   ], [])
 
   const submitQuestion = (question: string) => {

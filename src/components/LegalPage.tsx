@@ -16,59 +16,59 @@ const content: Record<LegalKind, {
   sections: { title: string; body: string[] }[]
 }> = {
   privacidade: {
-    title: 'Politica de Privacidade e RGPD',
-    intro: 'Esta politica explica como a plataforma Lei do Mecenato trata dados pessoais de empresas, instituicoes, representantes e utilizadores registados, nos termos do RGPD.',
+    title: 'Política de Privacidade e RGPD',
+    intro: 'Esta política explica como a plataforma Lei do Mecenato trata dados pessoais de empresas, instituições, representantes e utilizadores registados, nos termos do RGPD.',
     sections: [
       {
         title: 'Responsavel pelo tratamento',
         body: [
-          'A plataforma e uma iniciativa privada independente. Nao e um organismo publico, autoridade tributaria, entidade certificadora oficial ou substituto de aconselhamento juridico, fiscal ou contabilistico.',
-          'Para efeitos do Regulamento (UE) 2016/679, Regulamento Geral sobre a Protecao de Dados (RGPD), a entidade exploradora da plataforma atua como responsavel pelo tratamento dos dados necessarios a gestao da plataforma.',
+          'A plataforma é uma iniciativa privada independente. Não é um organismo público, autoridade tributária, entidade certificadora oficial ou substituto de aconselhamento jurídico, fiscal ou contabilístico.',
+          'Para efeitos do Regulamento (UE) 2016/679, Regulamento Geral sobre a Proteção de Dados (RGPD), a entidade exploradora da plataforma atua como responsável pelo tratamento dos dados necessários à gestão da plataforma.',
           'Para questoes sobre dados pessoais, pedidos RGPD ou informacao adicional, deve ser usado o contacto indicado no rodape do site.',
         ],
       },
       {
         title: 'Dados pessoais tratados',
         body: [
-          'Podemos tratar nome, email, telefone, NIF/NIPC, entidade representada, cargo ou funcao, dados de registo, dados de autenticacao, documentos submetidos, comprovativos de donativos, mensagens trocadas na plataforma e informacao tecnica necessaria ao funcionamento do servico.',
-          'No caso de instituicoes, podem ser tratados dados de representantes, contactos institucionais, documentos de identificacao fiscal, estatutos, relatorios, IBAN, comprovativos e informacao sobre projetos. No caso de empresas, podem ser tratados dados de contacto, setor de atividade, comprovativos, documentos contabilisticos e historico de interacoes.',
-          'O utilizador e responsavel por garantir que tem legitimidade para submeter documentos ou dados de terceiros. A plataforma nao deve ser usada para carregar dados sensiveis desnecessarios, como dados de saude, origem racial ou etnica, opinioes politicas, conviccoes religiosas, dados biometricos ou dados de menores, salvo quando exista base legal adequada e necessidade clara.',
+          'Podemos tratar nome, email, telefone, NIF/NIPC, entidade representada, cargo ou função, dados de registo, dados de autenticação, documentos submetidos, comprovativos de donativos, mensagens trocadas na plataforma e informação técnica necessária ao funcionamento do serviço.',
+          'No caso de instituições, podem ser tratados dados de representantes, contactos institucionais, documentos de identificação fiscal, estatutos, relatórios, IBAN, comprovativos e informação sobre projetos. No caso de empresas, podem ser tratados dados de contacto, setor de atividade, comprovativos, documentos contabilísticos e histórico de interações.',
+          'O utilizador é responsável por garantir que tem legitimidade para submeter documentos ou dados de terceiros. A plataforma não deve ser usada para carregar dados sensíveis desnecessários, como dados de saúde, origem racial ou étnica, opiniões políticas, convicções religiosas, dados biométricos ou dados de menores, salvo quando exista base legal adequada e necessidade clara.',
         ],
       },
       {
         title: 'Finalidades',
         body: [
-          'Tratamos dados para criar e gerir contas, verificar perfis, facilitar contactos entre empresas e instituicoes, receber documentos, acompanhar donativos, emitir relatorios de impacto, gerir pagamentos de servicos, prestar suporte, prevenir abuso e assegurar seguranca e auditoria.',
-          'Tambem podemos usar dados agregados e nao identificaveis para estatisticas internas, melhoria do servico, metricas de impacto e comunicacao institucional.',
+          'Tratamos dados para criar e gerir contas, verificar perfis, facilitar contactos entre empresas e instituições, receber documentos, acompanhar donativos, emitir relatórios de impacto, gerir pagamentos de serviços, prestar suporte, prevenir abuso e assegurar segurança e auditoria.',
+          'Também podemos usar dados agregados e não identificáveis para estatísticas internas, melhoria do serviço, métricas de impacto e comunicação institucional.',
         ],
       },
       {
         title: 'Bases legais do tratamento',
         body: [
-          'O tratamento pode assentar na execucao de contrato ou diligencias pre-contratuais, consentimento, cumprimento de obrigacoes legais, interesse legitimo na seguranca e melhoria da plataforma, ou defesa de direitos.',
+          'O tratamento pode assentar na execução de contrato ou diligências pré-contratuais, consentimento, cumprimento de obrigações legais, interesse legítimo na segurança e melhoria da plataforma, ou defesa de direitos.',
           'Quando o tratamento assentar em consentimento, o titular pode retira-lo a qualquer momento, sem comprometer a licitude do tratamento efetuado antes dessa retirada.',
-          'O interesse legitimo pode incluir prevencao de fraude, seguranca da conta, prova de operacoes, suporte, auditoria, gestao de conflitos e melhoria proporcional da experiencia de utilizacao.',
+          'O interesse legítimo pode incluir prevenção de fraude, segurança da conta, prova de operações, suporte, auditoria, gestão de conflitos e melhoria proporcional da experiência de utilização.',
         ],
       },
       {
         title: 'Partilha de dados',
         body: [
-          'Dados podem ser partilhados entre empresa e instituicao apenas quando necessario para gerir o donativo, confirmar comprovativos, emitir recibos, comunicar sobre o projeto ou produzir relatorios de impacto.',
-          'Podem ser utilizados prestadores tecnicos, como alojamento, base de dados, autenticacao, email, armazenamento, pagamentos ou analitica. Esses prestadores devem tratar dados segundo instrucoes da plataforma e com medidas adequadas de confidencialidade e seguranca.',
+          'Dados podem ser partilhados entre empresa e instituição apenas quando necessário para gerir o donativo, confirmar comprovativos, emitir recibos, comunicar sobre o projeto ou produzir relatórios de impacto.',
+          'Podem ser utilizados prestadores técnicos, como alojamento, base de dados, autenticação, email, armazenamento, pagamentos ou analítica. Esses prestadores devem tratar dados segundo instruções da plataforma e com medidas adequadas de confidencialidade e segurança.',
           'Quando existirem transferencias para fora do Espaco Economico Europeu, devem ser usadas garantias adequadas previstas no RGPD, como decisoes de adequacao ou clausulas contratuais-tipo.',
         ],
       },
       {
         title: 'Conservacao',
         body: [
-          'Os dados sao mantidos pelo periodo necessario as finalidades descritas, obrigacoes legais aplicaveis e defesa de direitos.',
-          'Dados associados a donativos, recibos, relatorios, pagamentos, comprovativos ou obrigacoes fiscais e contabilisticas podem ser conservados durante os prazos legalmente exigidos. Dados de contacto e conta podem ser eliminados ou anonimizados quando deixarem de ser necessarios, salvo obrigacao legal ou defesa de direitos.',
+          'Os dados são mantidos pelo período necessário às finalidades descritas, obrigações legais aplicáveis e defesa de direitos.',
+          'Dados associados a donativos, recibos, relatórios, pagamentos, comprovativos ou obrigações fiscais e contabilísticas podem ser conservados durante os prazos legalmente exigidos. Dados de contacto e conta podem ser eliminados ou anonimizados quando deixarem de ser necessários, salvo obrigação legal ou defesa de direitos.',
         ],
       },
       {
         title: 'Direitos dos titulares',
         body: [
-          'Nos termos do RGPD, o titular pode solicitar acesso, retificacao, apagamento, limitacao do tratamento, oposicao, portabilidade e retirada de consentimento quando aplicavel.',
+          'Nos termos do RGPD, o titular pode solicitar acesso, retificação, apagamento, limitação do tratamento, oposição, portabilidade e retirada de consentimento quando aplicável.',
           'Os pedidos serao analisados de acordo com a lei aplicavel. Alguns dados podem ter de ser conservados por obrigacao legal, prova de transacoes, exercicio ou defesa de direitos.',
           'O titular tem ainda o direito de apresentar reclamacao junto da Comissao Nacional de Protecao de Dados (CNPD), atraves de www.cnpd.pt.',
         ],
@@ -76,98 +76,98 @@ const content: Record<LegalKind, {
       {
         title: 'Seguranca',
         body: [
-          'A plataforma deve adotar medidas tecnicas e organizativas adequadas para proteger dados pessoais contra acesso nao autorizado, perda, alteracao ou divulgacao indevida.',
-          'Nenhuma plataforma e totalmente imune a risco. Os utilizadores devem proteger credenciais, evitar partilha de passwords e carregar apenas documentos necessarios ao funcionamento do servico.',
+          'A plataforma deve adotar medidas técnicas e organizativas adequadas para proteger dados pessoais contra acesso não autorizado, perda, alteração ou divulgação indevida.',
+          'Nenhuma plataforma é totalmente imune a risco. Os utilizadores devem proteger credenciais, evitar partilha de passwords e carregar apenas documentos necessários ao funcionamento do serviço.',
         ],
       },
     ],
   },
   termos: {
     title: 'Termos de Servico',
-    intro: 'Estes termos regulam a utilizacao da plataforma Lei do Mecenato por empresas, instituicoes e administradores.',
+    intro: 'Estes termos regulam a utilização da plataforma Lei do Mecenato por empresas, instituições e administradores.',
     sections: [
       {
         title: 'Natureza da plataforma',
         body: [
-          'A plataforma e uma iniciativa privada independente para facilitar a ligacao entre empresas e instituicoes e apoiar a organizacao de informacao sobre donativos e impacto.',
-          'A plataforma nao presta aconselhamento juridico, fiscal ou contabilistico e nao substitui validacao profissional independente.',
+          'A plataforma é uma iniciativa privada independente para facilitar a ligação entre empresas e instituições e apoiar a organização de informação sobre donativos e impacto.',
+          'A plataforma não presta aconselhamento jurídico, fiscal ou contabilístico e não substitui validação profissional independente.',
         ],
       },
       {
         title: 'Contas e responsabilidades',
         body: [
-          'Cada utilizador deve fornecer informacao verdadeira, atualizada e completa. O acesso a conta e pessoal e deve ser protegido com uma palavra-passe segura.',
-          'Empresas e instituicoes sao responsaveis pela veracidade dos documentos, comprovativos, declaracoes e informacoes que submetem.',
-          'Ao submeter dados pessoais de representantes, colaboradores, beneficiarios, contactos ou terceiros, o utilizador declara que tem fundamento legal para o fazer e que informou os titulares quando aplicavel.',
+          'Cada utilizador deve fornecer informação verdadeira, atualizada e completa. O acesso à conta é pessoal e deve ser protegido com uma palavra-passe segura.',
+          'Empresas e instituições são responsáveis pela veracidade dos documentos, comprovativos, declarações e informações que submetem.',
+          'Ao submeter dados pessoais de representantes, colaboradores, beneficiários, contactos ou terceiros, o utilizador declara que tem fundamento legal para o fazer e que informou os titulares quando aplicável.',
         ],
       },
       {
-        title: 'Protecao de dados e RGPD',
+        title: 'Proteção de dados e RGPD',
         body: [
-          'A utilizacao da plataforma implica tratamento de dados pessoais nos termos descritos na Politica de Privacidade e RGPD. O utilizador deve respeitar o RGPD e demais legislacao aplicavel sempre que submeta ou trate dados de terceiros atraves da plataforma.',
-          'Empresas e instituicoes devem garantir que os dados submetidos sao adequados, pertinentes e limitados ao necessario, mantendo confidencialidade sobre informacao a que tenham acesso na area privada.',
-          'A plataforma pode limitar, remover ou pedir substituicao de ficheiros que contenham dados pessoais excessivos, sensiveis ou desnecessarios para a finalidade declarada.',
+          'A utilização da plataforma implica tratamento de dados pessoais nos termos descritos na Política de Privacidade e RGPD. O utilizador deve respeitar o RGPD e demais legislação aplicável sempre que submeta ou trate dados de terceiros através da plataforma.',
+          'Empresas e instituições devem garantir que os dados submetidos são adequados, pertinentes e limitados ao necessário, mantendo confidencialidade sobre informação a que tenham acesso na área privada.',
+          'A plataforma pode limitar, remover ou pedir substituição de ficheiros que contenham dados pessoais excessivos, sensíveis ou desnecessários para a finalidade declarada.',
         ],
       },
       {
         title: 'Documentos e ficheiros',
         body: [
-          'Ao carregar ficheiros, o utilizador declara que tem legitimidade para os submeter e que os mesmos nao violam direitos de terceiros.',
-          'Os ficheiros devem ser limitados ao estritamente necessario. Sempre que possivel, devem ser omitidos, rasurados ou removidos dados pessoais excessivos que nao sejam necessarios para validar o donativo, a instituicao ou o relatorio.',
-          'A plataforma pode remover conteudos manifestamente invalidos, abusivos, ilegais ou incompativeis com o objetivo do servico.',
+          'Ao carregar ficheiros, o utilizador declara que tem legitimidade para os submeter e que os mesmos não violam direitos de terceiros.',
+          'Os ficheiros devem ser limitados ao estritamente necessário. Sempre que possível, devem ser omitidos, rasurados ou removidos dados pessoais excessivos que não sejam necessários para validar o donativo, a instituição ou o relatório.',
+          'A plataforma pode remover conteúdos manifestamente inválidos, abusivos, ilegais ou incompatíveis com o objetivo do serviço.',
         ],
       },
       {
-        title: 'Relatorios e informacao fiscal',
+        title: 'Relatórios e informação fiscal',
         body: [
-          'Relatorios de impacto, simulacoes e referencias fiscais tem natureza informativa. A elegibilidade concreta de beneficios fiscais deve ser confirmada com contabilista, jurista, Autoridade Tributaria ou entidade competente.',
+          'Relatórios de impacto, simulações e referências fiscais têm natureza informativa. A elegibilidade concreta de benefícios fiscais deve ser confirmada com contabilista, jurista, Autoridade Tributária ou entidade competente.',
         ],
       },
       {
-        title: 'Alteracoes e disponibilidade',
+        title: 'Alterações e disponibilidade',
         body: [
-          'Podemos melhorar, suspender ou alterar funcionalidades para manutencao, seguranca, cumprimento legal ou evolucao do servico.',
-          'Estes termos podem ser atualizados. A versao em vigor sera a publicada nesta pagina.',
+          'Podemos melhorar, suspender ou alterar funcionalidades para manutenção, segurança, cumprimento legal ou evolução do serviço.',
+          'Estes termos podem ser atualizados. A versão em vigor será a publicada nesta página.',
         ],
       },
     ],
   },
   cookies: {
-    title: 'Politica de Cookies e Armazenamento Local',
-    intro: 'Esta pagina explica como podem ser usados cookies, armazenamento local e tecnologias semelhantes na plataforma.',
+    title: 'Política de Cookies e Armazenamento Local',
+    intro: 'Esta página explica como podem ser usados cookies, armazenamento local e tecnologias semelhantes na plataforma.',
     sections: [
       {
         title: 'O que sao cookies',
         body: [
-          'Cookies sao pequenos ficheiros guardados no navegador para permitir funcionamento tecnico, manter sessao, recordar preferencias e melhorar a experiencia de utilizacao.',
+          'Cookies são pequenos ficheiros guardados no navegador para permitir funcionamento técnico, manter sessão, recordar preferências e melhorar a experiência de utilização.',
         ],
       },
       {
-        title: 'Cookies necessarios',
+        title: 'Cookies necessários',
         body: [
-          'Podem ser usados cookies ou armazenamento local essenciais para login, seguranca, sessao, preferencias tecnicas, consentimento de cookies e funcionamento da area privada.',
-          'Estes mecanismos podem envolver identificadores tecnicos, estado de sessao e informacao indispensavel ao funcionamento seguro da plataforma. Sem estes mecanismos, algumas funcionalidades podem nao funcionar corretamente.',
+          'Podem ser usados cookies ou armazenamento local essenciais para login, segurança, sessão, preferências técnicas, consentimento de cookies e funcionamento da área privada.',
+          'Estes mecanismos podem envolver identificadores técnicos, estado de sessão e informação indispensável ao funcionamento seguro da plataforma. Sem estes mecanismos, algumas funcionalidades podem não funcionar corretamente.',
         ],
       },
       {
-        title: 'Cookies analiticos e de melhoria',
+        title: 'Cookies analíticos e de melhoria',
         body: [
-          'Se forem ativadas ferramentas de estatistica, estas devem ser usadas para compreender utilizacao agregada do site e melhorar a plataforma.',
-          'Cookies nao essenciais, como analitica ou marketing, so devem ser ativados quando exista consentimento valido, livre, informado, especifico e revogavel.',
+          'Se forem ativadas ferramentas de estatística, estas devem ser usadas para compreender utilização agregada do site e melhorar a plataforma.',
+          'Cookies não essenciais, como analítica ou marketing, só devem ser ativados quando exista consentimento válido, livre, informado, específico e revogável.',
         ],
       },
       {
         title: 'Gestao de cookies',
         body: [
-          'O utilizador pode bloquear ou apagar cookies nas definicoes do navegador. Essa decisao pode afetar login, preferencias e algumas funcionalidades.',
-          'O armazenamento local fica no navegador do utilizador e pode ser apagado nas definicoes do navegador ou ao limpar dados do site.',
+          'O utilizador pode bloquear ou apagar cookies nas definições do navegador. Essa decisão pode afetar login, preferências e algumas funcionalidades.',
+          'O armazenamento local fica no navegador do utilizador e pode ser apagado nas definições do navegador ou ao limpar dados do site.',
         ],
       },
       {
         title: 'Relacao com o RGPD',
         body: [
-          'Quando cookies, armazenamento local ou tecnologias semelhantes permitirem identificar direta ou indiretamente um utilizador, o respetivo tratamento e enquadrado pela Politica de Privacidade e pelo RGPD.',
-          'A base legal pode variar entre necessidade tecnica, interesse legitimo ou consentimento, consoante a finalidade e a natureza do cookie ou tecnologia utilizada.',
+          'Quando cookies, armazenamento local ou tecnologias semelhantes permitirem identificar direta ou indiretamente um utilizador, o respetivo tratamento é enquadrado pela Política de Privacidade e pelo RGPD.',
+          'A base legal pode variar entre necessidade técnica, interesse legítimo ou consentimento, consoante a finalidade e a natureza do cookie ou tecnologia utilizada.',
         ],
       },
     ],

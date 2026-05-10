@@ -11,19 +11,19 @@ export interface ReportPurchaseEmailInput {
 
 const packConfirmation: Record<ReportPackId, { title: string; text: string; delivery: string }> = {
   standard: {
-    title: 'Relatorio de Impacto',
-    text: 'Confirmamos a compra do Relatorio de Impacto. A nossa equipa vai validar os dados do donativo e preparar o relatorio base com resumo de impacto, ODS, dados fiscais e principais metricas.',
-    delivery: 'Entrega prevista: ate 10 dias uteis apos validacao do donativo pela empresa e pela instituicao.',
+    title: 'Relatório de Impacto',
+    text: 'Confirmamos a compra do Relatório de Impacto. A nossa equipa vai validar os dados do donativo e preparar o relatório base com resumo de impacto, ODS, dados fiscais e principais métricas.',
+    delivery: 'Entrega prevista: até 10 dias úteis após validação do donativo pela empresa e pela instituição.',
   },
   premium: {
-    title: 'Relatorio de Impacto Premium',
-    text: 'Confirmamos a compra do Relatorio de Impacto Premium. Este pack inclui analise detalhada, Impact Score, narrativa de impacto, evidencias visuais, ODS, riscos ESG e dados prontos para relatorio de sustentabilidade.',
-    delivery: 'Entrega prevista: ate 10 dias uteis apos validacao do donativo pela empresa e pela instituicao.',
+    title: 'Relatório de Impacto Premium',
+    text: 'Confirmamos a compra do Relatório de Impacto Premium. Este pack inclui análise detalhada, Impact Score, narrativa de impacto, evidências visuais, ODS, riscos ESG e dados prontos para relatório de sustentabilidade.',
+    delivery: 'Entrega prevista: até 10 dias úteis após validação do donativo pela empresa e pela instituição.',
   },
   social: {
-    title: 'Relatorio de Impacto Premium + Pack Redes Sociais',
-    text: 'Confirmamos a compra do Relatorio de Impacto Premium com Pack Redes Sociais. Alem do relatorio premium, vamos preparar textos e imagens para comunicacao institucional em Facebook, Instagram e LinkedIn.',
-    delivery: 'Entrega prevista: relatorio ate 10 dias uteis; pack de comunicacao entregue em conjunto ou ate 2 dias uteis depois.',
+    title: 'Relatório de Impacto Premium + Pack Redes Sociais',
+    text: 'Confirmamos a compra do Relatório de Impacto Premium com Pack Redes Sociais. Além do relatório premium, vamos preparar textos e imagens para comunicação institucional em Facebook, Instagram e LinkedIn.',
+    delivery: 'Entrega prevista: relatório até 10 dias úteis; pack de comunicação entregue em conjunto ou até 2 dias úteis depois.',
   },
 }
 
@@ -31,7 +31,7 @@ export function buildReportPurchaseEmail(input: ReportPurchaseEmailInput) {
   const pack = packConfirmation[input.packId] || packConfirmation.premium
   const subject = `Confirmacao de compra - ${pack.title}`
   const institutionLine = input.institutionName
-    ? `<p><strong>Instituicao apoiada:</strong> ${input.institutionName}</p>`
+    ? `<p><strong>Instituição apoiada:</strong> ${input.institutionName}</p>`
     : ''
   const receiptLine = input.receiptUrl
     ? `<p><a href="${input.receiptUrl}" style="color:#2563eb;font-weight:700;">Ver recibo de pagamento</a></p>`
@@ -53,8 +53,8 @@ export function buildReportPurchaseEmail(input: ReportPurchaseEmailInput) {
           <p><strong>Prazo:</strong> ${pack.delivery}</p>
         </div>
         ${receiptLine}
-        <p>O donativo continua a ser feito diretamente entre empresa e instituicao. Este pagamento diz respeito apenas ao servico de relatorio de impacto.</p>
-        <p style="font-size:12px;color:#64748b;">Esta mensagem e automatica. Para questoes sobre o pedido, responda para geral@leidomecenato.pt.</p>
+        <p>O donativo continua a ser feito diretamente entre empresa e instituição. Este pagamento diz respeito apenas ao serviço de relatório de impacto.</p>
+        <p style="font-size:12px;color:#64748b;">Esta mensagem é automática. Para questões sobre o pedido, responda para geral@leidomecenato.pt.</p>
       </div>
     </div>
   `.trim()
@@ -67,11 +67,11 @@ export function buildReportPurchaseEmail(input: ReportPurchaseEmailInput) {
     '',
     `Pack adquirido: ${pack.title}`,
     `Valor pago: ${input.amountPaid}`,
-    input.institutionName ? `Instituicao apoiada: ${input.institutionName}` : '',
+    input.institutionName ? `Instituição apoiada: ${input.institutionName}` : '',
     `Prazo: ${pack.delivery}`,
     input.receiptUrl ? `Recibo: ${input.receiptUrl}` : 'O recibo sera enviado automaticamente pelo Stripe quando disponivel.',
     '',
-    'O donativo continua a ser feito diretamente entre empresa e instituicao. Este pagamento diz respeito apenas ao servico de relatorio de impacto.',
+    'O donativo continua a ser feito diretamente entre empresa e instituição. Este pagamento diz respeito apenas ao serviço de relatório de impacto.',
   ].filter(Boolean).join('\n')
 
   return { subject, html, text }

@@ -13,7 +13,16 @@ interface Props {
   account?: Account | null
 }
 
-const STEPS = ['Tipo de Donativo', 'Escolher Instituição', 'Necessidades Apoiadas', 'Informações para Donativo', 'Confirmar']
+const STEPS = ['Tipo de Donativo', 'Escolher Projeto', 'Informações para Donativo', 'Confirmar']
+
+const NO_REPORT_TIER = {
+  id: 'sem-relatorio',
+  name: 'Sem Relatório de Impacto',
+  price: 0,
+  features: ['Apenas registo e validação do donativo na plataforma'],
+  highlighted: false,
+  color: 'slate',
+}
 
 const institutionDonationDetails: Record<string, { iban: string; titular: string; email: string; phone: string; reference: string }> = {
   '1':  { iban: 'PT50 0035 0123 0000 1234 5678 9', titular: 'Associação Crescer Juntos', email: 'donativos@crescerjuntos.pt', phone: '+351 265 000 001', reference: 'DON-CRESCER-JUNTOS' },
@@ -77,6 +86,7 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
     activity: account?.role === 'empresa' ? account.companyActivity || '' : '',
   })
   const [selectedTierId, setSelectedTierId] = useState('premium')
+  const [noImpactReport, setNoImpactReport] = useState(false)
   const [proofFile, setProofFile] = useState<{ name: string; dataUrl: string; size: number } | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'card' | 'mbway' | 'transfer'>('stripe')
   const [cardName, setCardName] = useState('')
@@ -97,9 +107,8 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
       if (pending.institutionId) setSelectedInstitutionId(pending.institutionId)
       if (pending.needId) setSelectedNeeds([pending.needId])
       if (pending.donationType) setDonationType(pending.donationType)
-      if (pending.amount) setAmount(pending.amount)
       if (pending.projectCost) setProjectCost(pending.projectCost)
-      setStep(3)
+      setStep(2)
     } catch {
       localStorage.removeItem('leidomecenato_pending_project')
     }
@@ -119,9 +128,10 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
     }
   }, [])
 
-  const tier = REPORT_TIERS.find(t => t.id === selectedTierId)!
+  const wantsImpactReport = !noImpactReport
+  const tier = wantsImpactReport ? REPORT_TIERS.find(t => t.id === selectedTierId)! : NO_REPORT_TIER
   const paymentLink = getReportPaymentLink(selectedTierId)
-  const paymentReady = isPaymentLinkConfigured(selectedTierId)
+  const paymentReady = wantsImpactReport && isPaymentLinkConfigured(selectedTierId)
   const irsDeduction = amount * 1.4
   const ircSavings = irsDeduction * 0.21
   const institutions = listProjectInstitutions()
@@ -138,42 +148,48 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
   const categories = [...new Set(institutions.map(i => i.category))]
   const filtered = categoryFilter ? institutions.filter(i => i.category === categoryFilter) : institutions
   const donationDetails = selectedInstitutionId ? institutionDonationDetails[selectedInstitutionId] : null
+  const projectTitle = (need: NonNullable<typeof institution>['needs'][number]) =>
+    need.projectName || [need.category, need.subcategory].filter(Boolean).join(' › ') || 'Projeto'
+  const projectTarget = (need: NonNullable<typeof institution>['needs'][number]) =>
+    need.requestedAmount || need.totalProjectCost || need.estimatedValue || 0
+  const isProjectForDonationType = (need: NonNullable<typeof institution>['needs'][number]) =>
+    donationType === 'produtos' ? need.supportType === 'produtos' : need.supportType !== 'produtos'
+  const selectProject = (institutionId: string, need: NonNullable<typeof institution>['needs'][number]) => {
+    setSelectedInstitutionId(institutionId)
+    setSelectedNeeds([need.id])
+    setProjectCost(projectTarget(need))
+    setStep(2)
+  }
   const stepGuidance = [
     {
       title: 'Comece pelo tipo de apoio',
-      body: 'Escolha dinheiro, produtos ou servicos para ajustarmos instituicoes, necessidades e comprovativos.',
+      body: 'Escolha dinheiro, produtos ou serviços para ajustarmos projetos e comprovativos.',
     },
     {
-      title: 'Escolha uma entidade elegivel',
-      body: 'Compare instituicoes por area, localizacao, ODS, verificacao e rating de impacto.',
-    },
-    {
-      title: 'Associe o donativo a uma necessidade',
-      body: 'Quanto mais concreta for a necessidade, melhor fica o relatorio de impacto e a comunicacao ESG.',
+      title: 'Escolha o projeto apoiado',
+      body: 'Ao escolher o projeto, assumimos que o apoio incide sobre todas as dimensões descritas na candidatura.',
     },
     {
       title: 'Registe empresa, valor e comprovativos',
-      body: 'O donativo e feito diretamente a instituicao; a plataforma apenas organiza prova e relatorio.',
+      body: 'O donativo é feito diretamente à instituição; a plataforma apenas organiza prova e relatório.',
     },
     {
-      title: 'Confirme e escolha o relatorio',
-      body: 'Revise dados, beneficio fiscal estimado, pagamento do servico e documentos a entregar.',
+      title: 'Confirme e escolha o relatório',
+      body: 'Revise dados, benefício fiscal estimado, pagamento do serviço e documentos a entregar.',
     },
   ]
 
   const canContinue =
     step === 0 ? Boolean(donationType) :
-    step === 1 ? Boolean(selectedInstitutionId) :
-    step === 2 ? selectedNeeds.length > 0 :
-    step === 3 ? Boolean(company.name && company.email && company.nif.length === 9 && company.activity && amount > 0) :
+    step === 1 ? Boolean(selectedInstitutionId && selectedNeeds.length > 0) :
+    step === 2 ? Boolean(company.name && company.email && company.nif.length === 9 && company.activity && amount > 0) :
     true
 
   const nextStep = () => {
     if (!canContinue) {
       const messages = [
         'Escolha o tipo de donativo.',
-        'Selecione uma instituicao.',
-        'Selecione pelo menos uma necessidade apoiada.',
+        'Selecione o projeto que pretende apoiar.',
         'Preencha empresa, NIF, email, setor e valor do donativo.',
       ]
       alert(messages[step] || 'Complete os dados obrigatorios.')
@@ -213,19 +229,23 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
       alert('Selecione o setor de atividade da empresa.')
       return
     }
-    if (paymentMethod === 'stripe' && !paymentReady) {
+    if (wantsImpactReport && paymentMethod === 'stripe' && !paymentReady) {
       alert('Configure primeiro o link de pagamento Stripe para este pacote no ficheiro .env.local.')
       return
     }
-    if (paymentMethod === 'stripe' && !paymentReady) {
+    if (wantsImpactReport && paymentMethod === 'stripe' && !paymentReady) {
       alert('Preencha os dados do cartão para pagar o serviço de relatório.')
       return
     }
-    if (paymentMethod === 'mbway' && !mbwayPhone) {
+    if (wantsImpactReport && paymentMethod === 'mbway' && !mbwayPhone) {
       alert('Indique o número MB WAY para pagar o serviço de relatório.')
       return
     }
-    if (paymentMethod === 'stripe') {
+    if (!proofFile) {
+      alert('Carregue o comprovativo do donativo antes de confirmar. Este documento é obrigatório para a instituição validar o donativo.')
+      return
+    }
+    if (wantsImpactReport && paymentMethod === 'stripe') {
       const contract = buildContract()
       const paymentUrl = buildPaymentUrl(paymentLink, {
         client_reference_id: contract.id,
@@ -293,9 +313,9 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
 
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-8">
           <p className="text-sm text-blue-800 leading-relaxed">
-            <strong>RGPD:</strong> os dados da empresa, contactos, comprovativos e documentos submetidos serao tratados apenas
-            para gerir o donativo, permitir validacao pela instituicao, produzir o relatorio de impacto e cumprir obrigacoes
-            legais aplicaveis. Evite carregar dados pessoais que nao sejam necessarios.
+            <strong>RGPD:</strong> os dados da empresa, contactos, comprovativos e documentos submetidos serão tratados apenas
+            para gerir o donativo, permitir validação pela instituição, produzir o relatório de impacto e cumprir obrigações
+            legais aplicáveis. Evite carregar dados pessoais que não sejam necessários.
           </p>
         </div>
 
@@ -304,10 +324,10 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
           <div className="mb-6 grid gap-6 lg:grid-cols-[1fr_320px]">
             <div>
               <p className="mb-2 text-xs font-black uppercase tracking-wide text-blue-600">Fluxo guiado para empresas</p>
-              <h1 className="text-3xl font-black text-slate-900 mb-3">Pedir Relatorio de Impacto do Donativo</h1>
+              <h1 className="text-3xl font-black text-slate-900 mb-3">Pedir Relatório de Impacto do Donativo</h1>
               <p className="text-slate-500 text-sm">
-                Registe um donativo feito ou planeado, associe-o a uma necessidade concreta e escolha o nivel de relatorio.
-                <strong> Nao processamos donativos.</strong> O valor e transferido diretamente para a instituicao.
+                Registe um donativo feito ou planeado, associe-o a uma necessidade concreta e escolha o nível de relatório.
+                <strong> Não processamos donativos.</strong> O valor é transferido diretamente para a instituição.
               </p>
             </div>
             <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
@@ -366,7 +386,7 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
         {/* STEP 1: Institution */}
         {step === 1 && (
           <div>
-            <p className="text-slate-500 text-sm mb-4">Selecione a instituição que recebeu (ou vai receber) o donativo.</p>
+            <p className="text-slate-500 text-sm mb-4">Selecione o projeto que recebeu (ou vai receber) o donativo. Ao escolher o projeto, o apoio fica associado a todas as dimensões da respetiva candidatura.</p>
             <div className="flex gap-4 mb-6 flex-wrap">
               <button onClick={() => setCategoryFilter('')} className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${!categoryFilter ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-blue-300'}`}>Todas</button>
               {categories.map(c => (
@@ -374,9 +394,14 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
               ))}
             </div>
             <div className="grid md:grid-cols-2 gap-5">
-              {filtered.map(inst => (
-                <div key={inst.id} onClick={() => { setSelectedInstitutionId(inst.id); setSelectedNeeds([]) }}
-                  className={`bg-white rounded-2xl shadow-sm border-2 cursor-pointer transition overflow-hidden ${selectedInstitutionId === inst.id ? 'border-blue-500 ring-2 ring-blue-200' : 'border-slate-200 hover:border-blue-300'}`}>
+              {filtered.flatMap(inst =>
+                inst.needs
+                  .filter(need => need.status !== 'concluido' && need.status !== 'inativo' && need.implementationPhase !== 'inativo' && isProjectForDonationType(need))
+                  .map(need => {
+                    const isSelected = selectedInstitutionId === inst.id && selectedNeeds.includes(need.id)
+                    return (
+                <button key={`${inst.id}-${need.id}`} onClick={() => selectProject(inst.id, need)}
+                  className={`bg-white rounded-2xl shadow-sm border-2 cursor-pointer transition overflow-hidden text-left ${isSelected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-slate-200 hover:border-blue-300'}`}>
                   <div className="bg-slate-800 px-5 py-4 flex items-center gap-3">
                     <span className="text-3xl">{inst.logo}</span>
                     <div className="flex-1 min-w-0">
@@ -387,28 +412,30 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
                     {inst.verified && <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full font-bold">✓</span>}
                   </div>
                   <div className="p-5">
-                    <p className="text-slate-500 text-xs mb-4 line-clamp-2">{inst.description}</p>
-                    <div className="flex justify-around mb-4">
-                      <ScoreRing value={inst.esgScore.environmental} color="#16a34a" label="E" />
-                      <ScoreRing value={inst.esgScore.social} color="#2563eb" label="S" />
-                      <ScoreRing value={inst.esgScore.governance} color="#7c3aed" label="G" />
-                      <ScoreRing value={inst.esgScore.total} color="#0f172a" label="T" />
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {inst.esgScore.sdgAlignment.slice(0, 5).map(sdg => (
+                    <p className="text-xs font-black uppercase tracking-wide text-blue-600 mb-2">Projeto</p>
+                    <h3 className="font-black text-slate-900 mb-2">{projectTitle(need)}</h3>
+                    <p className="text-slate-500 text-xs mb-4 line-clamp-3">{need.executiveSummary || need.description}</p>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {need.sdgGoals.slice(0, 5).map(sdg => (
                         <SdgIcon key={sdg} n={sdg} size="sm" className="rounded-md" />
                       ))}
                     </div>
+                    <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
+                      <strong>{donationType === 'produtos' ? 'Produto/serviço:' : 'Custo/valor do projeto:'}</strong>{' '}
+                      {donationType === 'produtos' ? need.productOrService || 'Produto/serviço indicado na candidatura' : `€ ${projectTarget(need).toLocaleString('pt-PT')}`}
+                    </div>
                   </div>
-                </div>
-              ))}
+                </button>
+                    )
+                  })
+              )}
             </div>
 
           </div>
         )}
 
-        {/* STEP 2: Needs */}
-        {step === 2 && institution && (
+        {/* STEP 2 antigo removido: o projeto escolhido já agrega todas as dimensões da candidatura. */}
+        {false && step === 2 && institution && (
           <div>
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
               <div className="flex items-center gap-4">
@@ -460,8 +487,8 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
           </div>
         )}
 
-        {/* STEP 3: Company + Report tier */}
-        {step === 3 && (
+        {/* STEP 2: Company + Report tier */}
+        {step === 2 && (
           <div className="space-y-6">
             {institution && donationDetails && (
               <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6">
@@ -575,14 +602,19 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
           </div>
         )}
 
-        {/* STEP 4: Confirm */}
-        {step === 4 && (
+        {/* STEP 3: Confirm */}
+        {step === 3 && (
           <div className="space-y-6">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
               <h2 className="text-xl font-bold text-slate-800 mb-6">✅ Confirmar</h2>
 
               <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4 mb-6">
-                <p className="text-green-800 text-sm"><strong>✅ O donativo de € {amount.toLocaleString('pt-PT')} irá 100% para a instituição.</strong> Paga apenas € {tier.price.toLocaleString()} pelo serviço de relatório de impacto do donativo.</p>
+                <p className="text-green-800 text-sm">
+                  <strong>✅ O donativo de € {amount.toLocaleString('pt-PT')} irá 100% para a instituição.</strong>
+                  {wantsImpactReport
+                    ? <> Paga apenas € {tier.price.toLocaleString()} pelo serviço de relatório de impacto do donativo.</>
+                    : <> Não será contratado Relatório de Impacto.</>}
+                </p>
               </div>
 
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
@@ -595,8 +627,8 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
                   {REPORT_TIERS.map(t => {
                     const colors: Record<string, string> = { slate: 'border-slate-300', blue: 'border-blue-500 ring-2 ring-blue-100', purple: 'border-purple-300' }
                     return (
-                      <div key={t.id} onClick={() => setSelectedTierId(t.id)}
-                        className={`rounded-2xl border-2 cursor-pointer p-4 transition relative ${selectedTierId === t.id ? colors[t.color] : 'border-slate-200 hover:border-slate-300'}`}>
+                      <div key={t.id} onClick={() => { setSelectedTierId(t.id); setNoImpactReport(false) }}
+                        className={`rounded-2xl border-2 cursor-pointer p-4 transition relative ${!noImpactReport && selectedTierId === t.id ? colors[t.color] : 'border-slate-200 hover:border-slate-300'}`}>
                         {t.highlighted && <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-3 py-0.5 rounded-full text-xs font-bold">Popular</div>}
                         <h4 className="font-bold text-sm">{t.name}</h4>
                         <p className="text-xl font-black mt-1">€ {t.price.toLocaleString()}</p>
@@ -610,18 +642,32 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
                     )
                   })}
                 </div>
+                <label className={`mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-4 transition ${noImpactReport ? 'border-slate-700 bg-slate-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                  <input
+                    type="checkbox"
+                    checked={noImpactReport}
+                    onChange={e => setNoImpactReport(e.target.checked)}
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="block text-sm font-black text-slate-900">Não pretendo Relatório de Impacto</span>
+                    <span className="mt-1 block text-xs text-slate-500">
+                      O donativo fica registado e disponível para validação pela instituição, sem contratação do serviço de relatório.
+                    </span>
+                  </span>
+                </label>
               </div>
 
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-6">
-                <h3 className="font-bold text-blue-800 mb-2">📎 Comprovativo de transferência (opcional)</h3>
+                <h3 className="font-bold text-blue-800 mb-2">📎 Comprovativo do donativo *</h3>
                 <p className="text-blue-700 text-sm mb-4">
-                  Se já efetuou o donativo, pode anexar aqui o comprovativo de transferência. Este documento ficará disponível na área privada e ajuda a instituição a validar o donativo mais rapidamente.
+                  Carregue o comprovativo de transferência, fatura ou documento equivalente. Este documento é obrigatório, ficará disponível na área privada da instituição beneficiária e será usado para validar o donativo.
                 </p>
                 <label className="flex items-center gap-3 bg-white border-2 border-dashed border-blue-300 rounded-xl p-4 cursor-pointer hover:bg-blue-50 transition">
                   <span className="text-2xl">📄</span>
                   <div className="flex-1">
                     <p className="font-bold text-slate-800 text-sm">
-                      {proofFile ? proofFile.name : 'Carregar comprovativo'}
+                      {proofFile ? proofFile.name : 'Carregar comprovativo obrigatório'}
                     </p>
                     <p className="text-xs text-slate-500">
                       {proofFile ? `${(proofFile.size / 1024).toFixed(1)} KB` : 'PDF, JPG ou PNG'}
@@ -653,12 +699,12 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
 
               {selectedNeeds.length > 0 && (
                 <div className="mb-6">
-                  <h3 className="font-bold text-slate-700 mb-3 text-sm">Necessidades Apoiadas</h3>
+                  <h3 className="font-bold text-slate-700 mb-3 text-sm">Projeto apoiado</h3>
                   <div className="space-y-2">
                     {institution?.needs.filter(n => selectedNeeds.includes(n.id)).map(n => (
                       <div key={n.id} className={`flex items-center gap-3 p-3 rounded-xl text-sm ${esgPillarInfo[n.esgPillar].bg}`}>
                         <span className={`font-bold text-xs px-2 py-0.5 rounded ${esgPillarInfo[n.esgPillar].bg} ${esgPillarInfo[n.esgPillar].text}`}>{n.esgPillar}</span>
-                        <span className="text-slate-700">{n.category} › {n.subcategory}</span>
+                        <span className="text-slate-700">{projectTitle(n)}</span>
                       </div>
                     ))}
                   </div>
@@ -681,6 +727,7 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
                 </div>
               </div>
 
+              {wantsImpactReport && (
               <div className="bg-purple-50 border border-purple-200 rounded-2xl p-5 mb-6">
                 <h3 className="font-bold text-purple-800 mb-4">Pagamento</h3>
                 <div className="bg-white rounded-xl border border-purple-200 p-4 mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -730,11 +777,11 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
 
                 {paymentMethod === 'stripe' && (
                   <div className={`rounded-xl border p-4 text-sm ${paymentReady ? 'border-green-200 bg-green-50 text-green-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
-                    <p className="font-black mb-1">Pagamento seguro do relatorio</p>
+                    <p className="font-black mb-1">Pagamento seguro do relatório</p>
                     <p>
                       {paymentReady
                         ? 'Ao confirmar, a empresa sera encaminhada para o checkout seguro configurado para este pacote.'
-                        : 'Falta configurar o Payment Link deste pacote no .env.local. Depois de configurado, este botao abre pagamento real.'}
+                        : 'Falta configurar o Payment Link deste pacote no .env.local. Depois de configurado, este botão abre pagamento real.'}
                     </p>
                   </div>
                 )}
@@ -766,15 +813,23 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
                   </div>
                 )}
               </div>
+              )}
 
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-6">
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  <strong>Nota:</strong> Após pagamento, o Relatório de Impacto é entregue no prazo de <strong>10 dias úteis</strong> após tanto a empresa como a instituição confirmarem o donativo e colocarem na plataforma o comprovativo de transferência (no caso de ser um donativo em dinheiro) ou a fatura (quando se tratar de produtos/serviços), juntamente com o respetivo recibo emitido pela Instituição recetora ao abrigo da Lei do Mecenato.
+                  <strong>Nota:</strong> {wantsImpactReport
+                    ? <>Após pagamento, o Relatório de Impacto é entregue no prazo de <strong>10 dias úteis</strong> após tanto a empresa como a instituição confirmarem o donativo e colocarem na plataforma o comprovativo de transferência (no caso de ser um donativo em dinheiro) ou a fatura (quando se tratar de produtos/serviços), juntamente com o respetivo recibo emitido pela Instituição recetora ao abrigo da Lei do Mecenato.</>
+                    : <>Ao não contratar Relatório de Impacto, o donativo fica apenas registado para validação pela instituição beneficiária, com comprovativo e recibo associados.</>}
                 </p>
               </div>
 
-              <button onClick={handleConfirm} disabled={processing}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 text-white font-black py-5 rounded-2xl text-lg transition flex items-center justify-center gap-3">
+              {!proofFile && (
+                <p className="mb-3 text-center text-sm font-semibold text-amber-700">
+                  Carregue o comprovativo obrigatório para confirmar o donativo.
+                </p>
+              )}
+              <button onClick={handleConfirm} disabled={processing || !proofFile}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 text-white font-black py-5 rounded-2xl text-lg transition flex items-center justify-center gap-3">
                 {processing ? <><span className="animate-spin text-2xl">⏳</span> A processar...</> : <>✅ Confirmar</>}
               </button>
             </div>

@@ -56,12 +56,14 @@ function action(view: ViewType, label: string) {
 }
 
 export function createDonationIntentNotification(contract: ImpactContract, institutionAccountId?: string) {
-  const kind = contract.donationType === 'dinheiro' ? 'em dinheiro' : 'em produtos/serviços'
-  const title = `Nova intenção de donativo ${kind}`
-  const body = `
-A empresa ${contract.company} (NIF ${contract.nif}) manifestou intenção de efetuar um donativo ${kind} à instituição ${contract.institutionName}, no valor estimado de €${contract.donationAmount.toLocaleString('pt-PT')}.
+  if (!institutionAccountId) return null
 
-O donativo deve ser realizado diretamente entre a empresa mecenas e a instituição beneficiária. A plataforma Lei do Mecenato não processa nem retém qualquer valor do donativo.
+  const kind = contract.donationType === 'dinheiro' ? 'em dinheiro' : 'em produtos/serviços'
+  const title = `Novo donativo ${kind} para validação`
+  const body = `
+A empresa ${contract.company} (NIF ${contract.nif}) submeteu um donativo ${kind} à instituição ${contract.institutionName}, no valor indicado de €${contract.donationAmount.toLocaleString('pt-PT')}, com comprovativo de transferência/documento associado.
+
+O comprovativo está disponível na aba "Donativos" da área privada. Para validar o donativo, a instituição deve confirmar o valor recebido e submeter o recibo/declaração de donativo ao abrigo da Lei do Mecenato.
 
 Após receção do donativo, a instituição deverá:
 
@@ -88,11 +90,13 @@ O recibo/declaração de donativo deve incluir:
     title,
     body,
     relatedContractId: contract.id,
-    ...action('comprovativos' as ViewType, 'Ver comprovativos'),
+    ...action('area-privada' as ViewType, 'Ver donativo'),
   })
 }
 
 export function createCompanyDonationRegisteredNotification(contract: ImpactContract, companyAccountId?: string) {
+  if (!companyAccountId) return null
+
   return createNotification({
     recipientAccountId: companyAccountId,
     recipientRole: 'empresa',

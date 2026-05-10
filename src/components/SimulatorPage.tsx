@@ -377,9 +377,9 @@ export default function SimulatorPage({ setCurrentView }: Props) {
           <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
               <p className="mb-2 text-xs font-black uppercase tracking-wide text-blue-600">Proximo passo</p>
-              <h2 className="text-2xl font-black text-slate-900">Use esta simulacao para escolher uma instituicao.</h2>
+              <h2 className="text-2xl font-black text-slate-900">Use esta simulação para escolher uma instituição.</h2>
               <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                Com um donativo de EUR {amount.toLocaleString('pt-PT')}, a deducao fiscal estimada e EUR {deduction.toLocaleString('pt-PT')}
+                Com um donativo de EUR {amount.toLocaleString('pt-PT')}, a dedução fiscal estimada é EUR {deduction.toLocaleString('pt-PT')}
                 e a poupanca em IRC pode chegar a EUR {ircSavings.toFixed(0)}. Agora associe o valor a um projeto real e gere prova de impacto.
               </p>
             </div>

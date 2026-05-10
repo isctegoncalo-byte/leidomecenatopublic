@@ -29,7 +29,7 @@ export function getThreadByContractId(contractId: string): ChatThread | null {
 
 export function listThreadsForAccount(account: Account): ChatThread[] {
   return listThreads()
-    .filter(t => t.companyAccountId === account.id || t.institutionAccountId === account.id || t.institutionName === account.name)
+    .filter(t => t.companyAccountId === account.id || t.institutionAccountId === account.id)
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
 }
 

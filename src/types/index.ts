@@ -55,11 +55,15 @@ export interface DonationProof {
   // Mantidos como opcionais para compatibilidade com versões antigas guardadas em localStorage.
   accessCode?: string
   companyAccountId: string
+  companyName?: string
+  companyNif?: string
+  companyEmail?: string
   institutionAccountId?: string
   institutionName: string
   donationType?: DonationType
   selectedNeedIds?: string[]
   amount: number
+  projectCost?: number
   confirmedAmount?: number
   companyConfirmedAmount?: number
   institutionConfirmedAmount?: number
@@ -161,15 +165,23 @@ export interface NeedItem {
   id: string
   // Campos opcionais mantidos para compatibilidade com versões anteriores.
   supportType?: 'dinheiro' | 'produtos'
-  status?: 'ativo' | 'concluido'
-  implementationPhase?: 'candidatura' | 'a-decorrer'
+  status?: 'ativo' | 'concluido' | 'inativo'
+  implementationPhase?: 'candidatura' | 'a-decorrer' | 'inativo'
+  projectName?: string
   category: string
   subcategory: string
   description: string
+  executiveSummary?: string
+  rationale?: string
+  targetPopulation?: string
+  targetPopulationOther?: string
+  objectives?: string
   quantity?: string
   projectPhotoUrls?: string[]
   requestedAmount?: number
   productOrService?: string
+  productOrServiceCategory?: string
+  productOrServiceOther?: string
   totalProjectCost?: number
   securedFunding?: number
   estimatedValue?: number
@@ -178,6 +190,27 @@ export interface NeedItem {
   esgPillar: ESGPillar
   impactMetric: string
   beneficiaries?: number
+  projectStartDate?: string
+  projectEndDate?: string
+  continuousProject?: boolean
+  territorialScope?: {
+    national?: boolean
+    districtLevel?: boolean
+    districts?: string[]
+    municipalities?: string[]
+  }
+  professionalsInvolved?: number
+  disclosureMethods?: string[]
+  disclosureOther?: string
+  disclosurePlan?: string
+  resultsPresentation?: string
+  responsiblePerson?: string
+  donationContactPerson?: string
+  publicEmail?: string
+  publicContacts?: string
+  publicSocialLinks?: string
+  publicWebsite?: string
+  customKpis?: string[]
   generalImpactMetrics?: GeneralImpactMetrics
   odsImpactMetrics?: Record<number, Record<string, string | number>>
 }
@@ -192,6 +225,7 @@ export interface GeneralImpactMetrics {
 }
 
 export interface InstitutionRegistration {
+  accountId?: string
   name: string
   legalName: string
   nif: string

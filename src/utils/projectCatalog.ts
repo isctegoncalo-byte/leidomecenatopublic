@@ -19,7 +19,7 @@ function slugify(value: string) {
 function registrationToInstitution(reg: ReturnType<typeof listInstitutionRegistrations>[number], index: number): Institution {
   const sdgAlignment = [...new Set(reg.needs.flatMap(n => n.sdgGoals))]
   return {
-    id: `reg-${reg.nif || index}`,
+    id: reg.accountId || `reg-${reg.nif || index}`,
     name: reg.name,
     legalName: reg.legalName,
     category: reg.category || 'Instituição',

@@ -15,9 +15,12 @@ export default function MecenatoLawPage({ setCurrentView }: Props) {
           <p className="text-sm font-bold uppercase tracking-wide text-blue-300 mb-3">Resumo legal</p>
           <h1 className="text-4xl md:text-5xl font-black mb-5">Lei do Mecenato</h1>
           <p className="text-lg text-slate-300 leading-relaxed max-w-3xl">
-            O regime fiscal do mecenato está previsto no Capítulo X do Estatuto dos Benefícios Fiscais,
-            nos artigos 61.º a 66.º. Em termos simples, permite enquadrar donativos sem contrapartidas
-            a entidades elegíveis, com benefícios fiscais para mecenas e obrigações documentais para as entidades beneficiárias.
+            Em Portugal, o enquadramento fiscal do mecenato consta do Capítulo X do Estatuto dos Benefícios Fiscais,
+            relativo aos benefícios fiscais aplicáveis a determinados donativos. Para efeitos fiscais, o donativo
+            corresponde a uma entrega em dinheiro ou em espécie, sem contrapartidas de natureza pecuniária ou comercial,
+            efetuada a entidades legalmente elegíveis. No caso das empresas, o artigo 62.º do EBF regula as condições
+            em que estes donativos podem ser considerados para efeitos de IRC, incluindo majorações e limites que dependem
+            da entidade beneficiária, da finalidade do apoio e da documentação emitida.
           </p>
         </div>
       </section>
@@ -26,10 +29,10 @@ export default function MecenatoLawPage({ setCurrentView }: Props) {
         <div className="container mx-auto px-4 max-w-5xl">
           <div className="mb-8 grid gap-4 md:grid-cols-4">
             {[
-              ['1. Elegibilidade', 'Confirmar entidade beneficiaria, finalidade do donativo e ausencia de contrapartida comercial.'],
-              ['2. Documento', 'Recolher recibo/comprovativo com NIF, valor, data, enquadramento legal e declaracao da entidade.'],
-              ['3. Beneficio', 'Simular majoracao, limites aplicaveis e efeito estimado no IRC com o contabilista.'],
-              ['4. Impacto', 'Registar evidencia, metricas, ODS e narrativa para relatorio ESG e comunicacao.'],
+              ['1. Elegibilidade', 'Confirmar entidade beneficiária, finalidade do donativo e ausência de contrapartida comercial.'],
+              ['2. Documento', 'Recolher recibo/comprovativo com NIF, valor, data, enquadramento legal e declaração da entidade.'],
+              ['3. Benefício', 'Simular majoração, limites aplicáveis e efeito estimado no IRC com o contabilista.'],
+              ['4. Impacto', 'Registar evidência, métricas, ODS e narrativa para relatório ESG e comunicação.'],
             ].map(([title, body]) => (
               <div key={title} className="rounded-2xl border border-slate-200 bg-white p-5">
                 <h2 className="mb-2 text-sm font-black text-slate-900">{title}</h2>
@@ -40,7 +43,7 @@ export default function MecenatoLawPage({ setCurrentView }: Props) {
 
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 md:p-8">
-              <h2 className="text-2xl font-black text-slate-900 mb-5">O essencial, sem juridiquês</h2>
+              <h2 className="text-2xl font-black text-slate-900 mb-5">Enquadramento fiscal essencial</h2>
               <div className="space-y-5">
                 <InfoBlock
                   title="O que é um donativo"
@@ -65,15 +68,15 @@ export default function MecenatoLawPage({ setCurrentView }: Props) {
               </div>
 
               <div className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <h3 className="mb-4 text-lg font-black text-slate-900">Checklist pratica para empresas</h3>
+                <h3 className="mb-4 text-lg font-black text-slate-900">Checklist prática para empresas</h3>
                 <div className="grid gap-3 md:grid-cols-2">
                   {[
-                    'Confirmar NIF e natureza juridica da instituicao.',
-                    'Guardar comprovativo bancario ou fatura dos bens/servicos doados.',
-                    'Pedir recibo/documento fiscal da entidade beneficiaria.',
-                    'Confirmar que nao existe contrapartida publicitaria equivalente.',
-                    'Arquivar finalidade, projeto, ODS e metricas de impacto.',
-                    'Validar majoracao e limites com contabilista certificado.',
+                    'Confirmar NIF e natureza jurídica da instituição.',
+                    'Guardar comprovativo bancário ou fatura dos bens/serviços doados.',
+                    'Pedir recibo/documento fiscal da entidade beneficiária.',
+                    'Confirmar que não existe contrapartida publicitária equivalente.',
+                    'Arquivar finalidade, projeto, ODS e métricas de impacto.',
+                    'Validar majoração e limites com contabilista certificado.',
                   ].map(item => (
                     <div key={item} className="rounded-xl bg-white p-3 text-sm font-semibold text-slate-700">
                       {item}
@@ -87,7 +90,7 @@ export default function MecenatoLawPage({ setCurrentView }: Props) {
               <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
                 <h3 className="font-black text-blue-900 mb-2">Fonte oficial</h3>
                 <p className="text-sm text-blue-800 mb-4">
-                  Consulta a redação em vigor no Portal das Finanças.
+                  Consulte a redação em vigor no Portal das Finanças.
                 </p>
                 <div className="space-y-2">
                   <a href={ebfIndexUrl} target="_blank" rel="noreferrer" className="block rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700">

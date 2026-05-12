@@ -1,6 +1,8 @@
 import { DonationProof } from '../types'
+import { listProjectInstitutions } from './projectCatalog'
 
 const PROOFS_KEY = 'leidomecenato_proofs'
+const ZAPIER_ESG_REPORT_WEBHOOK = 'https://hooks.zapier.com/hooks/catch/27566905/4ykwk2i/'
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -100,12 +102,63 @@ export function rejectProof(id: string) {
   saveProof(proof)
 }
 
+function selectedProjectsForProof(proof: DonationProof) {
+  const selectedNeedIds = new Set(proof.selectedNeedIds || [])
+  const institutionName = proof.institutionName.trim().toLowerCase()
+
+  return listProjectInstitutions()
+    .filter(institution =>
+      institution.id === proof.institutionAccountId ||
+      institution.name.trim().toLowerCase() === institutionName ||
+      institution.legalName.trim().toLowerCase() === institutionName
+    )
+    .flatMap(institution =>
+      institution.needs
+        .filter(project => selectedNeedIds.size === 0 || selectedNeedIds.has(project.id))
+        .map(project => ({
+          institution: {
+            id: institution.id,
+            name: institution.name,
+            legalName: institution.legalName,
+            category: institution.category,
+            description: institution.description,
+            mission: institution.mission,
+            municipality: institution.municipality,
+            district: institution.district,
+            peopleReachedPerYear: institution.peopleReachedPerYear,
+            volunteers: institution.volunteers,
+            fullTimeStaff: institution.fullTimeStaff,
+            annualBudget: institution.annualBudget,
+            utilidadePublica: institution.utilidadePublica,
+            verified: institution.verified,
+          },
+          project,
+        }))
+    )
+}
+
+function sendZapierReportWebhook(proof: DonationProof) {
+  fetch(ZAPIER_ESG_REPORT_WEBHOOK, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      event: 'donation_confirmed_for_esg_report',
+      proof,
+      projects: selectedProjectsForProof(proof),
+    }),
+  }).catch(err => console.log('Webhook enviado'))
+}
+
 function recomputeStatus(proof: DonationProof) {
   if (proof.companyConfirmed && proof.institutionConfirmed) {
     proof.status = 'confirmed'
     proof.confirmedAmount = proof.institutionConfirmedAmount || proof.companyConfirmedAmount || proof.confirmedAmount || proof.amount
     if (!proof.confirmedAt) {
       proof.confirmedAt = new Date().toISOString()
+    }
+    // Disparar webhook para Zapier gerar relatório ESG
+    if (proof.status === 'confirmed') {
+      sendZapierReportWebhook(proof)
     }
   } else if (proof.companyConfirmed && !proof.institutionConfirmed) {
     proof.status = 'pending-institution'

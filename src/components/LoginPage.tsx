@@ -200,16 +200,6 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
                   : 'Acede à área privada para gerir documentos, donativos e comprovativos.'}
             </p>
 
-            <div className={`mb-5 rounded-xl border p-3 text-xs font-semibold ${
-              realBackendEnabled()
-                ? 'border-green-200 bg-green-50 text-green-700'
-                : 'border-amber-200 bg-amber-50 text-amber-700'
-            }`}>
-              {realBackendEnabled()
-                ? 'Supabase ativo: contas reais usam a base real.'
-                : 'Modo local: falta configurar o ficheiro .env do Supabase.'}
-            </div>
-
             <div className="grid grid-cols-2 gap-2 mb-6 bg-slate-100 rounded-xl p-1">
               <button
                 onClick={() => resetMode('login')}

@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { ViewType, REPORT_TIERS } from '../types'
+import { ViewType, REPORT_TIERS, Institution, NeedItem } from '../types'
 import PartnersBar from './PartnersBar'
-import { sampleInstitutions } from '../data/institutions'
 import SdgIcon from './SdgIcon'
+import { SDG_DATA } from '../data/sdgs'
 import { activeProjects, projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
 import { listProofs } from '../utils/proofStore'
-import { projectSlug } from '../utils/projectCatalog'
+import { listProjectInstitutions, projectSlug } from '../utils/projectCatalog'
 
 interface Props {
   setCurrentView: (v: ViewType) => void
@@ -19,7 +19,9 @@ export default function HomePage({ setCurrentView }: Props) {
   const [productPage, setProductPage] = useState(0)
   const [institutionSearch, setInstitutionSearch] = useState('')
   const [selectedDistrict, setSelectedDistrict] = useState('')
+  const [selectedSdg, setSelectedSdg] = useState('')
   const proofs = listProofs()
+  const institutions = listProjectInstitutions()
   const pageSize = 6
 
   const tier = REPORT_TIERS.find(t => t.id === selectedTier)!
@@ -32,32 +34,39 @@ export default function HomePage({ setCurrentView }: Props) {
     'sensores', 'software', 'kit', 'kits', 'árvores', 'canis', 'painéis', 'estantes',
   ]
 
-  const projectTitle = (need: typeof sampleInstitutions[number]['needs'][number]) =>
+  const scrollToProjects = () => {
+    document.getElementById('projetos-para-apoiar')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const projectTitle = (need: NeedItem) =>
     need.projectName || [need.category, need.subcategory].filter(Boolean).join(' › ') || 'Projeto'
 
-  const isProductOrServiceNeed = (need: typeof sampleInstitutions[number]['needs'][number]) => {
+  const isProductOrServiceNeed = (need: NeedItem) => {
     if (need.supportType === 'produtos') return true
     if (need.supportType === 'dinheiro') return false
     const text = `${need.category} ${need.subcategory} ${need.description} ${need.quantity || ''}`.toLowerCase()
     return productNeedKeywords.some(keyword => text.includes(keyword))
   }
 
-  const sortByName = (items: typeof sampleInstitutions) =>
+  const sortByName = (items: Institution[]) =>
     [...items].sort((a, b) => a.name.localeCompare(b.name, 'pt-PT'))
 
-  const matchesInstitutionSearch = (inst: typeof sampleInstitutions[number]) => {
+  const matchesInstitutionSearch = (inst: Institution) => {
     const term = institutionSearch.trim().toLowerCase()
     if (!term) return true
-    return `${inst.name} ${inst.legalName} ${inst.category} ${inst.municipality} ${inst.district}`.toLowerCase().includes(term)
+    const projectText = inst.needs.map(need => `${need.projectName || ''} ${need.category} ${need.subcategory} ${need.description}`).join(' ')
+    return `${inst.name} ${inst.legalName} ${inst.category} ${inst.municipality} ${inst.district} ${projectText}`.toLowerCase().includes(term)
   }
 
-  const allDistricts = [...new Set(sampleInstitutions.map(inst => inst.district).filter(Boolean))]
+  const allDistricts = [...new Set(institutions.map(inst => inst.district).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, 'pt-PT'))
-  const matchesDistrict = (inst: typeof sampleInstitutions[number]) =>
+  const matchesDistrict = (inst: Institution) =>
     !selectedDistrict || inst.district === selectedDistrict
+  const matchesSdg = (need: NeedItem) =>
+    !selectedSdg || need.sdgGoals.includes(Number(selectedSdg))
 
-  const moneyInstitutions = sortByName(sampleInstitutions.filter(inst => matchesInstitutionSearch(inst) && matchesDistrict(inst) && activeProjects(inst.needs, proofs, inst.name).some(need => !isProductOrServiceNeed(need))))
-  const productInstitutions = sortByName(sampleInstitutions.filter(inst => matchesInstitutionSearch(inst) && matchesDistrict(inst) && activeProjects(inst.needs, proofs, inst.name).some(isProductOrServiceNeed)))
+  const moneyInstitutions = sortByName(institutions.filter(inst => matchesInstitutionSearch(inst) && matchesDistrict(inst) && activeProjects(inst.needs, proofs, inst.name).some(need => matchesSdg(need) && !isProductOrServiceNeed(need))))
+  const productInstitutions = sortByName(institutions.filter(inst => matchesInstitutionSearch(inst) && matchesDistrict(inst) && activeProjects(inst.needs, proofs, inst.name).some(need => matchesSdg(need) && isProductOrServiceNeed(need))))
 
   const pagedMoney = moneyInstitutions.slice(moneyPage * pageSize, (moneyPage + 1) * pageSize)
   const pagedProduct = productInstitutions.slice(productPage * pageSize, (productPage + 1) * pageSize)
@@ -82,8 +91,10 @@ export default function HomePage({ setCurrentView }: Props) {
     )
   }
 
-  const InstitutionMiniCard = ({ inst, mode }: { inst: typeof sampleInstitutions[number]; mode: 'money' | 'product' }) => {
-    const needs = inst.needs.filter(need => mode === 'product' ? isProductOrServiceNeed(need) : !isProductOrServiceNeed(need)).slice(0, 1)
+  const InstitutionMiniCard = ({ inst, mode }: { inst: Institution; mode: 'money' | 'product' }) => {
+    const needs = activeProjects(inst.needs, proofs, inst.name)
+      .filter(need => matchesSdg(need) && (mode === 'product' ? isProductOrServiceNeed(need) : !isProductOrServiceNeed(need)))
+      .slice(0, 1)
     const firstNeed = needs[0]
     const openFirstProject = () => {
       if (!firstNeed) return
@@ -136,8 +147,9 @@ export default function HomePage({ setCurrentView }: Props) {
     )
   }
 
-  const InstitutionProfileCard = ({ inst, mode }: { inst: typeof sampleInstitutions[number]; mode: 'money' | 'product' }) => {
-    const filteredNeeds = activeProjects(inst.needs, proofs, inst.name).filter(need => mode === 'product' ? isProductOrServiceNeed(need) : !isProductOrServiceNeed(need))
+  const InstitutionProfileCard = ({ inst, mode }: { inst: Institution; mode: 'money' | 'product' }) => {
+    const filteredNeeds = activeProjects(inst.needs, proofs, inst.name)
+      .filter(need => matchesSdg(need) && (mode === 'product' ? isProductOrServiceNeed(need) : !isProductOrServiceNeed(need)))
     const topNeeds = filteredNeeds.slice(0, 2)
     const mainNeed = topNeeds[0]
     const openProject = (needId: string) => {
@@ -304,7 +316,7 @@ export default function HomePage({ setCurrentView }: Props) {
                   className="bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-black py-4 px-8 rounded-2xl text-base transition shadow-2xl">
                   Simular benefício fiscal
                 </button>
-                <button onClick={() => setCurrentView('empresa')}
+                <button onClick={scrollToProjects}
                   className="bg-white/10 hover:bg-white/15 text-white font-black py-4 px-8 rounded-2xl text-base transition border border-white/20">
                   Encontrar projeto para apoiar
                 </button>
@@ -409,7 +421,7 @@ export default function HomePage({ setCurrentView }: Props) {
       {/* ═══════════════════════════════════════════════
           2. INSTITUIÇÕES + TIPO DE NECESSIDADE
       ═══════════════════════════════════════════════ */}
-      <section className="py-16 bg-white border-b border-slate-100">
+      <section id="projetos-para-apoiar" className="scroll-mt-24 py-16 bg-white border-b border-slate-100">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-10">
@@ -426,7 +438,7 @@ export default function HomePage({ setCurrentView }: Props) {
                   Perfis ESG
                 </button>
               </div>
-              <div className="mx-auto mt-5 grid max-w-3xl gap-3 md:grid-cols-[1fr_220px]">
+              <div className="mx-auto mt-5 grid max-w-5xl gap-3 md:grid-cols-[1fr_220px_260px]">
                 <div>
                   <label className="sr-only" htmlFor="institution-search">Pesquisar instituição</label>
                   <input
@@ -455,6 +467,22 @@ export default function HomePage({ setCurrentView }: Props) {
                   >
                     <option value="">Todos os distritos</option>
                     {allDistricts.map(district => <option key={district} value={district}>{district}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="sr-only" htmlFor="sdg-filter">Filtrar por ODS</label>
+                  <select
+                    id="sdg-filter"
+                    value={selectedSdg}
+                    onChange={e => {
+                      setSelectedSdg(e.target.value)
+                      setMoneyPage(0)
+                      setProductPage(0)
+                    }}
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  >
+                    <option value="">Todos os ODS</option>
+                    {SDG_DATA.map(sdg => <option key={sdg.n} value={sdg.n}>ODS {sdg.n} - {sdg.fullLabel}</option>)}
                   </select>
                 </div>
               </div>

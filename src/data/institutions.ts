@@ -182,7 +182,7 @@ const score = (
   risks: [],
 })
 
-export const sampleInstitutions: Institution[] = [
+const sampleInstitutionsWithDemoProjects: Institution[] = [
   {
     id: '1',
     name: 'Associação Crescer Juntos',
@@ -1234,3 +1234,14 @@ export const sampleInstitutions: Institution[] = [
     esgScore: score(70, 92, 76, [1, 7, 11], 700, 'Habitação digna e eficiência energética para famílias vulneráveis.'),
   },
 ]
+
+export const sampleInstitutions: Institution[] = sampleInstitutionsWithDemoProjects.map(institution => ({
+  ...institution,
+  needs: [],
+  esgScore: {
+    ...institution.esgScore,
+    sdgAlignment: [],
+    beneficiaries: 0,
+    impactNarrative: '',
+  },
+}))

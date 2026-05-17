@@ -12,22 +12,23 @@ interface Props {
 export default function ImpactStoriesPage({ setCurrentView }: Props) {
   const proofs = listProofs()
   const confirmedProofs = proofs.filter(p => p.status === 'confirmed')
-  const highlightedProjects = sampleInstitutions.slice(0, 2).map(inst => {
-    const item = inst.needs[0]
-    const target = projectTarget(item)
-    const secured = projectSecured(item, confirmedProofs, inst.name)
-    return {
-      id: `${inst.id}-${item.id}`,
-      institution: inst.name,
-      title: item.projectName || `${item.category} - ${item.subcategory}`,
-      description: item.executiveSummary || item.description,
-      amount: secured,
-      projectCost: target,
-      beneficiaries: item.beneficiaries || inst.peopleReachedPerYear,
-      sdgs: item.sdgGoals,
-      coverage: target > 0 ? Math.round((secured / target) * 100) : 0,
-    }
-  })
+  const highlightedProjects = sampleInstitutions
+    .flatMap(inst => inst.needs.slice(0, 1).map(item => {
+      const target = projectTarget(item)
+      const secured = projectSecured(item, confirmedProofs, inst.name)
+      return {
+        id: `${inst.id}-${item.id}`,
+        institution: inst.name,
+        title: item.projectName || `${item.category} - ${item.subcategory}`,
+        description: item.executiveSummary || item.description,
+        amount: secured,
+        projectCost: target,
+        beneficiaries: item.beneficiaries || inst.peopleReachedPerYear,
+        sdgs: item.sdgGoals,
+        coverage: target > 0 ? Math.round((secured / target) * 100) : 0,
+      }
+    }))
+    .slice(0, 2)
   const donationCount = confirmedProofs.length
   const donatedValue = confirmedProofs.reduce((sum, p) => sum + (p.confirmedAmount || p.amount || 0), 0)
   const supportedInstitutions = new Set(confirmedProofs.map(p => p.institutionName)).size

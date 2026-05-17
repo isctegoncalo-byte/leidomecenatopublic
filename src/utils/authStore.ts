@@ -107,29 +107,45 @@ export function listAccountsWithLogoConsent(): Account[] {
 
 // Seed demo accounts on first load
 const SEED_FLAG = 'leidomecenato_accounts_seeded_v5'
+const DEMO_COMPANY_CLEANUP_FLAG = 'leidomecenato_demo_companies_removed_v1'
+const DEMO_COMPANY_EMAILS = new Set([
+  'empresa@demo.pt',
+  'geral@techglobal.pt',
+  'geral@mobilipro.pt',
+  'info@solverde.pt',
+  'geral@construtora-atlas.pt',
+  'admin@farmacia-central.pt',
+  'geral@autorepara.pt',
+  'geral@padariasol.pt',
+  'info@designlx.pt',
+  'geral@logisticapro.pt',
+  'info@consultmais.pt',
+  'geral@vinhosdouro.pt',
+  'info@turismorural.pt',
+  'geral@agroalentejo.pt',
+  'geral@clinicasaude.pt',
+  'info@smartbuilding.pt',
+])
+
+function removeDemoCompanies() {
+  if (typeof window === 'undefined') return
+  if (localStorage.getItem(DEMO_COMPANY_CLEANUP_FLAG)) return
+  const current = listAccounts()
+  const cleaned = current.filter(account =>
+    account.role !== 'empresa' ||
+    (!account.id.startsWith('acc-e') && account.id !== 'acc-demo-empresa' && !DEMO_COMPANY_EMAILS.has(account.email))
+  )
+  if (cleaned.length !== current.length) writeJson(ACCOUNTS_KEY, cleaned)
+  localStorage.setItem(DEMO_COMPANY_CLEANUP_FLAG, '1')
+}
+
 export function seedDemoAccounts() {
   if (typeof window === 'undefined') return
+  removeDemoCompanies()
   if (localStorage.getItem(SEED_FLAG)) return
   const existing = listAccounts()
 
-  const demoEmpresas: Account[] = [
-    { id: 'acc-demo-empresa', role: 'empresa', email: 'empresa@demo.pt', password: 'demo1234', name: 'TechGlobal Portugal, SA', nif: '514789321', createdAt: new Date().toISOString(), companyActivity: 'Tecnologia', consentLogoDisplay: true, consentRGPD: true },
-    { id: 'acc-e1',  role: 'empresa', email: 'geral@techglobal.pt',       password: 'demo1234', name: 'TechGlobal Portugal, SA',     nif: '514789321', createdAt: new Date().toISOString(), companyActivity: 'Tecnologia',          consentLogoDisplay: true, consentRGPD: true },
-    { id: 'acc-e2',  role: 'empresa', email: 'geral@mobilipro.pt',        password: 'demo1234', name: 'MobiliPro, Lda.',             nif: '509123456', createdAt: new Date().toISOString(), companyActivity: 'Mobiliário',           consentLogoDisplay: true, consentRGPD: true },
-    { id: 'acc-e3',  role: 'empresa', email: 'info@solverde.pt',          password: 'demo1234', name: 'SolVerde Energias, SA',       nif: '513456789', createdAt: new Date().toISOString(), companyActivity: 'Energias Renováveis',  consentLogoDisplay: true, consentRGPD: true },
-    { id: 'acc-e4',  role: 'empresa', email: 'geral@construtora-atlas.pt', password: 'demo1234', name: 'Construtora Atlas, SA',       nif: '510111222', createdAt: new Date().toISOString(), companyActivity: 'Construção Civil',     consentLogoDisplay: true, consentRGPD: true },
-    { id: 'acc-e5',  role: 'empresa', email: 'admin@farmacia-central.pt', password: 'demo1234', name: 'Farmácia Central, Lda.',      nif: '511222333', createdAt: new Date().toISOString(), companyActivity: 'Saúde',                consentLogoDisplay: true, consentRGPD: true },
-    { id: 'acc-e6',  role: 'empresa', email: 'geral@autorepara.pt',       password: 'demo1234', name: 'AutoRepara — Oficinas, SA',   nif: '512333444', createdAt: new Date().toISOString(), companyActivity: 'Automóvel',            consentLogoDisplay: true, consentRGPD: true },
-    { id: 'acc-e7',  role: 'empresa', email: 'geral@padariasol.pt',       password: 'demo1234', name: 'Padaria Sol Nascente, Lda.',  nif: '508444555', createdAt: new Date().toISOString(), companyActivity: 'Alimentar',            consentLogoDisplay: true, consentRGPD: true },
-    { id: 'acc-e8',  role: 'empresa', email: 'info@designlx.pt',          password: 'demo1234', name: 'DesignLX — Agência Criativa', nif: '515555666', createdAt: new Date().toISOString(), companyActivity: 'Design e Comunicação', consentLogoDisplay: true, consentRGPD: true },
-    { id: 'acc-e9',  role: 'empresa', email: 'geral@logisticapro.pt',     password: 'demo1234', name: 'LogísticaPro, SA',            nif: '516666777', createdAt: new Date().toISOString(), companyActivity: 'Logística',            consentLogoDisplay: true, consentRGPD: true },
-    { id: 'acc-e10', role: 'empresa', email: 'info@consultmais.pt',       password: 'demo1234', name: 'ConsultMais, Lda.',           nif: '517777888', createdAt: new Date().toISOString(), companyActivity: 'Consultoria',          consentLogoDisplay: true, consentRGPD: true },
-    { id: 'acc-e11', role: 'empresa', email: 'geral@vinhosdouro.pt',      password: 'demo1234', name: 'Vinhos do Douro, SA',         nif: '518888999', createdAt: new Date().toISOString(), companyActivity: 'Vinicultura',          consentLogoDisplay: true, consentRGPD: true },
-    { id: 'acc-e12', role: 'empresa', email: 'info@turismorural.pt',      password: 'demo1234', name: 'Turismo Rural Serra, Lda.',   nif: '519999111', createdAt: new Date().toISOString(), companyActivity: 'Turismo',              consentLogoDisplay: true, consentRGPD: true },
-    { id: 'acc-e13', role: 'empresa', email: 'geral@agroalentejo.pt',     password: 'demo1234', name: 'AgroAlentejo, SA',            nif: '520111333', createdAt: new Date().toISOString(), companyActivity: 'Agricultura',          consentLogoDisplay: true, consentRGPD: true },
-    { id: 'acc-e14', role: 'empresa', email: 'geral@clinicasaude.pt',     password: 'demo1234', name: 'Clínica Saúde+, Lda.',        nif: '521222444', createdAt: new Date().toISOString(), companyActivity: 'Saúde',                consentLogoDisplay: true, consentRGPD: true },
-    { id: 'acc-e15', role: 'empresa', email: 'info@smartbuilding.pt',     password: 'demo1234', name: 'SmartBuilding Portugal, SA',  nif: '522333555', createdAt: new Date().toISOString(), companyActivity: 'PropTech',             consentLogoDisplay: true, consentRGPD: true },
-  ]
+  const demoEmpresas: Account[] = []
 
   const demoInstituicoes: Account[] = [
     { id: 'acc-demo-instituicao', role: 'instituicao', email: 'instituicao@demo.pt', password: 'demo1234', name: 'Associação Crescer Juntos', nif: '500111222', createdAt: new Date().toISOString(), institutionLegalName: 'Associação Crescer Juntos — IPSS', institutionCategory: 'Infância e Juventude', consentLogoDisplay: true, consentRGPD: true },

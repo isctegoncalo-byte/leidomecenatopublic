@@ -44,7 +44,7 @@ export default function ImpactContractSuccessPage({ contract, onGoToPrivate, onH
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Tipo:</span>
-                <span className="font-bold">{contract.donationType === 'dinheiro' ? '💶 Dinheiro' : '📦 Produtos/Serviços'}</span>
+                <span className="font-bold">{contract.donationType === 'dinheiro' ? '💶 Financeiro' : '📦 Produtos/Serviços'}</span>
               </div>
               <div className="flex justify-between pt-2 border-t">
                 <span className="text-slate-500">Serviço contratado:</span>

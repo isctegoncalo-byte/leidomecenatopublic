@@ -163,7 +163,7 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
   const stepGuidance = [
     {
       title: 'Comece pelo tipo de apoio',
-      body: 'Escolha dinheiro, produtos ou serviços para ajustarmos projetos e comprovativos.',
+      body: 'Escolha apoio financeiro, produtos ou serviços para ajustarmos projetos e comprovativos.',
     },
     {
       title: 'Escolha o projeto apoiado',
@@ -369,7 +369,7 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
             <p className="text-slate-500 text-sm mb-8">A empresa faz o donativo diretamente à instituição. Esta informação é apenas para o relatório de impacto.</p>
             <div className="grid md:grid-cols-2 gap-6">
               {([
-                { type: 'dinheiro' as const, icon: '💶', title: 'Donativo em Dinheiro', desc: 'Transferência bancária feita diretamente à instituição beneficiária.' },
+                { type: 'dinheiro' as const, icon: '💶', title: 'Donativo financeiro', desc: 'Transferência bancária feita diretamente à instituição beneficiária.' },
                 { type: 'produtos' as const, icon: '📦', title: 'Produtos ou Serviços', desc: 'Doação de bens ou prestação de serviços à instituição.' },
               ] as const).map(opt => (
                 <button key={opt.type} onClick={() => { setDonationType(opt.type); setStep(1) }}
@@ -818,7 +818,7 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-6">
                 <p className="text-sm text-slate-600 leading-relaxed">
                   <strong>Nota:</strong> {wantsImpactReport
-                    ? <>Após pagamento, o Relatório de Impacto é entregue no prazo de <strong>10 dias úteis</strong> após tanto a empresa como a instituição confirmarem o donativo e colocarem na plataforma o comprovativo de transferência (no caso de ser um donativo em dinheiro) ou a fatura (quando se tratar de produtos/serviços), juntamente com o respetivo recibo emitido pela Instituição recetora ao abrigo da Lei do Mecenato.</>
+                    ? <>Após pagamento, o Relatório de Impacto é entregue no prazo de <strong>10 dias úteis</strong> após tanto a empresa como a instituição confirmarem o donativo e colocarem na plataforma o comprovativo de transferência (no caso de ser um donativo financeiro) ou a fatura (quando se tratar de produtos/serviços), juntamente com o respetivo recibo emitido pela Instituição recetora ao abrigo da Lei do Mecenato.</>
                     : <>Ao não contratar Relatório de Impacto, o donativo fica apenas registado para validação pela instituição beneficiária, com comprovativo e recibo associados.</>}
                 </p>
               </div>

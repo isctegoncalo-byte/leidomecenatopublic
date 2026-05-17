@@ -26,7 +26,7 @@ const viewMeta: Partial<Record<ViewType, MetaConfig>> = {
   },
   empresa: {
     title: 'Fazer Donativo Empresarial | Relatório de Impacto ESG',
-    description: 'Escolha uma instituição, registe um donativo em dinheiro, produtos ou serviços e pague o relatório de impacto ESG com checkout seguro.',
+    description: 'Escolha uma instituição, registe um donativo financeiro, em produtos ou serviços e pague o relatório de impacto ESG com checkout seguro.',
     keywords: 'donativo empresarial, relatório de impacto, responsabilidade social empresas, donativos em produtos, ESG',
     path: '/empresa/donativo',
   },
@@ -44,7 +44,7 @@ const viewMeta: Partial<Record<ViewType, MetaConfig>> = {
   },
   instituicoes: {
     title: 'Instituicoes Elegiveis | Projetos para Mecenato Empresarial',
-    description: 'Conheça instituições e projetos que procuram apoio empresarial em dinheiro, produtos ou serviços ao abrigo da Lei do Mecenato.',
+    description: 'Conheça instituições e projetos que procuram apoio empresarial financeiro, em produtos ou serviços ao abrigo da Lei do Mecenato.',
     keywords: 'instituições elegíveis, IPSS, fundações, associações, projetos sociais',
     path: '/instituicoes',
   },
@@ -56,7 +56,7 @@ const viewMeta: Partial<Record<ViewType, MetaConfig>> = {
   },
   simulador: {
     title: 'Simulador Lei do Mecenato | Dedução IRC de Donativos',
-    description: 'Simule donativos em dinheiro, produtos ou serviços e veja dedução fiscal, poupança estimada, custo real e valor para projetos sociais.',
+    description: 'Simule donativos financeiros, em produtos ou serviços e veja dedução fiscal, poupança estimada, custo real e valor para projetos sociais.',
     keywords: 'simulador lei do mecenato, dedução IRC, benefício fiscal donativos, simulador donativos',
     path: '/simulador',
   },
@@ -68,15 +68,9 @@ const viewMeta: Partial<Record<ViewType, MetaConfig>> = {
   },
   'impacto-real': {
     title: 'Impacto Real | Histórias, Projetos e Métricas de Donativos',
-    description: 'Veja projetos concluídos, donativos confirmados, instituições apoiadas, ODS, beneficiários e ratings de impacto.',
-    keywords: 'impacto real, projetos sociais, ODS, donativos confirmados, rating impacto',
+    description: 'Veja projetos concluídos, donativos confirmados, instituições apoiadas, ODS, beneficiários e resultados de impacto.',
+    keywords: 'impacto real, projetos sociais, ODS, donativos confirmados, resultados impacto',
     path: '/impacto-real',
-  },
-  'rating-impacto': {
-    title: 'Rating de Impacto | Metodologia ESG, ODS e Beneficiários',
-    description: 'Conheça a metodologia de cálculo do Rating de Impacto, com critérios ESG, ODS, beneficiários, urgência, cobertura financeira e evidências.',
-    keywords: 'rating de impacto, metodologia ESG, Impact Score, ODS, métricas sociais',
-    path: '/rating-de-impacto',
   },
   projeto: {
     title: 'Projeto Social para Apoiar | Lei do Mecenato',
@@ -237,7 +231,7 @@ function faqSchema() {
         name: 'Posso doar produtos ou serviços?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Sim. A plataforma permite registar donativos em dinheiro, produtos ou serviços, associando-os a necessidades concretas das instituições.',
+          text: 'Sim. A plataforma permite registar donativos financeiros, em produtos ou serviços, associando-os a necessidades concretas das instituições.',
         },
       },
     ],

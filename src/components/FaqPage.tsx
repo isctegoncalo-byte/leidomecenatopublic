@@ -29,7 +29,7 @@ const FAQS: FaqCategory[] = [
       },
       {
         q: 'A plataforma fica com alguma percentagem do donativo?',
-        a: 'Não. O donativo vai 100% da empresa para a instituição. A plataforma cobra apenas o serviço de Relatório de Impacto, com preço fixo. O dinheiro do donativo nunca passa por nós.',
+        a: 'Não. O donativo vai 100% da empresa para a instituição. A plataforma cobra apenas o serviço de Relatório de Impacto, com preço fixo. O valor do donativo nunca passa por nós.',
       },
       {
         q: 'A Lei do Mecenato é um organismo público?',
@@ -47,8 +47,8 @@ const FAQS: FaqCategory[] = [
         a: 'O donativo é feito diretamente da empresa para a instituição que escolher. A plataforma serve para encontrar a instituição certa, registar o donativo e gerar o Relatório de Impacto.',
       },
       {
-        q: 'Posso doar em dinheiro ou em produtos/serviços?',
-        a: 'Ambos. Em dinheiro, o donativo apoia uma causa/projeto com custo total definido pela instituição. Em produtos ou serviços, o donativo corresponde a uma necessidade concreta da instituição.',
+        q: 'Posso fazer donativos financeiros ou em produtos/serviços?',
+        a: 'Sim. No apoio financeiro, o donativo apoia uma causa/projeto com custo total definido pela instituição. Em produtos ou serviços, o donativo corresponde a uma necessidade concreta da instituição.',
       },
       {
         q: 'Que benefício fiscal recebo?',

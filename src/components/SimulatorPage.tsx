@@ -41,7 +41,7 @@ export default function SimulatorPage({ setCurrentView }: Props) {
             }`}
           >
             <span className="text-3xl block mb-2">💶</span>
-            <span className={`font-bold text-sm ${mode === 'dinheiro' ? 'text-blue-700' : 'text-slate-600'}`}>Donativo em Dinheiro</span>
+            <span className={`font-bold text-sm ${mode === 'dinheiro' ? 'text-blue-700' : 'text-slate-600'}`}>Donativo financeiro</span>
           </button>
           <button
             onClick={() => setMode('produtos')}
@@ -56,7 +56,7 @@ export default function SimulatorPage({ setCurrentView }: Props) {
           </button>
         </div>
 
-        {/* ─── MODO DINHEIRO ─── */}
+        {/* ─── MODO FINANCEIRO ─── */}
         {mode === 'dinheiro' && (
           <>
             <div className="grid md:grid-cols-2 gap-8">
@@ -335,7 +335,7 @@ export default function SimulatorPage({ setCurrentView }: Props) {
                         <p className="text-xs text-purple-600 font-bold uppercase tracking-wide mb-2">O que a empresa ganhou:</p>
                         <ul className="space-y-1.5 text-sm text-purple-700">
                           <li className="flex items-start gap-2"><span className="text-purple-500">✓</span>Poupança fiscal de €1.411</li>
-                          <li className="flex items-start gap-2"><span className="text-purple-500">✓</span>Relatório ESG com Impact Score e rating</li>
+                          <li className="flex items-start gap-2"><span className="text-purple-500">✓</span>Relatório ESG com Impact Score e métricas</li>
                           <li className="flex items-start gap-2"><span className="text-purple-500">✓</span>Conteúdo para comunicação (site, relatório anual)</li>
                           <li className="flex items-start gap-2"><span className="text-purple-500">✓</span>Responsabilidade social demonstrável e verificável</li>
                           <li className="flex items-start gap-2"><span className="text-purple-500">✓</span>Escoamento de stock com impacto social positivo</li>

@@ -58,7 +58,7 @@ function action(view: ViewType, label: string) {
 export function createDonationIntentNotification(contract: ImpactContract, institutionAccountId?: string) {
   if (!institutionAccountId) return null
 
-  const kind = contract.donationType === 'dinheiro' ? 'em dinheiro' : 'em produtos/serviços'
+  const kind = contract.donationType === 'dinheiro' ? 'financeiro' : 'em produtos/serviços'
   const title = `Novo donativo ${kind} para validação`
   const body = `
 A empresa ${contract.company} (NIF ${contract.nif}) submeteu um donativo ${kind} à instituição ${contract.institutionName}, no valor indicado de €${contract.donationAmount.toLocaleString('pt-PT')}, com comprovativo de transferência/documento associado.
@@ -69,7 +69,7 @@ Após receção do donativo, a instituição deverá:
 
 1. Confirmar na área privada que o donativo foi recebido;
 2. Emitir recibo/declaração de donativo ao abrigo da Lei do Mecenato;
-3. Disponibilizar esse recibo à empresa mecenas;
+3. Fazer upload desse recibo na plataforma leidomecenato.pt;
 4. Preencher a mensagem de agradecimento que será integrada no Relatório ESG;
 5. Confirmar que o donativo não teve qualquer contrapartida comercial.
 

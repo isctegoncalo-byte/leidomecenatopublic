@@ -35,7 +35,7 @@ function answerQuestion(question: string): string {
   }
 
   if (includesAny(text, ['donativo', 'doar', 'apoiar', 'empresa', 'transferencia', 'confirmar'])) {
-    return 'Para apoiar um projeto, a empresa escolhe um projeto, clica em Apoiar, inicia sessão como empresa e regista o donativo. O dinheiro ou os produtos seguem diretamente para a instituição; a plataforma organiza comprovativos, confirmação e relatório.'
+    return 'Para apoiar um projeto, a empresa escolhe um projeto, clica em Apoiar, inicia sessão como empresa e regista o donativo. O valor ou os produtos seguem diretamente para a instituição; a plataforma organiza comprovativos, confirmação e relatório.'
   }
 
   if (includesAny(text, ['instituicao', 'associacao', 'registo', 'criar projeto', 'candidatura', 'documentos'])) {
@@ -46,8 +46,8 @@ function answerQuestion(question: string): string {
     return 'Cada projeto tem uma página própria com apresentação da instituição, resumo executivo, ODS, metas, KPI, galeria de fotos, contactos e botão Apoiar. Os projetos concluídos passam para a página Impacto Real.'
   }
 
-  if (includesAny(text, ['rating', 'impacto', 'calculo', 'avaliacao', 'abrangencia', 'custo total'])) {
-    return 'O Rating de Impacto valoriza o custo total do projeto, os KPI previstos, a verba já assegurada e a área de abrangência. Pode consultar a explicação completa na página Rating de Impacto.'
+  if (includesAny(text, ['impacto', 'calculo', 'avaliacao', 'abrangencia', 'custo total'])) {
+    return 'A plataforma apresenta publicamente informação objetiva dos projetos: custo total, verba angariada, ODS, beneficiários, métricas previstas, contactos e estado do financiamento. As avaliações comparativas ficam reservadas à administração.'
   }
 
   if (includesAny(text, ['lei', 'mecenato', 'beneficio fiscal', 'irc', 'deducao'])) {
@@ -70,7 +70,7 @@ function answerQuestion(question: string): string {
     return 'As páginas de Privacidade e RGPD, Termos de Serviço e Cookies explicam dados tratados, bases legais, direitos de acesso/retificação/apagamento/oposição/portabilidade, conservação e contacto para pedidos RGPD. Estão disponíveis no rodapé.'
   }
 
-  return 'Só consigo responder a perguntas diretamente ligadas com a plataforma Lei do Mecenato: donativos, projetos, instituições, empresas, documentos, rating de impacto, login, contactos e páginas legais.'
+  return 'Só consigo responder a perguntas diretamente ligadas com a plataforma Lei do Mecenato: donativos, projetos, instituições, empresas, documentos, impacto, login, contactos e páginas legais.'
 }
 
 export default function SiteChatbot({ setCurrentView }: Props) {

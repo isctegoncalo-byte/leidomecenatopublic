@@ -8,7 +8,6 @@ import CompanyDonationPage from './components/CompanyDonationPage'
 import InstitutionRegisterPage from './components/InstitutionRegisterPage'
 import ImpactContractSuccessPage from './components/ImpactContractSuccessPage'
 import ImpactStoriesPage from './components/ImpactStoriesPage'
-import ImpactRatingPage from './components/ImpactRatingPage'
 import ProjectDetailPage from './components/ProjectDetailPage'
 import FaqPage from './components/FaqPage'
 import MecenatoLawPage from './components/MecenatoLawPage'
@@ -20,7 +19,7 @@ import CookieConsent from './components/CookieConsent'
 import SiteChatbot from './components/SiteChatbot'
 import BrandSync from './components/BrandSync'
 import { getSession, listAccounts } from './utils/authStore'
-import { getRealSessionAccount, realBackendEnabled } from './utils/supabaseBackend'
+import { getRealSessionAccount, notifyAdminAboutDonationIntent, realBackendEnabled } from './utils/supabaseBackend'
 import { createProof, getProofByContractId } from './utils/proofStore'
 import { createCompanyDonationRegisteredNotification, createDonationIntentNotification } from './utils/notificationStore'
 import { createThread } from './utils/chatStore'
@@ -42,7 +41,6 @@ const pathToView = (path: string): ViewType => {
     '/simulador': 'simulador',
     '/lei-do-mecenato': 'lei-mecenato',
     '/impacto-real': 'impacto-real',
-    '/rating-de-impacto': 'rating-impacto',
     '/faq': 'faq',
     '/entrar': 'login',
     '/area-privada': 'area-privada',
@@ -65,7 +63,6 @@ const viewToPath = (view: ViewType): string => {
     simulador: '/simulador',
     'lei-mecenato': '/lei-do-mecenato',
     'impacto-real': '/impacto-real',
-    'rating-impacto': '/rating-de-impacto',
     projeto: window.location.pathname.startsWith('/projeto/') || window.location.pathname.startsWith('/projetos/') ? window.location.pathname : '/projetos',
     faq: '/faq',
     login: '/entrar',
@@ -142,13 +139,14 @@ export default function App() {
         amount: contract.donationAmount,
         projectCost: contract.projectCost,
         date: contract.donationDate,
-        description: `Donativo (${contract.donationType === 'dinheiro' ? 'dinheiro' : 'produtos/serviços'}) à ${contract.institutionName}`,
+        description: `Donativo (${contract.donationType === 'dinheiro' ? 'apoio financeiro' : 'produtos/serviços'}) à ${contract.institutionName}`,
         proofFileName: contract.proofFileName,
         proofFileDataUrl: contract.proofFileDataUrl,
         proofFileSize: contract.proofFileSize,
       })
       createThread(contract, session?.role === 'empresa' ? session : null, institutionAccountId, proof.id)
-      createDonationIntentNotification(contract, institutionAccountId)
+      const donationNotification = createDonationIntentNotification(contract, institutionAccountId)
+      if (realBackendEnabled()) void notifyAdminAboutDonationIntent(contract, donationNotification)
       createCompanyDonationRegisteredNotification(contract, session?.role === 'empresa' ? session.id : undefined)
     }
     setState({ screen: 'contract-success', contract })
@@ -204,7 +202,6 @@ export default function App() {
         {view === 'home' && <HomePage setCurrentView={setView} />}
         {view === 'lei-mecenato' && <MecenatoLawPage setCurrentView={setView} />}
         {view === 'impacto-real' && <ImpactStoriesPage setCurrentView={setView} />}
-        {view === 'rating-impacto' && <ImpactRatingPage setCurrentView={setView} />}
         {view === 'projeto' && <ProjectDetailPage account={session} setCurrentView={setView} />}
         {view === 'faq' && <FaqPage setCurrentView={setView} />}
         {view === 'simulador' && <SimulatorPage setCurrentView={setView} />}

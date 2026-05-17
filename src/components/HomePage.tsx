@@ -6,7 +6,6 @@ import SdgIcon from './SdgIcon'
 import { activeProjects, projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
 import { listProofs } from '../utils/proofStore'
 import { projectSlug } from '../utils/projectCatalog'
-import { calculateProjectImpactRating, impactRatingColorClass, impactRatingLabel } from '../utils/impactRating'
 
 interface Props {
   setCurrentView: (v: ViewType) => void
@@ -86,7 +85,6 @@ export default function HomePage({ setCurrentView }: Props) {
   const InstitutionMiniCard = ({ inst, mode }: { inst: typeof sampleInstitutions[number]; mode: 'money' | 'product' }) => {
     const needs = inst.needs.filter(need => mode === 'product' ? isProductOrServiceNeed(need) : !isProductOrServiceNeed(need)).slice(0, 1)
     const firstNeed = needs[0]
-    const projectRating = firstNeed ? calculateProjectImpactRating(inst, firstNeed).total : inst.esgScore.total
     const openFirstProject = () => {
       if (!firstNeed) return
       window.history.pushState({}, '', `/projeto/${projectSlug(inst, firstNeed)}`)
@@ -112,9 +110,6 @@ export default function HomePage({ setCurrentView }: Props) {
               <h3 className="font-bold text-slate-800 text-sm leading-tight">{inst.name}</h3>
               <p className="text-xs text-slate-500">{inst.category} • {inst.municipality}</p>
             </div>
-            <span className="text-[10px] font-black text-slate-500 bg-slate-100 rounded-lg px-2 py-1 flex-shrink-0">
-              {projectRating}/100
-            </span>
           </div>
           <div className="mt-3 space-y-1.5">
             {needs.map(need => (
@@ -145,9 +140,6 @@ export default function HomePage({ setCurrentView }: Props) {
     const filteredNeeds = activeProjects(inst.needs, proofs, inst.name).filter(need => mode === 'product' ? isProductOrServiceNeed(need) : !isProductOrServiceNeed(need))
     const topNeeds = filteredNeeds.slice(0, 2)
     const mainNeed = topNeeds[0]
-    const mainProjectRating = mainNeed ? calculateProjectImpactRating(inst, mainNeed).total : inst.esgScore.total
-    const ratingLabel = impactRatingLabel(mainProjectRating)
-    const ratingColor = impactRatingColorClass(mainProjectRating)
     const openProject = (needId: string) => {
       const need = inst.needs.find(n => n.id === needId)
       if (!need) return
@@ -209,10 +201,6 @@ export default function HomePage({ setCurrentView }: Props) {
                 <div className="bg-purple-500 rounded-r-full" style={{ width: `${inst.esgScore.governance * 0.20}%` }} />
               </div>
             </div>
-            <div className="text-center flex-shrink-0">
-              <p className={`text-3xl font-black ${ratingColor}`}>{ratingLabel}</p>
-              <p className="text-xs font-bold text-slate-400">{mainProjectRating}/100</p>
-            </div>
           </div>
 
           <div className="space-y-2 mb-5">
@@ -244,20 +232,9 @@ export default function HomePage({ setCurrentView }: Props) {
             <div
               className="mb-5 w-full rounded-2xl border border-slate-200 bg-white p-4 text-left transition group-hover:border-blue-200"
             >
-              {[mainNeed.publicContacts && ['Contactos', mainNeed.publicContacts], mainNeed.publicEmail && ['Email', mainNeed.publicEmail], mainNeed.publicSocialLinks && ['Redes Sociais', mainNeed.publicSocialLinks], mainNeed.publicWebsite && ['Site', mainNeed.publicWebsite]]
-                .filter(Boolean)
-                .map(item => {
-                  const [label, value] = item as string[]
-                  return (
-                    <div key={label} className="mb-2 text-xs text-slate-600">
-                      <span className="font-black text-slate-700">{label}:</span> <span className="break-all">{value}</span>
-                    </div>
-                  )
-                })}
               <div className="mb-2 flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-wide text-blue-700">{inst.name}</p>
-                  <p className="mt-1 text-base font-black text-slate-900 leading-tight">{projectTitle(mainNeed)}</p>
+                  <p className="text-xs font-black uppercase tracking-wide text-blue-700">{projectTitle(mainNeed)}</p>
                   <p className="text-xs font-black uppercase tracking-wide text-slate-400">Progresso do projeto</p>
                   <p className="text-sm font-bold text-slate-700">{supportTypeLabel(mainNeed)} pretendida: € {projectTarget(mainNeed).toLocaleString('pt-PT')}</p>
                 </div>
@@ -320,7 +297,7 @@ export default function HomePage({ setCurrentView }: Props) {
                 Instituições apresentam necessidades concretas e recebem 100% do apoio diretamente.
               </p>
               <p className="text-base text-blue-200 mb-8 max-w-2xl">
-                Donativos em dinheiro, produtos ou serviços. Enquadramento fiscal, Impact Score, ODS, comprovativos e conteúdos de comunicação num único fluxo.
+                Donativos financeiros, produtos ou serviços. Enquadramento fiscal, Impact Score, ODS, comprovativos e conteúdos de comunicação num único fluxo.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <button onClick={() => setCurrentView('simulador')}
@@ -353,7 +330,7 @@ export default function HomePage({ setCurrentView }: Props) {
                 <div className="space-y-4">
                   {[
                     ['1', 'Simule', 'Veja dedução fiscal, custo real e valor para a causa.'],
-                    ['2', 'Escolha', 'Compare projetos por distrito, ODS, urgência e rating.'],
+                    ['2', 'Escolha', 'Compare projetos por distrito, ODS, urgência e tipo de apoio.'],
                     ['3', 'Doe diretamente', 'A plataforma não recebe o donativo.'],
                     ['4', 'Comprove impacto', 'Receba relatório, certificado e conteúdos ESG.'],
                   ].map(([num, title, body]) => (
@@ -484,11 +461,11 @@ export default function HomePage({ setCurrentView }: Props) {
             </div>
 
             <div className="space-y-16">
-              {/* Dinheiro */}
+              {/* Apoio financeiro */}
               <div>
                 <div className="flex items-center justify-between gap-4 mb-8">
                   <div>
-                    <h3 className="text-2xl font-black text-slate-900">💶 Instituições a pedir dinheiro</h3>
+                    <h3 className="text-2xl font-black text-slate-900">💶 Projetos a financiar</h3>
                     <p className="text-sm text-slate-500">Projetos e causas com custo total definido</p>
                   </div>
                   <span className="text-xs font-bold bg-blue-100 text-blue-700 rounded-full px-3 py-1">{moneyInstitutions.length} instituições</span>
@@ -514,7 +491,7 @@ export default function HomePage({ setCurrentView }: Props) {
               <div>
                 <div className="flex items-center justify-between gap-4 mb-8">
                   <div>
-                    <h3 className="text-2xl font-black text-slate-900">📦 Instituições a pedir produtos/serviços</h3>
+                    <h3 className="text-2xl font-black text-slate-900">📦 Projetos que necessitam de produtos/serviços</h3>
                     <p className="text-sm text-slate-500">Necessidades concretas para satisfação direta</p>
                   </div>
                   <span className="text-xs font-bold bg-green-100 text-green-700 rounded-full px-3 py-1">{productInstitutions.length} instituições</span>
@@ -563,7 +540,7 @@ export default function HomePage({ setCurrentView }: Props) {
               </h3>
               <div className="space-y-4">
                 {[
-                  { step: '1', icon: '💶', title: 'Faz o donativo diretamente', desc: 'A empresa doa 100% do valor diretamente à instituição que escolher. Nós nunca tocamos no dinheiro do donativo.' },
+                  { step: '1', icon: '💶', title: 'Faz o donativo diretamente', desc: 'A empresa transfere 100% do valor diretamente para a instituição que escolher. O valor do donativo nunca passa pela plataforma.' },
                   { step: '2', icon: '📋', title: 'Regista o donativo connosco', desc: 'Indica-nos o valor, a instituição e as necessidades apoiadas. 2 minutos.' },
                   { step: '3', icon: '📊', title: 'Escolhe o tipo de relatório', desc: 'Relatório de Impacto, Premium ou Premium com conteúdos para redes sociais.' },
                   { step: '4', icon: '📬', title: 'Recebe o Relatório de Impacto', desc: 'Impact Score, alinhamento ODS, métricas — pronto para demonstrar o impacto do donativo.' },
@@ -757,7 +734,7 @@ export default function HomePage({ setCurrentView }: Props) {
                 <h3 className="text-xl font-black text-green-800 mb-3">A Instituição ganha</h3>
                 <ul className="space-y-2.5">
                   {[
-                    { bold: '100% do donativo', text: '— zero intermediação. O dinheiro ou os produtos vão diretamente para a instituição.' },
+                    { bold: '100% do donativo', text: '— zero intermediação. O valor ou os produtos vão diretamente para a instituição.' },
                     { bold: 'Visibilidade para empresas', text: '— perfil público com necessidades, ODS e impacto, acessível a quem quer doar.' },
                     { bold: 'Necessidades atendidas', text: '— as empresas podem responder exatamente ao que a instituição precisa.' },
                     { bold: 'Comprovativo validado', text: '— confirmação do donativo por ambas as partes, com certificado PDF.' },

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Account, ViewType, DonationProof, UploadedDoc, PlatformNotification, ChatThread, NeedItem, InstitutionRegistration, Institution } from '../types'
+import { Account, ViewType, DonationProof, UploadedDoc, PlatformNotification, ChatThread, NeedItem, InstitutionRegistration } from '../types'
 import { logout } from '../utils/authStore'
 import { addDoc, deleteDoc, listDocs, readFileAsDataUrl } from '../utils/docsStore'
 import {
@@ -16,10 +16,9 @@ import { REPORT_TIERS } from '../types'
 import { createNotification, listNotificationsForAccount, markAllNotificationsRead, markNotificationRead } from '../utils/notificationStore'
 import { addMessage, listThreadsForAccount } from '../utils/chatStore'
 import { findInstitutionRegistration, saveInstitutionRegistration } from '../utils/institutionRegistry'
-import { deleteDocReal, listDocsReal, logoutReal, realBackendEnabled, uploadDocReal } from '../utils/supabaseBackend'
+import { deleteDocReal, listDocsReal, logoutReal, notifyAdminAboutCompanyDonationConfirmation, realBackendEnabled, uploadDocReal } from '../utils/supabaseBackend'
 import { isProjectComplete, projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
 import { PROJECT_TYPE_LIMIT_MESSAGE, ProjectSupportType, hasActiveProjectOfType, nextAvailableProjectType } from '../utils/projectLimits'
-import { calculateProjectImpactRating, impactRatingColorClass, impactRatingLabel, impactRatingMeaning } from '../utils/impactRating'
 import SdgGrid from './SdgGrid'
 import SdgIcon from './SdgIcon'
 import { ODS_IMPACT_METRICS, MetricDefinition } from '../data/impactMetrics'
@@ -206,7 +205,7 @@ function ChatTab({ account, threads, onChange }: { account: Account; threads: Ch
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-bold text-slate-800 text-sm truncate">{peer}</p>
-                    <p className="text-xs text-slate-500">€ {t.donationAmount.toLocaleString('pt-PT')} • {t.donationType === 'dinheiro' ? 'Dinheiro' : 'Produtos/Serviços'}</p>
+                    <p className="text-xs text-slate-500">€ {t.donationAmount.toLocaleString('pt-PT')} • {t.donationType === 'dinheiro' ? 'Financeiro' : 'Produtos/Serviços'}</p>
                   </div>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${t.status === 'open' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
                     {t.status === 'open' ? 'Aberto' : 'Fechado'}
@@ -228,7 +227,7 @@ function ChatTab({ account, threads, onChange }: { account: Account; threads: Ch
                 {account.role === 'empresa' ? selected.institutionName : selected.companyName}
               </h2>
               <p className="text-xs text-slate-500">
-                Donativo de € {selected.donationAmount.toLocaleString('pt-PT')} • {selected.donationType === 'dinheiro' ? 'Dinheiro' : 'Produtos/Serviços'}
+                Donativo de € {selected.donationAmount.toLocaleString('pt-PT')} • {selected.donationType === 'dinheiro' ? 'Financeiro' : 'Produtos/Serviços'}
               </p>
             </div>
 
@@ -321,6 +320,8 @@ const DISCLOSURE_METHODS = [
 ]
 
 const REPORTING_FREQUENCIES = ['Em tempo real', 'Diariamente', 'Semanalmente', 'Mensalmente', 'Trimestralmente', 'Semestralmente', 'Anualmente']
+const MAX_OBJECTIVE_TOPICS = 5
+const MAX_KEY_POPULATIONS = 5
 
 const projectTitle = (project: NeedItem) => project.projectName || [project.category, project.subcategory].filter(Boolean).join(' › ') || 'Projeto sem nome'
 
@@ -339,6 +340,7 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
     description: '',
     executiveSummary: '',
     rationale: '',
+    keyPopulations: [],
     targetPopulation: '',
     targetPopulationOther: '',
     objectives: '',
@@ -371,91 +373,9 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
     publicWebsite: '',
     customKpis: [],
   })
+  const [objectiveTopics, setObjectiveTopics] = useState<string[]>(['', '', ''])
+  const [keyPopulationTopics, setKeyPopulationTopics] = useState<string[]>([''])
   const [error, setError] = useState('')
-
-  const ratingInstitution = useMemo<Institution>(() => ({
-    id: account.id,
-    name: account.name,
-    legalName: account.institutionLegalName || account.name,
-    category: account.institutionCategory || existing?.category || '',
-    description: existing?.description || '',
-    mission: existing?.mission || '',
-    logo: existing?.logoUrl || account.institutionLogoUrl || '',
-    needs,
-    esgScore: {
-      environmental: 0,
-      social: 0,
-      governance: 0,
-      total: 0,
-      sdgAlignment: form.sdgGoals,
-      beneficiaries: form.beneficiaries || existing?.peopleReachedPerYear || 0,
-      impactNarrative: '',
-      highlights: [],
-      risks: [],
-    },
-    municipality: existing?.municipality || '',
-    district: existing?.district || '',
-    peopleReachedPerYear: existing?.peopleReachedPerYear || form.beneficiaries || 0,
-    volunteers: existing?.volunteers || 0,
-    fullTimeStaff: existing?.fullTimeStaff || 0,
-    annualBudget: existing?.annualBudget || '',
-    utilidadePublica: existing?.utilidadePublica || false,
-    verified: missingRequiredDocs.length === 0 || Boolean(existing?.statutes && existing?.lastAccountsApproved),
-  }), [account, existing, form.beneficiaries, form.sdgGoals, missingRequiredDocs.length, needs])
-
-  const liveRating = calculateProjectImpactRating(ratingInstitution, form)
-  const liveRatingGrade = impactRatingLabel(liveRating.total)
-  const liveRatingColor = impactRatingColorClass(liveRating.total)
-  const liveRatingFactors = [
-    {
-      label: 'Abrangencia',
-      score: liveRating.scope,
-      weight: '20%',
-      hint: form.generalImpactMetrics?.geographicScope
-        ? `Ambito indicado: ${form.generalImpactMetrics.geographicScope}.`
-        : 'Indique a abrangência geográfica nas métricas gerais.',
-    },
-    {
-      label: 'Beneficiarios diretos',
-      score: liveRating.directBeneficiaries,
-      weight: '25%',
-      hint: form.beneficiaries
-        ? `${form.beneficiaries.toLocaleString('pt-PT')} beneficiários diretos indicados.`
-        : 'Preencha o número de beneficiários diretos.',
-    },
-    {
-      label: 'Beneficiarios indiretos',
-      score: liveRating.indirectBeneficiaries,
-      weight: '15%',
-      hint: form.generalImpactMetrics?.indirectBeneficiaries
-        ? `${Number(form.generalImpactMetrics.indirectBeneficiaries).toLocaleString('pt-PT')} beneficiários indiretos indicados.`
-        : 'Indique beneficiários indiretos nas métricas gerais.',
-    },
-    {
-      label: 'Relevancia social / ODS',
-      score: liveRating.socialRelevance,
-      weight: '20%',
-      hint: form.sdgGoals.length
-        ? `${form.sdgGoals.length} ODS selecionado${form.sdgGoals.length > 1 ? 's' : ''}; detalhe bem a necessidade social.`
-        : 'Selecione pelo menos um ODS e descreva a necessidade.',
-    },
-    {
-      label: 'Sustentabilidade',
-      score: liveRating.sustainability,
-      weight: '10%',
-      hint: form.generalImpactMetrics?.durationMonths || form.generalImpactMetrics?.reportingFrequency
-        ? 'Duração, fase e periodicidade de reporte ajudam este fator.'
-        : 'Indique duração prevista e periodicidade de reporte.',
-    },
-    {
-      label: 'Evidência',
-      score: liveRating.evidence,
-      weight: '10%',
-      hint: form.generalImpactMetrics?.evidenceMethod || (form.projectPhotoUrls || []).length
-        ? 'Método de evidência, métricas e fotos reforçam a transparência.'
-        : 'Adicione método de evidência, métricas ODS e fotografias.',
-    },
-  ]
 
   const isCompleteForLimit = (need: NeedItem) => isProjectComplete(need, confirmedProofs, account.name)
   const hasActiveProjectType = (type: ProjectSupportType) => hasActiveProjectOfType(needs, type, isCompleteForLimit)
@@ -469,46 +389,51 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
     }
   }, [needs, form.supportType])
 
-  const resetForm = () => setForm({
-    id: `need-${Date.now()}`,
-    projectName: '',
-    category: '',
-    subcategory: '',
-    description: '',
-    executiveSummary: '',
-    rationale: '',
-    targetPopulation: '',
-    targetPopulationOther: '',
-    objectives: '',
-    supportType: nextProjectType() || 'dinheiro',
-    implementationPhase: 'candidatura',
-    quantity: '',
-    projectPhotoUrls: [],
-    requestedAmount: undefined,
-    productOrService: '',
-    productOrServiceCategory: '',
-    productOrServiceOther: '',
-    totalProjectCost: undefined,
-    securedFunding: 0,
-    estimatedValue: undefined,
-    status: 'ativo',
-    urgency: 'media',
-    sdgGoals: [],
-    esgPillar: 'S',
-    impactMetric: '',
-    beneficiaries: undefined,
-    professionalsInvolved: undefined,
-    disclosureMethods: [],
-    disclosurePlan: '',
-    resultsPresentation: '',
-    responsiblePerson: '',
-    donationContactPerson: '',
-    publicEmail: '',
-    publicContacts: '',
-    publicSocialLinks: '',
-    publicWebsite: '',
-    customKpis: [],
-  })
+  const resetForm = () => {
+    setForm({
+      id: `need-${Date.now()}`,
+      projectName: '',
+      category: '',
+      subcategory: '',
+      description: '',
+      executiveSummary: '',
+      rationale: '',
+      keyPopulations: [],
+      targetPopulation: '',
+      targetPopulationOther: '',
+      objectives: '',
+      supportType: nextProjectType() || 'dinheiro',
+      implementationPhase: 'candidatura',
+      quantity: '',
+      projectPhotoUrls: [],
+      requestedAmount: undefined,
+      productOrService: '',
+      productOrServiceCategory: '',
+      productOrServiceOther: '',
+      totalProjectCost: undefined,
+      securedFunding: 0,
+      estimatedValue: undefined,
+      status: 'ativo',
+      urgency: 'media',
+      sdgGoals: [],
+      esgPillar: 'S',
+      impactMetric: '',
+      beneficiaries: undefined,
+      professionalsInvolved: undefined,
+      disclosureMethods: [],
+      disclosurePlan: '',
+      resultsPresentation: '',
+      responsiblePerson: '',
+      donationContactPerson: '',
+      publicEmail: '',
+      publicContacts: '',
+      publicSocialLinks: '',
+      publicWebsite: '',
+      customKpis: [],
+    })
+    setObjectiveTopics(['', '', ''])
+    setKeyPopulationTopics([''])
+  }
 
   const persist = (nextNeeds: NeedItem[]) => {
     const registration: InstitutionRegistration = {
@@ -627,8 +552,59 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
     persist(next)
   }
 
+  const syncObjectiveTopics = (topics: string[]) => {
+    const normalizedTopics = (topics.length ? topics : ['']).slice(0, MAX_OBJECTIVE_TOPICS)
+    const objectives = normalizedTopics.map(topic => topic.trim()).filter(Boolean).join('\n')
+    setObjectiveTopics(normalizedTopics)
+    setForm(prev => ({ ...prev, objectives, impactMetric: objectives }))
+  }
+
+  const updateObjectiveTopic = (index: number, value: string) => {
+    const next = [...objectiveTopics]
+    next[index] = value
+    syncObjectiveTopics(next)
+  }
+
+  const addObjectiveTopic = () => {
+    if (objectiveTopics.length >= MAX_OBJECTIVE_TOPICS) return
+    syncObjectiveTopics([...objectiveTopics, ''])
+  }
+
+  const removeObjectiveTopic = (index: number) => {
+    if (objectiveTopics.length <= 1) {
+      syncObjectiveTopics([''])
+      return
+    }
+    syncObjectiveTopics(objectiveTopics.filter((_, i) => i !== index))
+  }
+
   const toggleSDG = (sdg: number) => {
     setForm(prev => ({ ...prev, sdgGoals: prev.sdgGoals.includes(sdg) ? prev.sdgGoals.filter(s => s !== sdg) : [...prev.sdgGoals, sdg] }))
+  }
+
+  const syncKeyPopulationTopics = (topics: string[]) => {
+    const normalizedTopics = (topics.length ? topics : ['']).slice(0, MAX_KEY_POPULATIONS)
+    setKeyPopulationTopics(normalizedTopics)
+    setForm(prev => ({ ...prev, keyPopulations: normalizedTopics.map(topic => topic.trim()).filter(Boolean) }))
+  }
+
+  const updateKeyPopulationTopic = (index: number, value: string) => {
+    const next = [...keyPopulationTopics]
+    next[index] = value
+    syncKeyPopulationTopics(next)
+  }
+
+  const addKeyPopulationTopic = () => {
+    if (keyPopulationTopics.length >= MAX_KEY_POPULATIONS) return
+    syncKeyPopulationTopics([...keyPopulationTopics, ''])
+  }
+
+  const removeKeyPopulationTopic = (index: number) => {
+    if (keyPopulationTopics.length <= 1) {
+      syncKeyPopulationTopics([''])
+      return
+    }
+    syncKeyPopulationTopics(keyPopulationTopics.filter((_, i) => i !== index))
   }
 
   const toggleDisclosureMethod = (method: string) => {
@@ -803,6 +779,43 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
             <input value={form.projectName || ''} onChange={e => setForm({ ...form, projectName: e.target.value })} placeholder="Nome do projeto *" className="md:col-span-2 px-4 py-3 border border-slate-300 rounded-xl" />
             <textarea value={form.executiveSummary || ''} onChange={e => setForm({ ...form, executiveSummary: e.target.value, description: e.target.value })} rows={3} placeholder="Resumo executivo *" className="md:col-span-2 px-4 py-3 border border-slate-300 rounded-xl resize-none" />
             <textarea value={form.rationale || ''} onChange={e => setForm({ ...form, rationale: e.target.value })} rows={3} placeholder="Fundamentação *" className="md:col-span-2 px-4 py-3 border border-slate-300 rounded-xl resize-none" />
+            <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-slate-800">Populações-chave</p>
+                  <p className="text-xs text-slate-500">Preencha uma população por tópico. Este campo será público na página do projeto.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={addKeyPopulationTopic}
+                  disabled={keyPopulationTopics.length >= MAX_KEY_POPULATIONS}
+                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                  Adicionar população
+                </button>
+              </div>
+              <div className="space-y-2">
+                {keyPopulationTopics.map((topic, index) => (
+                  <div key={index} className="flex gap-2">
+                    <input
+                      value={topic}
+                      onChange={e => updateKeyPopulationTopic(index, e.target.value)}
+                      placeholder={`População-chave ${index + 1}`}
+                      className="flex-1 px-4 py-3 border border-slate-300 rounded-xl bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeKeyPopulationTopic(index)}
+                      disabled={keyPopulationTopics.length <= 1}
+                      className="px-3 py-2 text-xs font-bold text-red-600 disabled:cursor-not-allowed disabled:text-slate-300"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-xs font-semibold text-slate-500">{keyPopulationTopics.length}/{MAX_KEY_POPULATIONS} populações</p>
+            </div>
             <select value={form.targetPopulation || ''} onChange={e => setForm({ ...form, targetPopulation: e.target.value, targetPopulationOther: e.target.value === 'Outra' ? form.targetPopulationOther : '' })} className="px-4 py-3 border border-slate-300 rounded-xl">
               <option value="">População-alvo *</option>
               {TARGET_POPULATIONS.map(option => <option key={option} value={option}>{option}</option>)}
@@ -810,7 +823,43 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
             {form.targetPopulation === 'Outra' && (
               <input value={form.targetPopulationOther || ''} onChange={e => setForm({ ...form, targetPopulationOther: e.target.value })} placeholder="Qual?" className="px-4 py-3 border border-slate-300 rounded-xl" />
             )}
-            <textarea value={form.objectives || ''} onChange={e => setForm({ ...form, objectives: e.target.value, impactMetric: e.target.value })} rows={3} placeholder="Objetivo(s) *" className="md:col-span-2 px-4 py-3 border border-slate-300 rounded-xl resize-none" />
+            <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-slate-800">Objetivos do projeto *</p>
+                  <p className="text-xs text-slate-500">Preencha um objetivo por tópico.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={addObjectiveTopic}
+                  disabled={objectiveTopics.length >= MAX_OBJECTIVE_TOPICS}
+                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                  Adicionar tópico
+                </button>
+              </div>
+              <div className="space-y-2">
+                {objectiveTopics.map((topic, index) => (
+                  <div key={index} className="flex gap-2">
+                    <input
+                      value={topic}
+                      onChange={e => updateObjectiveTopic(index, e.target.value)}
+                      placeholder={`Objetivo ${index + 1}`}
+                      className="flex-1 px-4 py-3 border border-slate-300 rounded-xl bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeObjectiveTopic(index)}
+                      disabled={objectiveTopics.length <= 1}
+                      className="px-3 py-2 text-xs font-bold text-red-600 disabled:cursor-not-allowed disabled:text-slate-300"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-xs font-semibold text-slate-500">{objectiveTopics.length}/{MAX_OBJECTIVE_TOPICS} objetivos</p>
+            </div>
             <select value={form.implementationPhase || 'candidatura'} onChange={e => setForm({ ...form, implementationPhase: e.target.value as NeedItem['implementationPhase'] })} className="px-4 py-3 border border-slate-300 rounded-xl">
               <option value="candidatura">Em fase de candidatura</option>
               <option value="a-decorrer">A decorrer</option>
@@ -934,11 +983,11 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
 
         {form.sdgGoals.length > 0 && (
           <div className="mt-6 bg-blue-50 border border-blue-200 rounded-2xl p-5">
-            <h3 className="font-black text-blue-900 mb-2">KPI específicos por ODS</h3>
-            <p className="text-xs text-blue-700 mb-4">Estas métricas mudam consoante os ODS selecionados. Pode ainda acrescentar KPI próprios do projeto.</p>
+            <h3 className="font-black text-blue-900 mb-2">KPI sugeridos por ODS</h3>
+            <p className="text-xs text-blue-700 mb-4">Ao selecionar um ODS, surgem 5 KPI habitualmente associados. Pode preencher apenas os relevantes e acrescentar KPI próprios do projeto.</p>
             <div className="space-y-5">
               {form.sdgGoals.map(sdg => {
-                const metrics = ODS_IMPACT_METRICS[sdg] || []
+                const metrics = (ODS_IMPACT_METRICS[sdg] || []).slice(0, 5)
                 if (metrics.length === 0) return null
                 return (
                   <div key={sdg} className="bg-white border border-blue-100 rounded-xl p-4">
@@ -1053,37 +1102,17 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
         </div>
 
         <aside className="lg:sticky lg:top-36 rounded-2xl border border-blue-200 bg-blue-50 p-5">
-          <p className="text-xs font-black uppercase tracking-wide text-blue-700">Rating em tempo real</p>
-          <div className="mt-3 flex items-end justify-between gap-3">
-            <div>
-              <p className={`text-5xl font-black leading-none ${liveRatingColor}`}>{liveRatingGrade}</p>
-              <p className="mt-1 text-sm font-bold text-slate-700">{liveRating.total}/100 pontos</p>
-            </div>
-            <div className="h-24 w-24 rounded-full border-[10px] border-white bg-white shadow-inner flex items-center justify-center">
-              <span className={`text-2xl font-black ${liveRatingColor}`}>{liveRating.total}</span>
-            </div>
-          </div>
-          <p className="mt-3 text-xs leading-relaxed text-blue-900">{impactRatingMeaning(liveRating.total)}</p>
-          <div className="mt-5 space-y-3">
-            {liveRatingFactors.map(factor => (
-              <div key={factor.label} className="rounded-xl bg-white p-3 border border-blue-100">
-                <div className="mb-1 flex items-center justify-between gap-2">
-                  <p className="text-xs font-black text-slate-800">{factor.label}</p>
-                  <span className="text-[11px] font-bold text-slate-500">{factor.weight}</span>
-                </div>
-                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                  <div className="h-full rounded-full bg-blue-600" style={{ width: `${factor.score}%` }} />
-                </div>
-                <div className="mt-1 flex items-start justify-between gap-2">
-                  <p className="text-[11px] leading-snug text-slate-500">{factor.hint}</p>
-                  <span className="text-[11px] font-black text-slate-700">{factor.score}/100</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="mt-4 rounded-xl bg-white/80 p-3 text-[11px] leading-relaxed text-blue-900">
-            O rating aumenta quando o projeto fica mais completo: âmbito geográfico, beneficiários, ODS, duração, evidências e métricas específicas tornam a avaliação mais robusta.
+          <p className="text-xs font-black uppercase tracking-wide text-blue-700">Qualidade da informação</p>
+          <h3 className="mt-2 text-lg font-black text-slate-900">Complete o projeto com dados claros</h3>
+          <p className="mt-3 text-sm leading-relaxed text-blue-900">
+            Quanto mais completo estiver o projeto, mais fácil será para uma empresa compreender a necessidade e para a equipa validar o impacto internamente.
           </p>
+          <ul className="mt-5 space-y-2 text-xs font-semibold text-blue-900">
+            <li>Inclua âmbito geográfico e população-alvo.</li>
+            <li>Adicione beneficiários diretos e indiretos quando existirem.</li>
+            <li>Associe ODS e métricas de acompanhamento.</li>
+            <li>Carregue fotografias ou evidências do projeto.</li>
+          </ul>
         </aside>
       </div>
 
@@ -1091,17 +1120,12 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
         <h2 className="text-xl font-black text-slate-900 mb-4">Projetos atuais ({needs.length})</h2>
         {needs.length === 0 ? <p className="text-slate-500 text-sm">Ainda não existem projetos registados.</p> : (
           <div className="space-y-3">
-            {needs.map(n => {
-              const currentRating = calculateProjectImpactRating(ratingInstitution, n)
-              return (
+            {needs.map(n => (
               <div key={n.id} className="border border-slate-200 rounded-xl p-4">
                 <div className="flex justify-between gap-3">
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-bold text-slate-800">{projectTitle(n)}</p>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-700">
-                        Rating {impactRatingLabel(currentRating.total)} - {currentRating.total}/100
-                      </span>
                     </div>
                     <p className="text-sm text-slate-500 mt-1">{n.executiveSummary || n.description || n.impactMetric}</p>
                     <div className="mt-3 grid gap-2 text-xs text-slate-500 md:grid-cols-3">
@@ -1127,7 +1151,7 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
                   <button onClick={() => removeProject(n.id)} className="text-red-600 text-sm font-bold">Remover</button>
                 </div>
               </div>
-            )})}
+            ))}
           </div>
         )}
       </div>
@@ -1815,8 +1839,9 @@ function ProofsTab({
                           const confirmedAmount = validateConfirmedAmount(p)
                           if (!confirmedAmount) return
                           setCompanyConfirmation(p.id, true, invoice, undefined, confirmedAmount)
+                          let companyConfirmationNotification: PlatformNotification | null = null
                           if (p.institutionAccountId) {
-                            createNotification({
+                            companyConfirmationNotification = createNotification({
                               recipientAccountId: p.institutionAccountId,
                               recipientRole: 'instituicao',
                               kind: 'company-confirmed',
@@ -1826,6 +1851,7 @@ function ProofsTab({
                               relatedContractId: p.contractId,
                             })
                           }
+                          if (realBackendEnabled()) void notifyAdminAboutCompanyDonationConfirmation(p, account, confirmedAmount, companyConfirmationNotification)
                           if (p.institutionConfirmed) {
                             createNotification({
                               recipientAccountId: p.companyAccountId,
@@ -2005,9 +2031,8 @@ function ESGReportsTab({
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 mt-2 italic">A aguardar {waitingFor}.</p>
-                </div>
-              )
-            })}
+              </div>
+            )})}
           </div>
         </div>
       )}

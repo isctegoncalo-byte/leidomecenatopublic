@@ -10,40 +10,28 @@ interface Props {
 }
 
 export default function ImpactStoriesPage({ setCurrentView }: Props) {
-  const simulatedCases = [
-    {
-      company: 'Empresa Exemplo, SA',
-      institution: 'Associação Crescer Juntos',
-      title: 'Refeições diárias para crianças em pobreza alimentar',
-      description: 'Donativo confirmado para assegurar refeições escolares e acompanhamento nutricional durante o ano letivo.',
-      amount: 24000,
-      projectCost: 24000,
-      beneficiaries: 80,
-      sdgs: [2, 3],
-      rating: 'AA+',
-      score: 91,
-      coverage: 100,
-    },
-    {
-      company: 'Tech Verde Portugal',
-      institution: 'Associação Raiz Verde',
-      title: 'Sensores IoT para monitorização ambiental',
-      description: 'Apoio parcial para instalar estações de monitorização em zonas de reflorestação e biodiversidade.',
-      amount: 14000,
-      projectCost: 28000,
-      beneficiaries: 8000,
-      sdgs: [13, 15],
-      rating: 'A+',
-      score: 72,
-      coverage: 50,
-    },
-  ]
   const proofs = listProofs()
   const confirmedProofs = proofs.filter(p => p.status === 'confirmed')
-  const donationCount = confirmedProofs.length + simulatedCases.length
-  const donatedValue = confirmedProofs.reduce((sum, p) => sum + (p.confirmedAmount || p.amount || 0), 0) + simulatedCases.reduce((sum, c) => sum + c.amount, 0)
-  const supportedInstitutions = new Set([...confirmedProofs.map(p => p.institutionName), ...simulatedCases.map(c => c.institution)]).size
-  const producedReports = confirmedProofs.length + simulatedCases.length
+  const highlightedProjects = sampleInstitutions.slice(0, 2).map(inst => {
+    const item = inst.needs[0]
+    const target = projectTarget(item)
+    const secured = projectSecured(item, confirmedProofs, inst.name)
+    return {
+      id: `${inst.id}-${item.id}`,
+      institution: inst.name,
+      title: item.projectName || `${item.category} - ${item.subcategory}`,
+      description: item.executiveSummary || item.description,
+      amount: secured,
+      projectCost: target,
+      beneficiaries: item.beneficiaries || inst.peopleReachedPerYear,
+      sdgs: item.sdgGoals,
+      coverage: target > 0 ? Math.round((secured / target) * 100) : 0,
+    }
+  })
+  const donationCount = confirmedProofs.length
+  const donatedValue = confirmedProofs.reduce((sum, p) => sum + (p.confirmedAmount || p.amount || 0), 0)
+  const supportedInstitutions = new Set(confirmedProofs.map(p => p.institutionName)).size
+  const producedReports = confirmedProofs.length
   const registeredCompletedProjects = listInstitutionRegistrations().flatMap(inst =>
     completedProjects(inst.needs, confirmedProofs, inst.name).map(project => ({
       id: `${inst.nif}-${project.id}`,
@@ -163,20 +151,20 @@ export default function ImpactStoriesPage({ setCurrentView }: Props) {
         </section>
       )}
 
-      {/* SIMULATED STORIES */}
+      {/* HIGHLIGHTED PROJECTS */}
       <section className="py-16">
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-black text-slate-900 mb-3">Casos em destaque</h2>
+            <h2 className="text-3xl font-black text-slate-900 mb-3">Projetos em destaque</h2>
             <p className="text-slate-500">
-              Dois casos simulados para mostrar como a página apresentará projetos concluídos e ratings de impacto.
+              Projetos publicados na plataforma com informação pública completa para empresas mecenas.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
-            {simulatedCases.map(item => (
+            {highlightedProjects.map(item => (
               <article
-                key={item.title}
+                key={item.id}
                 className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col"
               >
                 <div className="bg-gradient-to-br from-slate-900 to-blue-900 h-44 p-6 text-white flex flex-col justify-between">
@@ -186,7 +174,7 @@ export default function ImpactStoriesPage({ setCurrentView }: Props) {
                     ))}
                   </div>
                   <div>
-                    <p className="text-xs font-black uppercase tracking-wide text-blue-200">Caso simulado</p>
+                    <p className="text-xs font-black uppercase tracking-wide text-blue-200">Projeto publicado</p>
                     <h3 className="text-xl font-black leading-tight">{item.title}</h3>
                   </div>
                 </div>
@@ -209,22 +197,14 @@ export default function ImpactStoriesPage({ setCurrentView }: Props) {
                     {item.description}
                   </p>
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <button onClick={() => setCurrentView('rating-impacto')} className="text-xs font-black uppercase tracking-wide text-blue-700 underline underline-offset-2">
-                        Rating de Impacto
-                      </button>
-                      <span className="text-sm font-black text-slate-900">{item.rating} · {item.score}/100</span>
-                    </div>
-                    <div className="h-3 rounded-full bg-slate-200 overflow-hidden">
-                      <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-emerald-500" style={{ width: `${item.score}%` }} />
-                    </div>
-                    <p className="mt-2 text-xs text-slate-500">
-                      Inclui custo total do projeto: € {item.projectCost.toLocaleString('pt-PT')}.
+                    <p className="text-xs font-black uppercase tracking-wide text-blue-700">Resumo do apoio</p>
+                    <p className="mt-2 text-sm text-slate-600">
+                      Donativo aplicado num projeto com custo total de € {item.projectCost.toLocaleString('pt-PT')} e cobertura de {item.coverage}%.
                     </p>
                   </div>
                   <div className="flex justify-between items-center pt-3 border-t border-slate-100 text-xs text-slate-500">
-                    <span>{item.company}</span>
                     <span>{item.institution}</span>
+                    <span>Projeto ativo</span>
                   </div>
                 </div>
               </article>

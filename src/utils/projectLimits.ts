@@ -3,7 +3,7 @@ import { NeedItem } from '../types'
 export type ProjectSupportType = 'dinheiro' | 'produtos'
 
 export const PROJECT_TYPE_LIMIT_MESSAGE =
-  'Só pode ter ativo 1 projeto a pedir dinheiro e 1 projeto a pedir produto/serviço. Conclua ou remova o projeto ativo desse tipo antes de criar outro.'
+  'Só pode ter ativo 1 projeto a pedir apoio financeiro e 1 projeto a pedir produto/serviço. Conclua ou remova o projeto ativo desse tipo antes de criar outro.'
 
 export const projectSupportType = (need: Pick<NeedItem, 'supportType'>): ProjectSupportType =>
   need.supportType === 'produtos' ? 'produtos' : 'dinheiro'

@@ -17,7 +17,7 @@ export default function MecenatoLawPage({ setCurrentView }: Props) {
           <p className="text-lg text-slate-300 leading-relaxed max-w-3xl">
             Em Portugal, o enquadramento fiscal do mecenato consta do Capítulo X do Estatuto dos Benefícios Fiscais,
             relativo aos benefícios fiscais aplicáveis a determinados donativos. Para efeitos fiscais, o donativo
-            corresponde a uma entrega em dinheiro ou em espécie, sem contrapartidas de natureza pecuniária ou comercial,
+            corresponde a uma entrega financeira ou em espécie, sem contrapartidas de natureza pecuniária ou comercial,
             efetuada a entidades legalmente elegíveis. No caso das empresas, o artigo 62.º do EBF regula as condições
             em que estes donativos podem ser considerados para efeitos de IRC, incluindo majorações e limites que dependem
             da entidade beneficiária, da finalidade do apoio e da documentação emitida.
@@ -47,7 +47,7 @@ export default function MecenatoLawPage({ setCurrentView }: Props) {
               <div className="space-y-5">
                 <InfoBlock
                   title="O que é um donativo"
-                  body="Para efeitos fiscais, o donativo é uma entrega em dinheiro ou em espécie, sem contrapartidas comerciais, feita a entidades previstas no regime do mecenato."
+                  body="Para efeitos fiscais, o donativo é uma entrega financeira ou em espécie, sem contrapartidas comerciais, feita a entidades previstas no regime do mecenato."
                 />
                 <InfoBlock
                   title="Benefício para empresas"

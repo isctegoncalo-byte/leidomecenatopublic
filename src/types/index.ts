@@ -3,7 +3,7 @@ export type ViewType =
   | 'home' | 'empresa' | 'instituicao' | 'empresas' | 'instituicoes' | 'simulador'
   | 'esg-report' | 'dashboard' | 'lei-mecenato' | 'impacto-real' | 'faq' | 'projeto'
   | 'login' | 'area-privada' | 'admin' | 'relatorios'
-  | 'privacidade' | 'termos' | 'cookies' | 'rating-impacto'
+  | 'privacidade' | 'termos' | 'cookies'
 
 export type ESGPillar = 'E' | 'S' | 'G'
 
@@ -173,6 +173,7 @@ export interface NeedItem {
   description: string
   executiveSummary?: string
   rationale?: string
+  keyPopulations?: string[]
   targetPopulation?: string
   targetPopulationOther?: string
   objectives?: string
@@ -370,7 +371,7 @@ export const REPORT_TIERS: ReportTier[] = [
     features: [
       'Relatório PDF com 6 páginas, incluindo capa',
       'Sumário do impacto gerado',
-      'Impact Score e rating do apoio',
+      'Impact Score e métricas do apoio',
       'Principais necessidades apoiadas',
       'Dados fiscais e dedução de 140% no IRC',
     ],
@@ -384,7 +385,7 @@ export const REPORT_TIERS: ReportTier[] = [
     features: [
       'Relatório PDF com 15 páginas, incluindo capa',
       'Tudo do Relatório de Impacto',
-      'Impact Score detalhado com rating',
+      'Impact Score detalhado com métricas',
       'Narrativa de impacto personalizada',
       'Análise de riscos ESG',
       'Galeria e evidências visuais',

@@ -710,7 +710,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                   Cada necessidade é classificada por <strong>pilar ESG</strong> e <strong>alinhamento com os ODS da ONU</strong>.
                 </p>
                 <p className="text-blue-800 text-sm font-bold mt-3">
-                  Regra: cada instituição só pode ter, em simultâneo, um projeto ativo a pedir dinheiro e um projeto ativo a pedir produtos/serviços.
+                  Regra: cada instituição só pode ter, em simultâneo, um projeto ativo a pedir apoio financeiro e um projeto ativo a pedir produtos/serviços.
                 </p>
               </div>
 
@@ -805,7 +805,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                         <label className="block text-sm font-semibold text-slate-600 mb-2">Tipo de apoio pretendido *</label>
                         <select value={need.supportType || 'dinheiro'} onChange={e => updateNeedSupportType(idx, e.target.value as ProjectSupportType)}
                           className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm">
-                          <option value="dinheiro" disabled={hasOtherActiveNeedOfType(idx, 'dinheiro')}>Dinheiro</option>
+                          <option value="dinheiro" disabled={hasOtherActiveNeedOfType(idx, 'dinheiro')}>Financeiro</option>
                           <option value="produtos" disabled={hasOtherActiveNeedOfType(idx, 'produtos')}>Produto/serviço</option>
                         </select>
                         <p className="mt-2 text-xs text-slate-400">

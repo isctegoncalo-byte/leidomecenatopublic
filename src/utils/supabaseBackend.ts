@@ -1,4 +1,4 @@
-import { Account, AccountRole, UploadedDoc } from '../types'
+import { Account, AccountRole, DonationProof, ImpactContract, PlatformNotification, UploadedDoc } from '../types'
 import { isSupabaseConfigured, supabase } from './supabaseClient'
 import { User } from '@supabase/supabase-js'
 import { safeUploadName, validateDocumentUpload } from './uploadSecurity'
@@ -139,6 +139,73 @@ async function notifyAdminAboutRegistration(payload: SupabaseRegisterPayload) {
     })
   } catch (error) {
     console.warn('Nao foi possivel enviar notificacao de registo.', error)
+  }
+}
+
+export async function notifyAdminAboutDonationIntent(
+  contract: ImpactContract,
+  notification?: PlatformNotification | null,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+
+  try {
+    const { error } = await supabase.functions.invoke('donation-notification', {
+      body: {
+        contractId: contract.id,
+        companyName: contract.company,
+        companyNif: contract.nif,
+        companyEmail: contract.email.trim().toLowerCase(),
+        institutionName: contract.institutionName,
+        donationType: contract.donationType,
+        donationAmount: contract.donationAmount,
+        donationDate: contract.donationDate,
+        reportTier: contract.reportTier.name,
+        reportPrice: contract.reportPrice,
+        donationMode: contract.donationMode,
+        notificationTitle: notification?.title || '',
+        notificationBody: notification?.body || '',
+        createdAt: new Date().toISOString(),
+      },
+    })
+
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  } catch (error) {
+    console.warn('Nao foi possivel enviar notificacao de donativo por email.', error)
+    return { ok: false, error: error instanceof Error ? error.message : 'Falha ao enviar notificacao por email.' }
+  }
+}
+
+export async function notifyAdminAboutCompanyDonationConfirmation(
+  proof: DonationProof,
+  account: Account,
+  confirmedAmount?: number,
+  notification?: PlatformNotification | null,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+
+  try {
+    const { error } = await supabase.functions.invoke('donation-notification', {
+      body: {
+        contractId: proof.contractId,
+        companyName: proof.companyName || account.name,
+        companyNif: proof.companyNif || account.nif,
+        companyEmail: (proof.companyEmail || account.email).trim().toLowerCase(),
+        institutionName: proof.institutionName,
+        donationType: proof.donationType,
+        donationAmount: confirmedAmount || proof.confirmedAmount || proof.amount,
+        donationDate: proof.date,
+        notificationTitle: notification?.title || '',
+        notificationBody: notification?.body || '',
+        createdAt: new Date().toISOString(),
+      },
+    })
+
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  } catch (error) {
+    console.warn('Nao foi possivel enviar confirmacao de donativo por email.', error)
+    return { ok: false, error: error instanceof Error ? error.message : 'Falha ao enviar confirmacao por email.' }
   }
 }
 

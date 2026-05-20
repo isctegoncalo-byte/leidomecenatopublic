@@ -111,7 +111,6 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
             <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-slate-200">{institution.municipality}{institution.district ? `, ${institution.district}` : ''}</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-black leading-tight">{title}</h1>
-          <p className="mt-5 max-w-3xl text-lg leading-relaxed text-slate-300">{project.executiveSummary || project.description}</p>
           <div className="mt-8 grid gap-3 md:grid-cols-4">
             <HeroStat label="Instituição" value={institution.name} />
             <HeroStat label="Beneficiários diretos" value={project.beneficiaries ? project.beneficiaries.toLocaleString('pt-PT') : 'A indicar'} />
@@ -165,6 +164,10 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
                   <p className="mt-1 text-sm text-slate-500">Objetivos, população abrangida e informação de execução pública.</p>
                 </div>
                 <span className={`self-start rounded-full px-3 py-1 text-xs font-black ${statusClass}`}>{statusLabel}</span>
+              </div>
+              <div className="mb-5 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-500">Resumo executivo</h3>
+                <p className="text-slate-600 leading-relaxed">{project.executiveSummary || project.description}</p>
               </div>
               {objectiveItems.length > 0 && (
                 <div className="mb-5">
@@ -221,8 +224,12 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
 
             <article className="bg-white border border-slate-200 rounded-2xl p-6">
               <h2 className="text-2xl font-black text-slate-900 mb-4">ODS e metas a atingir</h2>
-              <div className="flex flex-wrap gap-3 mb-5">
-                {project.sdgGoals.map(sdg => <SdgIcon key={sdg} n={sdg} size="md" />)}
+              <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                {project.sdgGoals.map(sdg => (
+                  <div key={sdg} className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                    <SdgIcon n={sdg} size="lg" className="h-auto w-full rounded-xl" />
+                  </div>
+                ))}
               </div>
               <ul className="space-y-3 text-slate-600">
                 {project.targetPopulation ? <li><strong>População-alvo:</strong> {project.targetPopulation === 'Outra' ? project.targetPopulationOther : project.targetPopulation}</li> : null}

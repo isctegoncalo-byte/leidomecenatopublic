@@ -1235,13 +1235,24 @@ const sampleInstitutionsWithDemoProjects: Institution[] = [
   },
 ]
 
-export const sampleInstitutions: Institution[] = sampleInstitutionsWithDemoProjects.map(institution => ({
-  ...institution,
-  needs: [],
-  esgScore: {
-    ...institution.esgScore,
-    sdgAlignment: [],
-    beneficiaries: 0,
-    impactNarrative: '',
-  },
-}))
+let simulatedProjectCount = 0
+const MAX_SIMULATED_PROJECTS = 3
+
+export const sampleInstitutions: Institution[] = sampleInstitutionsWithDemoProjects.map(institution => {
+  const needs = institution.needs.filter(() => {
+    if (simulatedProjectCount >= MAX_SIMULATED_PROJECTS) return false
+    simulatedProjectCount += 1
+    return true
+  })
+
+  return {
+    ...institution,
+    needs,
+    esgScore: {
+      ...institution.esgScore,
+      sdgAlignment: needs.length ? institution.esgScore.sdgAlignment : [],
+      beneficiaries: needs.length ? institution.esgScore.beneficiaries : 0,
+      impactNarrative: needs.length ? institution.esgScore.impactNarrative : '',
+    },
+  }
+})

@@ -27,6 +27,8 @@ export interface AdminDocument {
   public_url: string | null
   mime_type: string | null
   size: number
+  accepted: boolean | null
+  reviewed_at: string | null
   created_at: string
   profiles?: Pick<AdminProfile, 'name' | 'email' | 'role'> | null
 }
@@ -403,4 +405,27 @@ export async function listAdminDocumentsReal(): Promise<{ ok: true; documents: A
   }))
 
   return { ok: true, documents }
+}
+
+export async function updateAdminDocumentAcceptedReal(
+  documentId: string,
+  accepted: boolean,
+): Promise<{ ok: true; document: AdminDocument } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+
+  const { data, error } = await supabase
+    .from('documents')
+    .update({
+      accepted,
+      reviewed_at: accepted ? new Date().toISOString() : null,
+    })
+    .eq('id', documentId)
+    .select('*, profiles:owner_id(name,email,role)')
+    .single()
+
+  if (error || !data) {
+    return { ok: false, error: error?.message || 'Nao foi possivel atualizar o estado do documento.' }
+  }
+
+  return { ok: true, document: data as AdminDocument }
 }

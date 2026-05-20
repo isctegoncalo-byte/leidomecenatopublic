@@ -12,6 +12,7 @@ import {
   listAdminDocumentsReal,
   listAdminProfilesReal,
   realBackendEnabled,
+  updateAdminDocumentAcceptedReal,
 } from '../utils/supabaseBackend'
 import { validateImageUpload } from '../utils/uploadSecurity'
 import { listProofs } from '../utils/proofStore'
@@ -239,6 +240,7 @@ function AdminUsersDocumentsTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [documentsError, setDocumentsError] = useState('')
+  const [savingDocumentId, setSavingDocumentId] = useState('')
 
   const load = async () => {
     setLoading(true)
@@ -273,6 +275,28 @@ function AdminUsersDocumentsTab() {
   useEffect(() => {
     void load()
   }, [])
+
+  const updateDocumentAccepted = async (documentId: string, accepted: boolean) => {
+    setSavingDocumentId(documentId)
+    setDocuments(current => current.map(document =>
+      document.id === documentId
+        ? { ...document, accepted, reviewed_at: accepted ? new Date().toISOString() : null }
+        : document
+    ))
+
+    const result = await updateAdminDocumentAcceptedReal(documentId, accepted)
+    setSavingDocumentId('')
+
+    if (!result.ok) {
+      setDocumentsError(`Não foi possível atualizar o documento: ${result.error}`)
+      void load()
+      return
+    }
+
+    setDocuments(current => current.map(document =>
+      document.id === documentId ? { ...document, ...result.document } : document
+    ))
+  }
 
   const companyProfiles = profiles.filter(p => p.role === 'empresa')
   const institutionProfiles = profiles.filter(p => p.role === 'instituicao')
@@ -425,18 +449,40 @@ where email = 'o-teu-email@exemplo.pt';`}</pre>
                   {selectedDocuments.map(d => (
                     <div key={d.id} className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between">
                       <div className="min-w-0">
-                        <p className="truncate font-bold text-slate-800">{d.name}</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate font-bold text-slate-800">{d.name}</p>
+                          <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${d.accepted ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {d.accepted ? 'Aceite' : 'Por validar'}
+                          </span>
+                        </div>
                         <p className="text-xs text-slate-500">
                           {d.category} - {(d.size / 1024).toFixed(1)} KB - {new Date(d.created_at).toLocaleString('pt-PT')}
                         </p>
+                        {d.reviewed_at && (
+                          <p className="mt-1 text-xs text-green-700">
+                            Validado em {new Date(d.reviewed_at).toLocaleString('pt-PT')}
+                          </p>
+                        )}
                       </div>
-                      {d.public_url ? (
-                        <a href={d.public_url} download={d.name} className="self-start rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 md:self-auto">
-                          Descarregar
-                        </a>
-                      ) : (
-                        <span className="text-xs text-slate-400">Sem link disponivel</span>
-                      )}
+                      <div className="flex flex-col items-start gap-3 md:items-end">
+                        <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(d.accepted)}
+                            disabled={savingDocumentId === d.id}
+                            onChange={event => void updateDocumentAccepted(d.id, event.target.checked)}
+                            className="h-4 w-4 accent-green-600"
+                          />
+                          Documento aceite
+                        </label>
+                        {d.public_url ? (
+                          <a href={d.public_url} download={d.name} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">
+                            Descarregar
+                          </a>
+                        ) : (
+                          <span className="text-xs text-slate-400">Sem link disponivel</span>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

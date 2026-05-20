@@ -51,9 +51,13 @@ create table if not exists public.documents (
   public_url text,
   mime_type text,
   size bigint not null default 0,
+  accepted boolean not null default false,
+  reviewed_at timestamptz,
   created_at timestamptz not null default now()
 );
 
+alter table public.documents add column if not exists accepted boolean not null default false;
+alter table public.documents add column if not exists reviewed_at timestamptz;
 create index if not exists documents_owner_id_idx on public.documents (owner_id);
 
 create or replace function public.is_admin()
@@ -219,6 +223,12 @@ drop policy if exists "documents_delete_own_or_admin" on public.documents;
 create policy "documents_delete_own_or_admin"
 on public.documents for delete
 using (owner_id = auth.uid() or public.is_admin());
+
+drop policy if exists "documents_update_admin" on public.documents;
+create policy "documents_update_admin"
+on public.documents for update
+using (public.is_admin())
+with check (public.is_admin());
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (

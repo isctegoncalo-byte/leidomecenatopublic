@@ -71,6 +71,8 @@ const toDoc = (row: AdminDocument): UploadedDoc => ({
   uploadedAt: row.created_at,
   dataUrl: row.public_url || '',
   size: row.size,
+  accepted: Boolean(row.accepted),
+  reviewedAt: row.reviewed_at,
 })
 
 export function realBackendEnabled() {

@@ -72,6 +72,13 @@ function buildPlaceholderVars(report: GeneratedESGReport): Record<string, string
 
 type AdminTab = 'users-docs' | 'donation-history' | 'brand' | 'report-templates' | 'preview'
 
+const REQUIRED_ADMIN_INSTITUTION_DOCS = [
+  'Comprovativo NIF',
+  'Relatórios de Atividades e Contas (último aprovado)',
+  'Estatutos',
+  'Comprovativo IBAN',
+]
+
 export default function AdminPage({ setCurrentView, session, onLogout }: Props) {
   const [tab, setTab] = useState<AdminTab>('users-docs')
 
@@ -305,7 +312,13 @@ function AdminUsersDocumentsTab() {
   const selectedDocuments = selectedProfile ? documents.filter(d => d.owner_id === selectedProfile.id) : []
   const companyCount = companyProfiles.length
   const institutionCount = institutionProfiles.length
-  const totalStorage = documents.reduce((sum, d) => sum + (d.size || 0), 0)
+  const pendingDocuments = documents.filter(d => !d.accepted)
+  const acceptedDocuments = documents.filter(d => d.accepted)
+  const profilesWithoutDocs = profiles.filter(p => !documents.some(d => d.owner_id === p.id))
+  const institutionsMissingRequiredDocs = institutionProfiles.filter(profile => {
+    const profileDocs = documents.filter(d => d.owner_id === profile.id)
+    return REQUIRED_ADMIN_INSTITUTION_DOCS.some(required => !profileDocs.some(doc => doc.category === required))
+  })
 
   useEffect(() => {
     const nextProfiles = selectedRole === 'empresa' ? companyProfiles : institutionProfiles
@@ -361,8 +374,26 @@ where email = 'o-teu-email@exemplo.pt';`}</pre>
           <div className="grid md:grid-cols-4 gap-4">
             <AdminMetric label="Total de contas" value={profiles.length} />
             <AdminMetric label="Empresas" value={companyCount} />
-            <AdminMetric label="Instituicoes" value={institutionCount} />
-            <AdminMetric label="Documentos" value={documents.length} detail={`${(totalStorage / 1024 / 1024).toFixed(2)} MB`} />
+            <AdminMetric label="Instituições" value={institutionCount} />
+            <AdminMetric label="Documentos pendentes" value={pendingDocuments.length} detail={`${acceptedDocuments.length} aceites`} tone={pendingDocuments.length ? 'amber' : 'green'} />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+              <p className="text-xs font-black uppercase tracking-wide text-amber-700">A rever</p>
+              <h3 className="mt-1 text-lg font-black text-slate-900">Documentos por validar</h3>
+              <p className="mt-2 text-sm text-amber-800">{pendingDocuments.length === 0 ? 'Não existem documentos pendentes.' : `${pendingDocuments.length} documento${pendingDocuments.length > 1 ? 's' : ''} aguarda${pendingDocuments.length > 1 ? 'm' : ''} validação.`}</p>
+            </div>
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+              <p className="text-xs font-black uppercase tracking-wide text-blue-700">Onboarding</p>
+              <h3 className="mt-1 text-lg font-black text-slate-900">Contas sem documentos</h3>
+              <p className="mt-2 text-sm text-blue-800">{profilesWithoutDocs.length === 0 ? 'Todas as contas têm documentos submetidos.' : `${profilesWithoutDocs.length} conta${profilesWithoutDocs.length > 1 ? 's' : ''} ainda sem documentos.`}</p>
+            </div>
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+              <p className="text-xs font-black uppercase tracking-wide text-red-700">Instituições</p>
+              <h3 className="mt-1 text-lg font-black text-slate-900">Documentos obrigatórios em falta</h3>
+              <p className="mt-2 text-sm text-red-800">{institutionsMissingRequiredDocs.length === 0 ? 'Todas as instituições têm a documentação mínima.' : `${institutionsMissingRequiredDocs.length} instituição${institutionsMissingRequiredDocs.length > 1 ? 'ões' : ''} com documentação incompleta.`}</p>
+            </div>
           </div>
 
           <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
@@ -394,7 +425,9 @@ where email = 'o-teu-email@exemplo.pt';`}</pre>
               ) : (
                 <div className="max-h-[620px] overflow-y-auto divide-y divide-slate-100">
                   {visibleProfiles.map(p => {
-                    const docCount = documents.filter(d => d.owner_id === p.id).length
+                    const profileDocs = documents.filter(d => d.owner_id === p.id)
+                    const docCount = profileDocs.length
+                    const pendingCount = profileDocs.filter(d => !d.accepted).length
                     const isSelected = selectedProfile?.id === p.id
                     return (
                       <button
@@ -410,9 +443,12 @@ where email = 'o-teu-email@exemplo.pt';`}</pre>
                               NIF {p.nif} - {new Date(p.created_at).toLocaleDateString('pt-PT')}
                             </p>
                           </div>
-                          <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-black ${docCount > 0 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-                            {docCount} doc.
-                          </span>
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            <span className={`rounded-full px-2.5 py-1 text-xs font-black ${docCount > 0 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                              {docCount} doc.
+                            </span>
+                            {pendingCount > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-700">{pendingCount} por validar</span>}
+                          </div>
                         </div>
                       </button>
                     )
@@ -433,6 +469,10 @@ where email = 'o-teu-email@exemplo.pt';`}</pre>
                       <span><strong>Tipo:</strong> {selectedProfile.role === 'empresa' ? 'Empresa' : 'Instituição'}</span>
                       {selectedProfile.company_activity && <span><strong>Setor:</strong> {selectedProfile.company_activity}</span>}
                       {selectedProfile.institution_category && <span><strong>Área:</strong> {selectedProfile.institution_category}</span>}
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
+                      <span className="rounded-full bg-green-100 px-2.5 py-1 text-green-700">{selectedDocuments.filter(d => d.accepted).length} aceites</span>
+                      <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-700">{selectedDocuments.filter(d => !d.accepted).length} por validar</span>
                     </div>
                   </div>
                 ) : (
@@ -770,11 +810,12 @@ function InfoPill({ label, value }: { label: string; value: string }) {
   )
 }
 
-function AdminMetric({ label, value, detail }: { label: string; value: number; detail?: string }) {
+function AdminMetric({ label, value, detail, tone = 'slate' }: { label: string; value: number; detail?: string; tone?: 'slate' | 'amber' | 'green' }) {
+  const color = tone === 'amber' ? 'text-amber-700' : tone === 'green' ? 'text-green-700' : 'text-slate-900'
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5">
       <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-2 text-3xl font-black text-slate-900">{value}</p>
+      <p className={`mt-2 text-3xl font-black ${color}`}>{value}</p>
       {detail && <p className="mt-1 text-xs text-slate-500">{detail}</p>}
     </div>
   )

@@ -56,6 +56,8 @@ export default function PrivateAreaPage({ account, onLogout, setCurrentView }: P
     listNotificationsForAccount(account.id, account.role === 'admin' ? undefined : account.role, account.name),
   [account.id, account.name, account.role, tab])
   const chatThreads = useMemo(() => listThreadsForAccount(account), [account.id, account.name, tab])
+  const institutionRegistration = account.role === 'instituicao' ? findInstitutionRegistration(account.name) : null
+  const onboarding = buildOnboardingSteps(account, docs, proofs, institutionRegistration?.needs.length || 0)
 
   useEffect(() => {
     let alive = true
@@ -129,6 +131,8 @@ export default function PrivateAreaPage({ account, onLogout, setCurrentView }: P
       </section>
 
       <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <OnboardingPanel steps={onboarding} activeTab={tab} onSelectTab={setTab} setCurrentView={setCurrentView} />
+
         {tab === 'perfil' && (
           <div className="space-y-6">
             <ProfileTab account={account} />
@@ -281,6 +285,135 @@ const REQUIRED_INSTITUTION_PROJECT_DOCS = [
   'Comprovativo IBAN',
 ]
 
+type OnboardingStep = {
+  title: string
+  detail: string
+  done: boolean
+  tab?: Tab
+  view?: ViewType
+}
+
+function buildOnboardingSteps(account: Account, docs: UploadedDoc[], proofs: DonationProof[], projectCount: number): OnboardingStep[] {
+  if (account.role === 'instituicao') {
+    const missingDocs = REQUIRED_INSTITUTION_PROJECT_DOCS.filter(required => !docs.some(doc => doc.category === required))
+    const pendingDonations = proofs.filter(proof => proof.status === 'pending-institution').length
+    return [
+      {
+        title: 'Completar perfil institucional',
+        detail: account.institutionCategory ? 'Perfil base preenchido.' : 'Adicione a área de atuação e dados institucionais.',
+        done: Boolean(account.name && account.nif && account.institutionCategory),
+        tab: 'perfil',
+      },
+      {
+        title: 'Submeter documentos obrigatórios',
+        detail: missingDocs.length === 0 ? 'Documentação mínima carregada.' : `Em falta: ${missingDocs.join(', ')}.`,
+        done: missingDocs.length === 0,
+        tab: 'documentos',
+      },
+      {
+        title: 'Criar projeto público',
+        detail: projectCount > 0 ? `${projectCount} projeto${projectCount > 1 ? 's' : ''} registado${projectCount > 1 ? 's' : ''}.` : 'Crie pelo menos um projeto para receber apoio.',
+        done: projectCount > 0,
+        tab: 'projetos',
+      },
+      {
+        title: 'Validar donativos recebidos',
+        detail: pendingDonations > 0 ? `${pendingDonations} donativo${pendingDonations > 1 ? 's' : ''} por confirmar.` : 'Sem donativos pendentes neste momento.',
+        done: pendingDonations === 0,
+        tab: 'donativos',
+      },
+    ]
+  }
+
+  const confirmedDonations = proofs.filter(proof => proof.status === 'confirmed').length
+  return [
+    {
+      title: 'Completar perfil da empresa',
+      detail: account.companyActivity ? 'Perfil base preenchido.' : 'Adicione o setor de atividade da empresa.',
+      done: Boolean(account.name && account.nif && account.companyActivity),
+      tab: 'perfil',
+    },
+    {
+      title: 'Encontrar projeto para apoiar',
+      detail: proofs.length > 0 ? 'Já iniciou pelo menos um processo de apoio.' : 'Consulte os projetos públicos e escolha um para apoiar.',
+      done: proofs.length > 0,
+      view: 'home',
+    },
+    {
+      title: 'Confirmar donativos',
+      detail: confirmedDonations > 0 ? `${confirmedDonations} donativo${confirmedDonations > 1 ? 's' : ''} validado${confirmedDonations > 1 ? 's' : ''}.` : 'Os donativos confirmados aparecem aqui depois de validados.',
+      done: confirmedDonations > 0,
+      tab: 'donativos',
+    },
+    {
+      title: 'Descarregar relatório ESG',
+      detail: confirmedDonations > 0 ? 'Relatórios disponíveis após validação por ambas as partes.' : 'Fica disponível quando o primeiro donativo for validado.',
+      done: confirmedDonations > 0,
+      tab: 'relatorios-esg',
+    },
+  ]
+}
+
+function OnboardingPanel({
+  steps, activeTab, onSelectTab, setCurrentView,
+}: {
+  steps: OnboardingStep[]
+  activeTab: Tab
+  onSelectTab: (tab: Tab) => void
+  setCurrentView: (v: ViewType) => void
+}) {
+  const doneCount = steps.filter(step => step.done).length
+  const percent = Math.round((doneCount / Math.max(steps.length, 1)) * 100)
+
+  return (
+    <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-wide text-blue-600">Próximos passos</p>
+          <h2 className="mt-1 text-xl font-black text-slate-900">Checklist de arranque</h2>
+          <p className="mt-1 text-sm text-slate-500">{doneCount} de {steps.length} passos concluídos.</p>
+        </div>
+        <div className="min-w-[180px]">
+          <div className="mb-1 flex justify-between text-xs font-bold text-slate-500">
+            <span>Progresso</span>
+            <span>{percent}%</span>
+          </div>
+          <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full rounded-full bg-blue-600" style={{ width: `${percent}%` }} />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        {steps.map((step, index) => {
+          const active = step.tab === activeTab
+          return (
+            <button
+              key={step.title}
+              onClick={() => {
+                if (step.tab) onSelectTab(step.tab)
+                if (step.view) setCurrentView(step.view)
+              }}
+              className={`text-left rounded-xl border p-4 transition ${active ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-slate-50 hover:bg-white'} ${step.done ? 'border-green-200' : ''}`}
+            >
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-black ${step.done ? 'bg-green-600 text-white' : 'bg-white text-slate-500 border border-slate-200'}`}>
+                  {step.done ? '✓' : index + 1}
+                </span>
+                <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${step.done ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {step.done ? 'Concluído' : 'Pendente'}
+                </span>
+              </div>
+              <p className="font-black text-slate-900">{step.title}</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">{step.detail}</p>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 const TARGET_POPULATIONS = [
   'Crianças e jovens',
   'Pessoas idosas',
@@ -324,6 +457,19 @@ const MAX_OBJECTIVE_TOPICS = 5
 const MAX_KEY_POPULATIONS = 5
 
 const projectTitle = (project: NeedItem) => project.projectName || [project.category, project.subcategory].filter(Boolean).join(' › ') || 'Projeto sem nome'
+
+function projectStatusBadge(project: NeedItem, confirmedProofs: DonationProof[], institutionName: string) {
+  if (project.implementationPhase === 'inativo' || project.status === 'inativo') {
+    return { text: 'Inativo', color: 'bg-slate-100 text-slate-600' }
+  }
+  if (isProjectComplete(project, confirmedProofs, institutionName) || project.status === 'concluido') {
+    return { text: 'Financiamento concluído', color: 'bg-green-100 text-green-700' }
+  }
+  if (project.implementationPhase === 'a-decorrer') {
+    return { text: 'A decorrer', color: 'bg-blue-100 text-blue-700' }
+  }
+  return { text: 'Em candidatura', color: 'bg-amber-100 text-amber-700' }
+}
 
 function InstitutionProjectsTab({ account, docs }: { account: Account; docs: UploadedDoc[] }) {
   const existing = findInstitutionRegistration(account.name)
@@ -1120,12 +1266,15 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
         <h2 className="text-xl font-black text-slate-900 mb-4">Projetos atuais ({needs.length})</h2>
         {needs.length === 0 ? <p className="text-slate-500 text-sm">Ainda não existem projetos registados.</p> : (
           <div className="space-y-3">
-            {needs.map(n => (
+            {needs.map(n => {
+              const badge = projectStatusBadge(n, confirmedProofs, account.name)
+              return (
               <div key={n.id} className="border border-slate-200 rounded-xl p-4">
                 <div className="flex justify-between gap-3">
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-bold text-slate-800">{projectTitle(n)}</p>
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${badge.color}`}>{badge.text}</span>
                     </div>
                     <p className="text-sm text-slate-500 mt-1">{n.executiveSummary || n.description || n.impactMetric}</p>
                     <div className="mt-3 grid gap-2 text-xs text-slate-500 md:grid-cols-3">
@@ -1145,13 +1294,13 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
                     <div className="flex flex-wrap items-center gap-1.5 mt-2">
                       {n.sdgGoals.map(s => <SdgIcon key={s} n={s} size="sm" className="rounded-md" />)}
                       {(n.projectPhotoUrls || []).length > 0 && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold">{(n.projectPhotoUrls || []).length} foto{(n.projectPhotoUrls || []).length > 1 ? 's' : ''}</span>}
-                      {isProjectComplete(n, confirmedProofs, account.name) && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">Concluído</span>}
+                      {n.customKpis?.length ? <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold">{n.customKpis.length} KPI{n.customKpis.length > 1 ? 's' : ''}</span> : null}
                     </div>
                   </div>
                   <button onClick={() => removeProject(n.id)} className="text-red-600 text-sm font-bold">Remover</button>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>
@@ -1341,7 +1490,16 @@ function DocumentsTab({
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-        <h2 className="text-xl font-black text-slate-900 mb-4">Documentos Carregados ({docs.length})</h2>
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-xl font-black text-slate-900">Documentos Carregados ({docs.length})</h2>
+            <p className="text-xs text-slate-500">O estado de aceitação é atualizado pelo administrador após revisão.</p>
+          </div>
+          <div className="flex gap-2 text-xs font-bold">
+            <span className="rounded-full bg-green-100 px-3 py-1 text-green-700">{docs.filter(d => d.accepted).length} aceites</span>
+            <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-700">{docs.filter(d => !d.accepted).length} por validar</span>
+          </div>
+        </div>
         {docs.length === 0 ? (
           <p className="text-slate-500 text-sm">Ainda não existem documentos carregados.</p>
         ) : (
@@ -1350,10 +1508,16 @@ function DocumentsTab({
               <li key={d.id} className="flex items-center gap-3 py-3">
                 <span className="text-2xl">📄</span>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-slate-800 truncate">{d.name}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-bold text-slate-800 truncate">{d.name}</p>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${d.accepted ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {d.accepted ? 'Aceite' : 'Em análise'}
+                    </span>
+                  </div>
                   <p className="text-xs text-slate-500">
                     {d.category} • {(d.size / 1024).toFixed(1)} KB • {new Date(d.uploadedAt).toLocaleDateString('pt-PT')}
                   </p>
+                  {d.reviewedAt && <p className="mt-1 text-xs text-green-700">Validado em {new Date(d.reviewedAt).toLocaleString('pt-PT')}</p>}
                 </div>
                 <a href={d.dataUrl} download={d.name}
                   className="text-blue-600 hover:text-blue-800 text-sm font-semibold">Descarregar</a>

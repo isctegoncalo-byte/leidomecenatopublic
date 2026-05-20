@@ -36,6 +36,8 @@ export interface UploadedDoc {
   uploadedAt: string
   dataUrl: string              // base64
   size: number                 // bytes
+  accepted?: boolean
+  reviewedAt?: string | null
 }
 
 export type DonationProofStatus = 'pending-institution' | 'pending-company' | 'confirmed' | 'rejected'

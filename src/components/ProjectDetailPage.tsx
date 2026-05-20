@@ -1,6 +1,6 @@
 import { Account, ViewType } from '../types'
 import { findProjectEntry } from '../utils/projectCatalog'
-import { projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
+import { isProjectComplete, projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
 import { listProofs } from '../utils/proofStore'
 import { findInstitutionRegistration } from '../utils/institutionRegistry'
 import { getProjectGallery } from '../utils/projectGalleries'
@@ -36,6 +36,7 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
   const target = projectTarget(project)
   const secured = projectSecured(project, proofs, institution.name)
   const progress = projectProgress(project, proofs, institution.name)
+  const complete = isProjectComplete(project, proofs, institution.name)
   const gallery = getProjectGallery(project, institution)
   const contacts = getInstitutionContacts(institution, registration)
   const socialLinks = [
@@ -65,6 +66,26 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
     .filter(group => group.items.length > 0)
   const customKpiItems = (project.customKpis || []).map(item => item.trim()).filter(Boolean)
   const hasProjectKpis = filledOdsKpis.length > 0 || customKpiItems.length > 0
+  const statusLabel = project.implementationPhase === 'inativo'
+    ? 'Inativo'
+    : complete
+      ? 'Financiamento concluído'
+      : project.implementationPhase === 'a-decorrer'
+        ? 'A decorrer'
+        : 'Em candidatura'
+  const statusClass = project.implementationPhase === 'inativo'
+    ? 'bg-slate-100 text-slate-700'
+    : complete
+      ? 'bg-green-100 text-green-700'
+      : project.implementationPhase === 'a-decorrer'
+        ? 'bg-blue-100 text-blue-700'
+        : 'bg-amber-100 text-amber-700'
+  const projectDates = [
+    project.projectStartDate ? `Início: ${new Date(project.projectStartDate).toLocaleDateString('pt-PT')}` : '',
+    project.continuousProject ? 'Projeto de continuidade' : project.projectEndDate ? `Fim previsto: ${new Date(project.projectEndDate).toLocaleDateString('pt-PT')}` : '',
+  ].filter(Boolean)
+  const evidenceMethod = project.generalImpactMetrics?.evidenceMethod || 'comprovativos, recibos e evidências submetidas pelas partes envolvidas'
+  const reportingFrequency = project.generalImpactMetrics?.reportingFrequency || 'após validação do donativo e recolha de evidências'
 
   const donate = () => {
     localStorage.setItem('leidomecenato_pending_project', JSON.stringify({
@@ -84,8 +105,19 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
     <div className="min-h-screen bg-slate-50">
       <section className="bg-slate-950 text-white py-16">
         <div className="container mx-auto px-4 max-w-6xl">
-          <p className="text-sm font-black uppercase tracking-wide text-blue-300 mb-3">{institution.category}</p>
+          <div className="mb-5 flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-wide text-blue-200">{institution.category}</span>
+            <span className={`rounded-full px-3 py-1 text-xs font-black ${statusClass}`}>{statusLabel}</span>
+            <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-slate-200">{institution.municipality}{institution.district ? `, ${institution.district}` : ''}</span>
+          </div>
           <h1 className="text-4xl md:text-5xl font-black leading-tight">{title}</h1>
+          <p className="mt-5 max-w-3xl text-lg leading-relaxed text-slate-300">{project.executiveSummary || project.description}</p>
+          <div className="mt-8 grid gap-3 md:grid-cols-4">
+            <HeroStat label="Instituição" value={institution.name} />
+            <HeroStat label="Beneficiários diretos" value={project.beneficiaries ? project.beneficiaries.toLocaleString('pt-PT') : 'A indicar'} />
+            <HeroStat label="ODS associados" value={String(project.sdgGoals.length || 0)} />
+            <HeroStat label="KPIs publicados" value={String(filledOdsKpis.reduce((sum, group) => sum + group.items.length, customKpiItems.length))} />
+          </div>
         </div>
       </section>
 
@@ -127,8 +159,13 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
             </article>
 
             <article className="bg-white border border-slate-200 rounded-2xl p-6">
-              <h2 className="text-2xl font-black text-slate-900 mb-4">Resumo executivo do projeto</h2>
-              <p className="text-slate-600 leading-relaxed mb-5">{project.executiveSummary || project.description}</p>
+              <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900">Plano do projeto</h2>
+                  <p className="mt-1 text-sm text-slate-500">Objetivos, população abrangida e informação de execução pública.</p>
+                </div>
+                <span className={`self-start rounded-full px-3 py-1 text-xs font-black ${statusClass}`}>{statusLabel}</span>
+              </div>
               {objectiveItems.length > 0 && (
                 <div className="mb-5">
                   <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-500">Objetivo(s)</h3>
@@ -169,6 +206,17 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
                   <p className="text-lg font-black text-slate-900">{project.implementationPhase === 'a-decorrer' ? 'A decorrer' : project.implementationPhase === 'inativo' ? 'Inativo' : 'Em candidatura'}</p>
                 </div>
               </div>
+              {(projectDates.length > 0 || project.territorialScope?.districts?.length) && (
+                <div className="mt-5 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                  <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-500">Calendário e território</h3>
+                  <div className="grid gap-3 text-sm text-slate-600 md:grid-cols-2">
+                    {projectDates.map(item => <p key={item} className="font-semibold">{item}</p>)}
+                    {project.territorialScope?.national && <p className="font-semibold">Âmbito nacional</p>}
+                    {project.territorialScope?.districts?.length ? <p><strong>Distrito(s):</strong> {project.territorialScope.districts.join(', ')}</p> : null}
+                    {project.territorialScope?.municipalities?.length ? <p><strong>Município(s):</strong> {project.territorialScope.municipalities.join(', ')}</p> : null}
+                  </div>
+                </div>
+              )}
             </article>
 
             <article className="bg-white border border-slate-200 rounded-2xl p-6">
@@ -227,6 +275,31 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
               </article>
             )}
 
+            <article className="bg-white border border-slate-200 rounded-2xl p-6">
+              <h2 className="text-2xl font-black text-slate-900 mb-4">Transparência e validação</h2>
+              <div className="grid gap-4 md:grid-cols-2">
+                <TrustItem
+                  title="Comprovativo do donativo"
+                  text="A empresa deve submeter comprovativo de transferência, fatura ou documento equivalente na plataforma."
+                />
+                <TrustItem
+                  title="Confirmação pela instituição"
+                  text="A instituição confirma o valor recebido antes de o donativo ser considerado validado."
+                />
+                <TrustItem
+                  title="Recibo ou declaração"
+                  text="A instituição deve carregar recibo ou declaração de donativo ao abrigo da Lei do Mecenato."
+                />
+                <TrustItem
+                  title="Evidências de impacto"
+                  text={`O acompanhamento considera ${evidenceMethod}.`}
+                />
+              </div>
+              <div className="mt-5 rounded-2xl bg-blue-50 p-4 text-sm leading-relaxed text-blue-900">
+                <strong>Frequência de reporte:</strong> {reportingFrequency}. A plataforma regista o processo, mas o enquadramento fiscal deve ser validado pela empresa com o seu contabilista ou consultor fiscal.
+              </div>
+            </article>
+
           </main>
 
           <aside className="space-y-5">
@@ -252,6 +325,10 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
                 </div>
               )}
               <h2 className="text-xl font-black text-slate-900 mb-4">Progresso do financiamento</h2>
+              <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-black uppercase tracking-wide text-slate-500">Estado público</p>
+                <p className="mt-1 font-black text-slate-900">{statusLabel}</p>
+              </div>
               <div className="flex justify-between text-sm font-black text-slate-700 mb-2">
                 <span>€ {secured.toLocaleString('pt-PT')}</span>
                 <span>{progress}%</span>
@@ -264,10 +341,45 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
                 Avançar para donativo
               </button>
               {account?.role !== 'empresa' && <p className="mt-3 text-xs text-slate-500">Será pedido login como empresa antes de avançar.</p>}
+
+              <div className="mt-6 border-t border-slate-100 pt-5">
+                <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-500">Depois do apoio</h3>
+                <ol className="space-y-3 text-sm text-slate-600">
+                  <li className="flex gap-3"><StepNumber n={1} /><span>A empresa submete o comprovativo.</span></li>
+                  <li className="flex gap-3"><StepNumber n={2} /><span>A instituição confirma o valor recebido.</span></li>
+                  <li className="flex gap-3"><StepNumber n={3} /><span>O recibo é carregado e fica associado ao processo.</span></li>
+                  <li className="flex gap-3"><StepNumber n={4} /><span>Os dados ficam prontos para relatório de impacto.</span></li>
+                </ol>
+              </div>
             </div>
           </aside>
         </div>
       </section>
     </div>
+  )
+}
+
+function HeroStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <p className="text-xs font-black uppercase tracking-wide text-blue-200">{label}</p>
+      <p className="mt-1 truncate text-lg font-black text-white">{value}</p>
+    </div>
+  )
+}
+
+function TrustItem({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-black text-emerald-700">✓</div>
+      <h3 className="font-black text-slate-900">{title}</h3>
+      <p className="mt-1 text-sm leading-relaxed text-slate-600">{text}</p>
+    </div>
+  )
+}
+
+function StepNumber({ n }: { n: number }) {
+  return (
+    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-black text-blue-700">{n}</span>
   )
 }

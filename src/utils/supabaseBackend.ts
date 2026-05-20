@@ -37,6 +37,7 @@ export interface SupabaseRegisterPayload {
   role: AccountRole
   email: string
   password: string
+  userId?: string
   name: string
   nif: string
   companyActivity?: string
@@ -131,6 +132,7 @@ async function notifyAdminAboutRegistration(payload: SupabaseRegisterPayload) {
         to: 'geral@leidomecenato.pt',
         role: payload.role,
         email: payload.email.trim().toLowerCase(),
+        userId: payload.userId || '',
         name: payload.name.trim(),
         nif: payload.nif.trim(),
         companyActivity: payload.companyActivity || '',
@@ -285,7 +287,7 @@ export async function registerReal(payload: SupabaseRegisterPayload): Promise<Re
     return { ok: false, error: authError?.message || 'Nao foi possivel criar a conta.' }
   }
 
-  await notifyAdminAboutRegistration(payload)
+  await notifyAdminAboutRegistration({ ...payload, userId: authData.user.id })
 
   if (!authData.session) {
     return {

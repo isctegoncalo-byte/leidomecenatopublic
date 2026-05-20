@@ -5,6 +5,7 @@ const ADMIN_EMAIL = Deno.env.get('ADMIN_REGISTRATION_EMAIL') || 'geral@leidomece
 const FROM_EMAIL = Deno.env.get('ADMIN_NOTIFICATION_FROM') || 'Lei do Mecenato <geral@leidomecenato.pt>'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || ''
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || ''
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 const SITE_ORIGIN = Deno.env.get('SITE_ORIGIN') || '*'
 const corsHeaders = {
   'Access-Control-Allow-Origin': SITE_ORIGIN,
@@ -14,6 +15,7 @@ const corsHeaders = {
 type RegistrationPayload = {
   role?: string
   email?: string
+  userId?: string
   name?: string
   nif?: string
   companyActivity?: string
@@ -121,6 +123,17 @@ async function getAuthenticatedUser(req: Request) {
   return data.user
 }
 
+async function getRegisteredUser(payload: RegistrationPayload) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !payload.userId) return null
+
+  const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  })
+  const { data, error } = await supabaseAdmin.auth.admin.getUserById(payload.userId)
+  if (error || !data.user) return null
+  return data.user
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -134,9 +147,6 @@ Deno.serve(async (req) => {
     return Response.json({ ok: false, error: 'Missing server env vars' }, { status: 500, headers: corsHeaders })
   }
 
-  const user = await getAuthenticatedUser(req)
-  if (!user?.email) return badRequest('Unauthorized', 401)
-
   let payload: RegistrationPayload
   try {
     payload = await req.json() as RegistrationPayload
@@ -146,8 +156,11 @@ Deno.serve(async (req) => {
   const email = clean(payload.email).toLowerCase()
   const name = clean(payload.name)
   const nif = clean(payload.nif)
-  if (!validEmail(email) || email !== user.email.toLowerCase()) return badRequest('Invalid registration email')
   if (!name || !/^\d{9}$/.test(nif)) return badRequest('Invalid registration payload')
+
+  const user = await getAuthenticatedUser(req) || await getRegisteredUser(payload)
+  if (!user?.email) return badRequest('Unauthorized', 401)
+  if (!validEmail(email) || email !== user.email.toLowerCase()) return badRequest('Invalid registration email')
 
   const role = payload.role === 'instituicao' ? 'Instituição' : 'Empresa'
   const rows = [

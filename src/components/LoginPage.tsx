@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Account, AccountRole, ViewType } from '../types'
-import { login, registerAccount } from '../utils/authStore'
 import { loginReal, realBackendEnabled, registerReal, requestPasswordRecoveryReal, updatePasswordReal } from '../utils/supabaseBackend'
 import { supabase } from '../utils/supabaseClient'
 import { COMPANY_SECTORS } from '../data/companySectors'
@@ -63,10 +62,13 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
       return
     }
 
+    if (!realBackendEnabled()) {
+      setError('A ligação ao Supabase não está configurada neste ambiente. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.')
+      return
+    }
+
     setLoading(true)
-    const res = realBackendEnabled()
-      ? await loginReal(email, password)
-      : login(email, password)
+    const res = await loginReal(email, password)
     setLoading(false)
 
     if (!res.ok) {
@@ -102,6 +104,11 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
       return
     }
 
+    if (!realBackendEnabled()) {
+      setError('A ligação ao Supabase não está configurada neste ambiente. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.')
+      return
+    }
+
     setLoading(true)
     const payload = {
       role,
@@ -115,9 +122,7 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
       consentLogoDisplay: consentLogo,
       consentRGPD,
     }
-    const res = realBackendEnabled()
-      ? await registerReal(payload)
-      : registerAccount(payload)
+    const res = await registerReal(payload)
     setLoading(false)
 
     if (!res.ok) {

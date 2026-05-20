@@ -255,13 +255,20 @@ async function upsertProfileFromUser(user: User, fallback?: SupabaseRegisterPayl
   return toAccount(data as AdminProfile)
 }
 
-export async function registerReal(payload: SupabaseRegisterPayload): Promise<{ ok: true; account: Account } | { ok: false; error: string }> {
+type RegisterResult =
+  | { ok: true; account: Account; needsEmailConfirmation?: false }
+  | { ok: true; needsEmailConfirmation: true; message: string }
+  | { ok: false; error: string }
+
+export async function registerReal(payload: SupabaseRegisterPayload): Promise<RegisterResult> {
   if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
 
+  const emailRedirectTo = typeof window !== 'undefined' ? `${window.location.origin}/entrar` : undefined
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: payload.email.trim().toLowerCase(),
     password: payload.password,
     options: {
+      emailRedirectTo,
       data: {
         role: payload.role,
         name: payload.name.trim(),
@@ -281,7 +288,11 @@ export async function registerReal(payload: SupabaseRegisterPayload): Promise<{ 
   await notifyAdminAboutRegistration(payload)
 
   if (!authData.session) {
-    return { ok: false, error: 'Conta criada. Confirme o email enviado pelo Supabase e depois entre com email e palavra-passe.' }
+    return {
+      ok: true,
+      needsEmailConfirmation: true,
+      message: 'Conta criada. Enviámos um email de confirmação. Confirme o email e depois entre com email e palavra-passe.',
+    }
   }
 
   const { data, error } = await supabase

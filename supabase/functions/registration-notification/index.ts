@@ -43,6 +43,70 @@ function validEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 
+function formatDate(value?: string) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleString('pt-PT', { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+function buildText(rows: string[][]) {
+  return [
+    'Novo registo na plataforma Lei do Mecenato.',
+    '',
+    ...rows.map(([label, value]) => `${label}: ${value}`),
+  ].join('\n')
+}
+
+function buildRegistrationEmail(rows: string[][], name: string, role: string) {
+  const htmlRows = rows.map(([label, value]) => `
+    <tr>
+      <td style="padding:11px 14px;border-bottom:1px solid #e4ebf3;font-size:13px;font-weight:700;color:#415466;width:38%;">${escapeHtml(label)}</td>
+      <td style="padding:11px 14px;border-bottom:1px solid #e4ebf3;font-size:14px;color:#172033;">${escapeHtml(value)}</td>
+    </tr>
+  `).join('')
+
+  return {
+    subject: `Novo registo: ${name || role}`,
+    text: buildText(rows),
+    html: `
+      <div style="margin:0;padding:0;background:#f5f7fb;font-family:Arial,Helvetica,sans-serif;color:#172033;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;background:#f5f7fb;">
+          <tr>
+            <td align="center" style="padding:32px 16px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;max-width:680px;background:#ffffff;border:1px solid #dfe6ef;border-radius:14px;overflow:hidden;">
+                <tr>
+                  <td style="padding:28px 32px;background:#12313f;color:#ffffff;">
+                    <p style="margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#a8d8c7;font-weight:700;">Lei do Mecenato</p>
+                    <h1 style="margin:0;font-size:26px;line-height:1.25;font-weight:700;">Novo registo na plataforma</h1>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:30px 32px;">
+                    <p style="margin:0 0 18px;font-size:16px;line-height:1.6;color:#34495e;">Foi criada uma nova conta e os dados iniciais foram submetidos para acompanhamento administrativo.</p>
+                    <div style="display:inline-block;background:#eef8f4;border:1px solid #cfe9df;color:#1f654f;border-radius:999px;padding:7px 12px;font-size:13px;font-weight:700;margin:0 0 20px;">${escapeHtml(role)}</div>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid #e4ebf3;border-radius:10px;overflow:hidden;">
+                      ${htmlRows}
+                    </table>
+                    <div style="background:#f8fafc;border:1px solid #e4ebf3;border-radius:10px;padding:16px;margin-top:22px;">
+                      <p style="margin:0;font-size:14px;line-height:1.55;color:#53657a;">Próximo passo sugerido: validar o perfil na área de administração e confirmar se os documentos obrigatórios foram submetidos.</p>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:20px 32px;background:#f8fafc;border-top:1px solid #e4ebf3;">
+                    <p style="margin:0;font-size:12px;line-height:1.5;color:#738299;">Mensagem automática enviada para ${escapeHtml(ADMIN_EMAIL)}.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </div>
+    `,
+  }
+}
+
 async function getAuthenticatedUser(req: Request) {
   const authorization = req.headers.get('authorization') || ''
   if (!authorization.toLowerCase().startsWith('bearer ')) return null
@@ -85,24 +149,18 @@ Deno.serve(async (req) => {
   if (!validEmail(email) || email !== user.email.toLowerCase()) return badRequest('Invalid registration email')
   if (!name || !/^\d{9}$/.test(nif)) return badRequest('Invalid registration payload')
 
-  const role = payload.role === 'instituicao' ? 'Instituicao' : 'Empresa'
+  const role = payload.role === 'instituicao' ? 'Instituição' : 'Empresa'
   const rows = [
     ['Tipo', role],
     ['Nome', name],
     ['Email', email],
     ['NIF', nif],
     ['Setor de atividade', clean(payload.companyActivity)],
-    ['Denominacao legal', clean(payload.institutionLegalName)],
-    ['Area de atuacao', clean(payload.institutionCategory)],
-    ['Data de registo', payload.registeredAt ? new Date(payload.registeredAt).toLocaleString('pt-PT') : ''],
+    ['Denominação legal', clean(payload.institutionLegalName)],
+    ['Área de atuação', clean(payload.institutionCategory)],
+    ['Data de registo', formatDate(payload.registeredAt)],
   ].filter(([, value]) => Boolean(value))
-
-  const htmlRows = rows.map(([label, value]) => `
-    <tr>
-      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#334155;">${escapeHtml(label)}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#0f172a;">${escapeHtml(value)}</td>
-    </tr>
-  `).join('')
+  const emailContent = buildRegistrationEmail(rows, name || email, role)
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -113,16 +171,9 @@ Deno.serve(async (req) => {
     body: JSON.stringify({
       from: FROM_EMAIL,
       to: [ADMIN_EMAIL],
-      subject: `Novo registo na plataforma: ${name || email || role}`,
-      html: `
-        <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#0f172a;">
-          <h1 style="font-size:22px;margin-bottom:8px;">Novo registo na plataforma</h1>
-          <p style="color:#475569;">Foi criada uma nova conta na plataforma Lei do Mecenato.</p>
-          <table style="width:100%;border-collapse:collapse;margin-top:18px;border:1px solid #e2e8f0;">
-            ${htmlRows}
-          </table>
-        </div>
-      `,
+      subject: emailContent.subject,
+      html: emailContent.html,
+      text: emailContent.text,
     }),
   })
 

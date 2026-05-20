@@ -75,6 +75,12 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
       setError(res.error)
       return
     }
+    if (res.needsEmailConfirmation) {
+      setSuccess(res.message)
+      setMode('login')
+      setPassword('')
+      return
+    }
     onLogin(res.account)
   }
 

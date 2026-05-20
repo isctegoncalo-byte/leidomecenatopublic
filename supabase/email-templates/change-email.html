@@ -1,0 +1,36 @@
+<div style="margin:0;padding:0;background:#f5f7fb;font-family:Arial,Helvetica,sans-serif;color:#172033;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;background:#f5f7fb;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;max-width:640px;background:#ffffff;border:1px solid #dfe6ef;border-radius:14px;overflow:hidden;">
+          <tr>
+            <td style="padding:28px 32px;background:#12313f;color:#ffffff;">
+              <p style="margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#a8d8c7;font-weight:700;">Lei do Mecenato</p>
+              <h1 style="margin:0;font-size:26px;line-height:1.25;font-weight:700;">Confirme a alteração de email</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">Olá.</p>
+              <p style="margin:0 0 20px;font-size:16px;line-height:1.6;">Foi pedida a alteração do email da sua conta para <strong>{{ .NewEmail }}</strong>.</p>
+              <p style="margin:0 0 24px;font-size:16px;line-height:1.6;">Confirme a alteração apenas se reconhece este pedido.</p>
+              <p style="margin:0 0 28px;">
+                <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#2f7d68;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;padding:14px 22px;border-radius:8px;">Confirmar novo email</a>
+              </p>
+              <div style="background:#fff8ed;border:1px solid #f3dfbd;border-radius:10px;padding:16px;margin:0 0 24px;">
+                <p style="margin:0;font-size:14px;line-height:1.55;color:#684b20;">Se não pediu esta alteração, ignore este email e mantenha os dados atuais da conta.</p>
+              </div>
+              <p style="margin:0 0 8px;font-size:13px;line-height:1.55;color:#607286;">Se o botão não funcionar, copie e cole este link no navegador:</p>
+              <p style="margin:0;font-size:13px;line-height:1.55;color:#607286;word-break:break-all;">{{ .ConfirmationURL }}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px;background:#f8fafc;border-top:1px solid #e4ebf3;">
+              <p style="margin:0;font-size:12px;line-height:1.5;color:#738299;">Lei do Mecenato · Mensagem automática de segurança da conta.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</div>

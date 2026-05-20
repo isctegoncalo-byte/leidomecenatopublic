@@ -238,34 +238,35 @@ function AdminUsersDocumentsTab() {
   const [selectedProfileId, setSelectedProfileId] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [documentsError, setDocumentsError] = useState('')
 
   const load = async () => {
     setLoading(true)
     setError('')
+    setDocumentsError('')
     if (!realBackendEnabled()) {
       setError('Supabase ainda não está ativo no ficheiro .env.')
       setLoading(false)
       return
     }
 
-    const [profilesRes, docsRes] = await Promise.all([
-      listAdminProfilesReal(),
-      listAdminDocumentsReal(),
-    ])
+    const profilesRes = await listAdminProfilesReal()
 
     if (!profilesRes.ok) {
       setError(`Sem acesso aos utilizadores: ${profilesRes.error}`)
       setLoading(false)
       return
     }
+    setProfiles(profilesRes.profiles)
+
+    const docsRes = await listAdminDocumentsReal()
     if (!docsRes.ok) {
-      setError(`Sem acesso aos documentos: ${docsRes.error}`)
-      setLoading(false)
-      return
+      setDocuments([])
+      setDocumentsError(`Documentos indisponíveis: ${docsRes.error}`)
+    } else {
+      setDocuments(docsRes.documents)
     }
 
-    setProfiles(profilesRes.profiles)
-    setDocuments(docsRes.documents)
     setLoading(false)
   }
 
@@ -327,6 +328,12 @@ where email = 'o-teu-email@exemplo.pt';`}</pre>
 
       {!loading && !error && (
         <>
+          {documentsError && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              {documentsError}
+            </div>
+          )}
+
           <div className="grid md:grid-cols-4 gap-4">
             <AdminMetric label="Total de contas" value={profiles.length} />
             <AdminMetric label="Empresas" value={companyCount} />

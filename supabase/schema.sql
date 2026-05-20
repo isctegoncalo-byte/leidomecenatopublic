@@ -99,6 +99,90 @@ create trigger protect_profile_role_trigger
 before insert or update on public.profiles
 for each row execute function public.protect_profile_role();
 
+create or replace function public.handle_new_user_profile()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  requested_role text;
+  safe_role text;
+begin
+  requested_role := coalesce(new.raw_user_meta_data->>'role', 'empresa');
+  safe_role := case
+    when requested_role = 'instituicao' then 'instituicao'
+    else 'empresa'
+  end;
+
+  insert into public.profiles (
+    id,
+    role,
+    email,
+    name,
+    nif,
+    company_activity,
+    institution_legal_name,
+    institution_category,
+    consent_logo_display,
+    consent_rgpd
+  )
+  values (
+    new.id,
+    safe_role,
+    coalesce(new.email, ''),
+    coalesce(nullif(new.raw_user_meta_data->>'name', ''), split_part(coalesce(new.email, ''), '@', 1), 'Conta'),
+    coalesce(nullif(new.raw_user_meta_data->>'nif', ''), '000000000'),
+    nullif(new.raw_user_meta_data->>'company_activity', ''),
+    nullif(new.raw_user_meta_data->>'institution_legal_name', ''),
+    nullif(new.raw_user_meta_data->>'institution_category', ''),
+    coalesce(nullif(new.raw_user_meta_data->>'consent_logo_display', '')::boolean, false),
+    coalesce(nullif(new.raw_user_meta_data->>'consent_rgpd', '')::boolean, false)
+  )
+  on conflict (id) do nothing;
+
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created_profile
+after insert on auth.users
+for each row execute function public.handle_new_user_profile();
+
+insert into public.profiles (
+  id,
+  role,
+  email,
+  name,
+  nif,
+  company_activity,
+  institution_legal_name,
+  institution_category,
+  consent_logo_display,
+  consent_rgpd,
+  created_at
+)
+select
+  users.id,
+  case
+    when coalesce(users.raw_user_meta_data->>'role', 'empresa') = 'instituicao' then 'instituicao'
+    else 'empresa'
+  end as role,
+  coalesce(users.email, '') as email,
+  coalesce(nullif(users.raw_user_meta_data->>'name', ''), split_part(coalesce(users.email, ''), '@', 1), 'Conta') as name,
+  coalesce(nullif(users.raw_user_meta_data->>'nif', ''), '000000000') as nif,
+  nullif(users.raw_user_meta_data->>'company_activity', '') as company_activity,
+  nullif(users.raw_user_meta_data->>'institution_legal_name', '') as institution_legal_name,
+  nullif(users.raw_user_meta_data->>'institution_category', '') as institution_category,
+  coalesce(nullif(users.raw_user_meta_data->>'consent_logo_display', '')::boolean, false) as consent_logo_display,
+  coalesce(nullif(users.raw_user_meta_data->>'consent_rgpd', '')::boolean, false) as consent_rgpd,
+  coalesce(users.created_at, now()) as created_at
+from auth.users as users
+where not exists (
+  select 1 from public.profiles
+  where profiles.id = users.id
+);
+
 alter table public.profiles enable row level security;
 alter table public.documents enable row level security;
 

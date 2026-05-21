@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Account, ImpactContract, ViewType } from './types'
 import Header from './components/Header'
 import Footer from './components/Footer'
@@ -91,15 +91,21 @@ const resolveInstitutionAccountId = (institutionId: string): string | undefined 
 export default function App() {
   const [state, setState] = useState<AppState>(() => ({ screen: 'main', view: pathToView(window.location.pathname) }))
   const [session, setSession] = useState<Account | null>(null)
+  const sessionRef = useRef<Account | null>(null)
+
+  const setStableSession = (account: Account | null) => {
+    sessionRef.current = account
+    setSession(account)
+  }
 
   useEffect(() => {
     let alive = true
     if (realBackendEnabled()) {
       getRealSessionAccount().then(account => {
-        if (alive) setSession(account)
+        if (alive && !sessionRef.current) setStableSession(account)
       })
     } else {
-      setSession(getSession())
+      setStableSession(getSession())
     }
     return () => { alive = false }
   }, [])
@@ -115,11 +121,12 @@ export default function App() {
   }, [state])
 
   const setView = (view: ViewType) => {
-    const path = viewToPath(view)
+    const resolvedView = view === 'area-privada' && session?.role === 'admin' ? 'admin' : view
+    const path = viewToPath(resolvedView)
     if (window.location.pathname !== path) {
       window.history.pushState({}, '', path)
     }
-    setState({ screen: 'main', view })
+    setState({ screen: 'main', view: resolvedView })
   }
 
   const handleContractComplete = (contract: ImpactContract) => {
@@ -153,28 +160,34 @@ export default function App() {
   }
 
   const handleGoToPrivate = () => {
-    if (session) setState({ screen: 'main', view: 'area-privada' })
+    if (session) setView(session.role === 'admin' ? 'admin' : 'area-privada')
     else setState({ screen: 'main', view: 'login' })
   }
 
   const handleHome = () => setState({ screen: 'main', view: 'home' })
 
   const handleLogin = (account: Account) => {
-    setSession(account)
+    setStableSession(account)
     if (account.role === 'admin') {
+      const path = viewToPath('admin')
+      if (window.location.pathname !== path) window.history.pushState({}, '', path)
       setState({ screen: 'main', view: 'admin' })
       return
     }
     const pending = localStorage.getItem('leidomecenato_pending_project')
     if (pending && account.role === 'empresa') {
+      const path = viewToPath('empresa')
+      if (window.location.pathname !== path) window.history.pushState({}, '', path)
       setState({ screen: 'main', view: 'empresa' })
       return
     }
+    const path = viewToPath('area-privada')
+    if (window.location.pathname !== path) window.history.pushState({}, '', path)
     setState({ screen: 'main', view: 'area-privada' })
   }
 
   const handleLogout = () => {
-    setSession(null)
+    setStableSession(null)
     setState({ screen: 'main', view: 'home' })
   }
 
@@ -225,7 +238,9 @@ export default function App() {
           <LoginPage onLogin={handleLogin} setCurrentView={setView} />
         )}
         {view === 'area-privada' && (
-          session ? (
+          session?.role === 'admin' ? (
+            <AdminPage setCurrentView={setView} session={session} onLogout={handleLogout} />
+          ) : session ? (
             <PrivateAreaPage account={session} onLogout={handleLogout} setCurrentView={setView} />
           ) : (
             <LoginPage onLogin={handleLogin} setCurrentView={setView} />

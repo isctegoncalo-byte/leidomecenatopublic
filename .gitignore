@@ -6,3 +6,6 @@ node_modules/
 *.log
 .npm-cache/
 supabase/.temp/
+
+# Local Netlify folder
+.netlify

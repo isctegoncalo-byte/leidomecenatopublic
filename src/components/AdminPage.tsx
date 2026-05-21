@@ -544,70 +544,137 @@ function parseDonationYear(date: string) {
 
 function exportDonationRatingImage(item: ReturnType<typeof buildDonationHistoryItems>[number]) {
   const canvas = document.createElement('canvas')
-  canvas.width = 1200
-  canvas.height = 760
+  canvas.width = 1600
+  canvas.height = 1000
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
-  ctx.fillStyle = '#f8fafc'
+  const rating = item.donationRating
+  const projectName = item.project?.projectName || item.project?.category || 'Projeto não identificado'
+  const sdgs = item.project?.sdgGoals || []
+  const donated = `EUR ${rating.donatedAmount.toLocaleString('pt-PT')}`
+  const requested = `EUR ${rating.requestedContribution.toLocaleString('pt-PT')}`
+  const proofName = item.proof.proofFileName || item.proof.companyInvoiceFileName || 'Não anexado'
+
+  const roundRect = (x: number, y: number, width: number, height: number, radius = 24, fill = true, stroke = false) => {
+    ctx.beginPath()
+    ctx.roundRect(x, y, width, height, radius)
+    if (fill) ctx.fill()
+    if (stroke) ctx.stroke()
+  }
+
+  const fitText = (text: string, maxWidth: number) => {
+    let value = text
+    while (ctx.measureText(value).width > maxWidth && value.length > 8) {
+      value = `${value.slice(0, -2)}…`
+    }
+    return value
+  }
+
+  const label = (text: string, x: number, y: number) => {
+    ctx.fillStyle = '#64748b'
+    ctx.font = '700 18px Arial'
+    ctx.fillText(text.toUpperCase(), x, y)
+  }
+
+  const value = (text: string, x: number, y: number, maxWidth = 440) => {
+    ctx.fillStyle = '#0f172a'
+    ctx.font = '700 26px Arial'
+    ctx.fillText(fitText(text, maxWidth), x, y)
+  }
+
+  const metricBar = (title: string, score: number, x: number, y: number, color: string) => {
+    ctx.fillStyle = '#0f172a'
+    ctx.font = '700 24px Arial'
+    ctx.fillText(title, x, y)
+    ctx.fillStyle = '#64748b'
+    ctx.font = '700 20px Arial'
+    ctx.fillText(`${Math.round(score)}/100`, x + 510, y)
+    ctx.fillStyle = '#e2e8f0'
+    roundRect(x, y + 18, 590, 18, 999)
+    ctx.fillStyle = color
+    roundRect(x, y + 18, Math.max(10, Math.min(590, (score / 100) * 590)), 18, 999)
+  }
+
+  const chip = (text: string, x: number, y: number, color: string, width = 132) => {
+    ctx.fillStyle = color
+    roundRect(x, y, width, 48, 14)
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '700 21px Arial'
+    ctx.fillText(text, x + 20, y + 31)
+  }
+
+  ctx.fillStyle = '#eef4f8'
   ctx.fillRect(0, 0, canvas.width, canvas.height)
-  ctx.fillStyle = '#0f172a'
-  ctx.fillRect(0, 0, canvas.width, 150)
+
+  ctx.fillStyle = '#0f2f3d'
+  ctx.fillRect(0, 0, canvas.width, 210)
+  ctx.fillStyle = '#2f7d68'
+  ctx.fillRect(0, 210, canvas.width, 10)
   ctx.fillStyle = '#ffffff'
-  ctx.font = '700 34px Arial'
-  ctx.fillText('Rating privado do donativo', 56, 66)
-  ctx.font = '400 22px Arial'
-  ctx.fillText(`${item.companyName} -> ${item.proof.institutionName}`, 56, 108)
+  ctx.font = '700 24px Arial'
+  ctx.fillText('LEI DO MECENATO', 70, 72)
+  ctx.font = '700 48px Arial'
+  ctx.fillText('Infografia de rating privado do donativo', 70, 132)
+  ctx.font = '400 25px Arial'
+  ctx.fillStyle = '#c6d7df'
+  ctx.fillText(fitText(`${item.companyName} → ${item.proof.institutionName}`, 1180), 70, 176)
 
   ctx.fillStyle = '#ffffff'
-  ctx.strokeStyle = '#e2e8f0'
+  ctx.strokeStyle = '#d9e3ea'
   ctx.lineWidth = 2
-  ctx.roundRect(56, 190, 1088, 500, 28)
-  ctx.fill()
-  ctx.stroke()
-
+  roundRect(70, 260, 455, 305, 28, true, true)
+  ctx.fillStyle = '#f8fafc'
+  roundRect(95, 285, 405, 255, 22)
   ctx.fillStyle = '#2563eb'
   ctx.font = '700 92px Arial'
-  ctx.fillText(`${item.donationRating.donationRating}/100`, 80, 310)
-  ctx.fillStyle = '#475569'
-  ctx.font = '700 24px Arial'
-  ctx.fillText('Rating do donativo', 86, 350)
-
+  ctx.fillText(`${rating.donationRating}`, 128, 405)
+  ctx.font = '700 36px Arial'
+  ctx.fillText('/100', 290, 405)
   ctx.fillStyle = '#0f172a'
-  ctx.font = '700 46px Arial'
-  ctx.fillText(`${item.donationRating.projectRating.total}/100`, 480, 300)
-  ctx.font = '700 20px Arial'
+  ctx.font = '700 29px Arial'
+  ctx.fillText('Rating do donativo', 128, 456)
   ctx.fillStyle = '#64748b'
-  ctx.fillText('Rating do projeto', 484, 334)
+  ctx.font = '400 20px Arial'
+  ctx.fillText('Indicador interno para análise e relatório.', 128, 494)
 
-  ctx.fillStyle = '#059669'
-  ctx.font = '700 46px Arial'
-  ctx.fillText(`${item.donationRating.contributionPercent.toFixed(1)}%`, 805, 300)
-  ctx.font = '700 20px Arial'
-  ctx.fillStyle = '#64748b'
-  ctx.fillText('Cobertura do pedido', 810, 334)
+  ctx.fillStyle = '#ffffff'
+  roundRect(560, 260, 970, 305, 28, true, true)
+  metricBar('Rating do projeto', rating.projectRating.total, 610, 330, '#2563eb')
+  metricBar('Cobertura do pedido', Math.min(100, rating.contributionPercent), 610, 425, '#059669')
+  metricBar('Ajuste do donativo', rating.donationRating, 610, 520, '#7c3aed')
 
+  ctx.fillStyle = '#ffffff'
+  roundRect(70, 610, 705, 270, 28, true, true)
+  label('Projeto apoiado', 110, 660)
+  value(projectName, 110, 696, 590)
+  label('Instituição beneficiária', 110, 755)
+  value(item.proof.institutionName, 110, 791, 590)
+  label('ODS associados', 110, 850)
+  if (sdgs.length) {
+    sdgs.slice(0, 5).forEach((sdg, index) => chip(`ODS ${sdg}`, 110 + index * 145, 866, '#334155', 118))
+  } else {
+    value('Não indicado', 110, 886, 300)
+  }
+
+  ctx.fillStyle = '#ffffff'
+  roundRect(825, 610, 705, 270, 28, true, true)
   const rows = [
-    ['Projeto', item.project ? `${item.project.category} - ${item.project.subcategory}` : 'Projeto não identificado'],
-    ['Instituição', item.proof.institutionName],
-    ['Empresa', item.companyName],
-    ['Donativo', `EUR ${item.donationRating.donatedAmount.toLocaleString('pt-PT')}`],
-    ['Contribuicao solicitada', `EUR ${item.donationRating.requestedContribution.toLocaleString('pt-PT')}`],
-    ['Comprovativo', item.proof.proofFileName || item.proof.companyInvoiceFileName || 'Não anexado'],
+    ['Valor doado', donated],
+    ['Contribuição solicitada', requested],
+    ['Cobertura', `${rating.contributionPercent.toFixed(1)}%`],
+    ['Comprovativo', proofName],
   ]
-
-  ctx.font = '700 18px Arial'
-  rows.forEach(([label, value], index) => {
-    const y = 415 + index * 42
-    ctx.fillStyle = '#64748b'
-    ctx.fillText(label, 86, y)
-    ctx.fillStyle = '#0f172a'
-    ctx.fillText(value, 330, y)
+  rows.forEach(([rowLabel, rowValue], index) => {
+    const y = 660 + index * 56
+    label(rowLabel, 865, y)
+    value(rowValue, 865, y + 31, 560)
   })
 
-  ctx.fillStyle = '#94a3b8'
+  ctx.fillStyle = '#64748b'
   ctx.font = '400 16px Arial'
-  ctx.fillText('Imagem gerada na área de administração. O rating do donativo não é público.', 56, 728)
+  ctx.fillText('Imagem gerada na área de administração. O rating do donativo é privado e não é apresentado na página pública do projeto.', 70, 946)
+  ctx.fillText(`Gerado em ${new Date().toLocaleDateString('pt-PT')} · ${item.proof.status}`, 70, 972)
 
   const link = document.createElement('a')
   link.href = canvas.toDataURL('image/png')

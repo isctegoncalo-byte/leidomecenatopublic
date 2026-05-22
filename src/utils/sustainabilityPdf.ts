@@ -294,7 +294,7 @@ function drawTOC(doc: jsPDF, palette: SdgPalette, template?: ReportTemplate) {
   const items = [
     { n: '01', title: 'Sumário Executivo', page: '03' },
     { n: '02', title: 'A Empresa & A Instituição', page: '04' },
-    { n: '03', title: 'Impact Score & Rating', page: '05' },
+    { n: '03', title: 'Métricas de impacto', page: '05' },
     { n: '04', title: 'Alinhamento com os ODS', page: '06' },
     { n: '05', title: 'Necessidades Apoiadas', page: '07' },
     { n: '06', title: 'Galeria do Projeto', page: '08' },
@@ -352,7 +352,7 @@ function drawSummary(doc: jsPDF, report: GeneratedESGReport, palette: SdgPalette
   const boxH = 38
 
   const kpis = [
-    { label: 'IMPACT SCORE', value: `${report.scores.total}/100`, sub: `Rating ${report.rating}` },
+    { label: 'BENEFICIÁRIOS', value: report.scores.beneficiaries.toLocaleString(), sub: 'pessoas impactadas' },
     { label: 'BENEFICIÁRIOS', value: report.scores.beneficiaries.toLocaleString(), sub: 'pessoas impactadas' },
     { label: 'DONATIVO', value: `€ ${report.donationAmount.toLocaleString('pt-PT')}`, sub: '100% para a instituição' },
     { label: 'DEDUÇÃO IRC', value: `€ ${report.irsDeduction.toLocaleString('pt-PT')}`, sub: 'multiplicador 140%' },
@@ -488,127 +488,6 @@ function drawCompanyInstitution(doc: jsPDF, report: GeneratedESGReport, palette:
 }
 
 // ─── PAGE 5: SCORES ─────────────────────────────────
-function drawScores(doc: jsPDF, report: GeneratedESGReport, palette: SdgPalette, template?: ReportTemplate) {
-  newPage(doc, palette, 'IMPACT SCORE', 'Pontuação ESG', 5, template, 'scores')
-
-  let y = 60
-  setFill(doc, palette.primary)
-  doc.roundedRect(M, y, CW, 50, 4, 4, 'F')
-  setText(doc, palette.secondary)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(8)
-  doc.text('PONTUAÇÃO TOTAL', M + 8, y + 12)
-  doc.setTextColor(255, 255, 255)
-  doc.setFontSize(48)
-  doc.text(`${report.scores.total}`, M + 8, y + 35)
-  doc.setFontSize(12)
-  doc.text('/100', M + 8 + doc.getTextWidth(`${report.scores.total}`), y + 35)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(36)
-  doc.text(report.rating, W - M - 8, y + 35, { align: 'right' })
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8)
-  doc.text('Rating ESG', W - M - 8, y + 42, { align: 'right' })
-
-  y += 60
-  const pillars = [
-    { label: 'Ambiental (E)', value: report.scores.environmental, color: '#16a34a' },
-    { label: 'Social (S)', value: report.scores.social, color: '#2563eb' },
-    { label: 'Governação (G)', value: report.scores.governance, color: '#7c3aed' },
-  ]
-
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(11)
-  setText(doc, palette.primary)
-  doc.text('Decomposição por Pilar', M, y)
-  y += 8
-
-  for (const p of pillars) {
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9)
-    doc.setTextColor(60, 60, 60)
-    doc.text(p.label, M, y)
-    setText(doc, p.color)
-    doc.text(`${p.value}/100`, W - M, y, { align: 'right' })
-    y += 3
-    doc.setFillColor(230, 230, 230)
-    doc.roundedRect(M, y, CW, 4, 2, 2, 'F')
-    setFill(doc, p.color)
-    doc.roundedRect(M, y, CW * (p.value / 100), 4, 2, 2, 'F')
-    y += 12
-  }
-
-  if (report.coveragePercent !== undefined) {
-    y += 6
-    doc.setFillColor(255, 255, 255)
-    setDraw(doc, palette.secondary)
-    doc.roundedRect(M, y, CW, 22, 3, 3, 'FD')
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9)
-    setText(doc, palette.primary)
-    doc.text('Cobertura do Projeto', M + 6, y + 8)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8)
-    doc.setTextColor(80, 80, 80)
-    doc.text(`Donativo: € ${report.donationAmount.toLocaleString('pt-PT')}  /  Custo total: € ${(report.projectCost || 0).toLocaleString('pt-PT')}`, M + 6, y + 14)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(16)
-    setText(doc, palette.secondary)
-    doc.text(`${report.coveragePercent.toFixed(1)}%`, W - M - 6, y + 15, { align: 'right' })
-    y += 28
-  }
-
-  // ─── METODOLOGIA DO RATING ───────────────────────
-  y += 4
-  setText(doc, palette.primary)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
-  doc.text('Como é atribuído o rating', M, y)
-  y += 5
-
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(7.5)
-  doc.setTextColor(80, 80, 80)
-  const methodologyText =
-    'O Impact Score (0-100) é o resultado ponderado dos três pilares ESG: Ambiental (35%), Social (45%) e Governação (20%). ' +
-    'Cada pilar é calculado com base nas necessidades apoiadas, considerando: urgência (alta = 20pts; média = 14pts; baixa = 8pts), ' +
-    'alinhamento com os ODS (5pts por ODS, máx. 15) e dimensão de beneficiários (log10 × 8, máx. 20pts).'
-  const methLines = doc.splitTextToSize(methodologyText, CW)
-  doc.text(methLines, M, y)
-  y += methLines.length * 3.5 + 4
-
-  // Tabela de rating
-  doc.setFillColor(248, 250, 252)
-  doc.roundedRect(M, y, CW, 22, 2, 2, 'F')
-  const ratings = [
-    { label: 'AA+', range: '85-100', color: '#16a34a' },
-    { label: 'AA',  range: '75-84',  color: '#22c55e' },
-    { label: 'A+',  range: '65-74',  color: '#84cc16' },
-    { label: 'A',   range: '55-64',  color: '#eab308' },
-    { label: 'B+',  range: '45-54',  color: '#f97316' },
-    { label: 'B',   range: '0-44',   color: '#ef4444' },
-  ]
-  const cellW = CW / ratings.length
-  ratings.forEach((r, i) => {
-    const x = M + i * cellW
-    setFill(doc, r.color)
-    doc.roundedRect(x + 2, y + 3, cellW - 4, 7, 1, 1, 'F')
-    doc.setTextColor(255, 255, 255)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8)
-    doc.text(r.label, x + cellW / 2, y + 8, { align: 'center' })
-    doc.setTextColor(80, 80, 80)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7)
-    doc.text(r.range, x + cellW / 2, y + 16, { align: 'center' })
-    if (r.label === report.rating) {
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(6)
-      setText(doc, palette.secondary)
-      doc.text('▲ ESTE', x + cellW / 2, y + 20, { align: 'center' })
-    }
-  })
-}
 
 // ─── PAGE 6: SDG ────────────────────────────────────
 function drawSDG(doc: jsPDF, report: GeneratedESGReport, palette: SdgPalette, template?: ReportTemplate, sdgImages?: SdgImageMap) {
@@ -834,7 +713,7 @@ function drawPremiumExtraPages(doc: jsPDF, report: GeneratedESGReport, palette: 
   const pages = [
     {
       title: 'METODOLOGIA ESG', eyebrow: 'Apêndice Metodológico', page: 10,
-      body: `O Impact Score é calculado através da ponderação dos pilares Ambiental (35%), Social (45%) e Governação (20%). Para cada necessidade apoiada são considerados critérios como urgência, alinhamento com os ODS, dimensão de beneficiários e adequação do donativo ao custo total do projeto. O rating final de ${report.rating} resulta do score total de ${report.scores.total}/100.`,
+      body: `A análise de impacto organiza os dados declarados pela instituição, os ODS associados, os KPIs do projeto, a dimensão dos beneficiários e as evidências documentais recolhidas.`,
     },
     {
       title: 'BENEFICIÁRIOS', eyebrow: 'Métricas de Impacto', page: 11,
@@ -872,10 +751,10 @@ function downloadSocialCopyTxt(report: GeneratedESGReport) {
 ${report.company} apoiou ${report.institution} com um donativo de €${report.donationAmount.toLocaleString('pt-PT')} ao abrigo da Lei do Mecenato. O apoio gerou impacto em ${report.scores.beneficiaries.toLocaleString()} beneficiários e está alinhado com ${report.sdgAlignment.map(s => `ODS ${s}`).join(', ')}.
 
 INSTAGRAM
-Impacto real. Donativo de €${report.donationAmount.toLocaleString('pt-PT')} de ${report.company} para ${report.institution}. ${report.scores.beneficiaries.toLocaleString()} beneficiários. Rating ${report.rating}. #LeiDoMecenato #ImpactoSocial #ESG
+Impacto real. Donativo de €${report.donationAmount.toLocaleString('pt-PT')} de ${report.company} para ${report.institution}. ${report.scores.beneficiaries.toLocaleString()} beneficiários. #LeiDoMecenato #ImpactoSocial #ESG
 
 LINKEDIN
-A ${report.company} apoiou ${report.institution} através de um donativo de €${report.donationAmount.toLocaleString('pt-PT')}. O Relatório de Impacto atribuiu um score de ${report.scores.total}/100 (rating ${report.rating}), com impacto direto em ${report.scores.beneficiaries.toLocaleString()} beneficiários e alinhamento com ${report.sdgAlignment.map(s => `ODS ${s}`).join(', ')}.
+A ${report.company} apoiou ${report.institution} através de um donativo de €${report.donationAmount.toLocaleString('pt-PT')}. O Relatório de Impacto documenta impacto direto em ${report.scores.beneficiaries.toLocaleString()} beneficiários e alinhamento com ${report.sdgAlignment.map(s => `ODS ${s}`).join(', ')}.
 
 Nota: 100% do donativo foi entregue diretamente à instituição beneficiária.`
 
@@ -920,40 +799,39 @@ function downloadPdfBlob(doc: jsPDF, filename: string) {
     a.click()
     document.body.removeChild(a)
     setTimeout(() => URL.revokeObjectURL(url), 3000)
-    console.log('✅ PDF descarregado:', filename)
+    console.log(' PDF descarregado:', filename)
   } catch (err) {
-    console.error('🔴 Falha no download:', err)
+    console.error(' Falha no download:', err)
     alert('Erro ao guardar PDF: ' + (err instanceof Error ? err.message : String(err)))
   }
 }
 
 // ─── MAIN ───────────────────────────────────────────
 export async function downloadSustainabilityReport(report: GeneratedESGReport, template?: ReportTemplate) {
-  console.log('🟡 A gerar relatório Sustainability...')
+  console.log(' A gerar relatório Sustainability...')
   try {
     const palette = getSdgPalette(report.sdgAlignment)
-    console.log('🟢 Palette:', palette.name, '(ODS', palette.sdg + ')')
+    console.log(' Palette:', palette.name, '(ODS', palette.sdg + ')')
 
     const logoDataUrl = await getLogoDataUrl()
-    console.log('🟢 Logo carregado:', logoDataUrl ? 'OK' : 'em falta (segue sem logo)')
+    console.log(' Logo carregado:', logoDataUrl ? 'OK' : 'em falta (segue sem logo)')
 
     const sdgImages = await loadSdgImageMap(report.sdgAlignment)
     console.log('Imagens ODS carregadas:', Object.keys(sdgImages).length)
 
     const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-    console.log('🟢 jsPDF instanciado')
+    console.log(' jsPDF instanciado')
 
     const isPremium = report.reportTier.toLowerCase().includes('premium')
     const hasSocialPack = report.reportTier.toLowerCase().includes('redes') || report.reportTier.toLowerCase().includes('sociais') || report.reportTier.toLowerCase().includes('pack')
 
     drawCover(doc, report, palette, logoDataUrl, template)
-    console.log('🟢 Capa OK')
+    console.log(' Capa OK')
 
     if (isPremium) {
       drawTOC(doc, palette, template)
       drawSummary(doc, report, palette, template)
       drawCompanyInstitution(doc, report, palette, template)
-      drawScores(doc, report, palette, template)
     drawSDG(doc, report, palette, template, sdgImages)
     drawNeeds(doc, report, palette, template)
     drawGallery(doc, report, palette, template)
@@ -965,7 +843,6 @@ export async function downloadSustainabilityReport(report: GeneratedESGReport, t
     // Relatório base: 6 páginas incluindo capa
     drawSummary(doc, report, palette, template)
     drawCompanyInstitution(doc, report, palette, template)
-    drawScores(doc, report, palette, template)
     drawNeeds(doc, report, palette, template)
     drawSdgImpactGrid(doc, report, palette, sdgImages) // New Page with SDG Icons
     drawFiscal(doc, report, palette, template)
@@ -973,7 +850,7 @@ export async function downloadSustainabilityReport(report: GeneratedESGReport, t
 
     downloadPdfBlob(doc, `relatorio-impacto-${report.reportId}.pdf`)
   } catch (err) {
-    console.error('🔴 Erro ao gerar relatório:', err)
+    console.error(' Erro ao gerar relatório:', err)
     alert('Erro ao gerar PDF: ' + (err instanceof Error ? err.message : String(err)))
   }
 }

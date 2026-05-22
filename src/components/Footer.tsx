@@ -27,7 +27,7 @@ export default function Footer({ setCurrentView }: Props) {
             </p>
             <div className="mt-4 p-3 bg-amber-900/50 border border-amber-800 rounded-lg">
               <p className="text-xs text-amber-300">
-                ⚠️ Iniciativa privada independente — não somos um organismo público nem uma entidade certificadora oficial.
+                 Iniciativa privada independente — não somos um organismo público nem uma entidade certificadora oficial.
               </p>
             </div>
           </div>

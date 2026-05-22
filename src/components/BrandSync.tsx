@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useBrand } from '../hooks/useBrand'
 import { ViewType } from '../types'
+import { findProjectEntry } from '../utils/projectCatalog'
 
 interface Props {
   view?: ViewType
@@ -15,108 +16,137 @@ type MetaConfig = {
   path: string
   keywords?: string
   noindex?: boolean
+  schemaType?: 'WebPage' | 'CollectionPage' | 'Article' | 'FAQPage' | 'ContactPage'
+  image?: string
 }
+
+const defaultKeywords = [
+  'lei do mecenato',
+  'mecenato Portugal',
+  'donativos empresas',
+  'beneficios fiscais IRC',
+  'relatorio de impacto',
+  'impacto social',
+  'ODS',
+  'IPSS Portugal',
+].join(', ')
 
 const viewMeta: Partial<Record<ViewType, MetaConfig>> = {
   home: {
-    title: 'Lei do Mecenato para Empresas | Donativos, IRC e Impacto ESG',
-    description: 'Plataforma para empresas encontrarem instituições elegíveis, simularem benefícios fiscais em IRC e gerarem relatórios de impacto ESG ao abrigo da Lei do Mecenato.',
-    keywords: 'lei do mecenato, donativos empresas, benefícios fiscais IRC, relatório ESG, impacto social, IPSS Portugal',
+    title: 'Lei do Mecenato | Donativos, IRC e Impacto Social',
+    description: 'Plataforma para empresas encontrarem projetos elegiveis, simularem beneficios fiscais em IRC e documentarem impacto social ao abrigo da Lei do Mecenato.',
+    keywords: 'lei do mecenato, donativos empresas, beneficios fiscais IRC, impacto social, projetos sociais, IPSS Portugal',
     path: '/',
   },
   empresa: {
-    title: 'Fazer Donativo Empresarial | Relatório de Impacto ESG',
-    description: 'Escolha uma instituição, registe um donativo financeiro, em produtos ou serviços e pague o relatório de impacto ESG com checkout seguro.',
-    keywords: 'donativo empresarial, relatório de impacto, responsabilidade social empresas, donativos em produtos, ESG',
+    title: 'Fazer Donativo Empresarial | Relatorio de Impacto',
+    description: 'Escolha um projeto, registe um donativo financeiro, em produtos ou servicos, e documente o impacto gerado pela empresa mecenas.',
+    keywords: 'donativo empresarial, responsabilidade social empresas, relatorio de impacto, donativos em produtos, ESG',
     path: '/empresa/donativo',
   },
   instituicao: {
-    title: 'Registar Instituição | Receber Donativos de Empresas',
-    description: 'Registe uma instituição, apresente projetos, necessidades, ODS, IBAN e documentação para receber apoio de empresas mecenas.',
-    keywords: 'registar instituição, receber donativos, IPSS, projetos sociais, ODS, mecenato',
+    title: 'Registar Instituicao | Projetos para Mecenato',
+    description: 'Registe uma instituicao, apresente projetos, necessidades, ODS, KPI e documentacao para receber apoio de empresas mecenas.',
+    keywords: 'registar instituicao, receber donativos, IPSS, associacoes, fundacoes, projetos sociais, ODS',
     path: '/instituicao/registo',
   },
   empresas: {
-    title: 'Empresas Mecenas | Donativos com Benefício Fiscal e Impacto ESG',
-    description: 'Encontre instituições, apoie projetos sociais e documente o impacto do donativo com dados ESG, ODS e simulação fiscal.',
-    keywords: 'empresas mecenas, responsabilidade social, benefícios fiscais, donativos IRC',
+    title: 'Empresas Mecenas | Donativos com Beneficio Fiscal',
+    description: 'Encontre projetos sociais para apoiar, acompanhe o donativo e documente impacto com dados, ODS e evidencias.',
+    keywords: 'empresas mecenas, responsabilidade social, beneficios fiscais, donativos IRC',
     path: '/empresas',
   },
   instituicoes: {
-    title: 'Instituicoes Elegiveis | Projetos para Mecenato Empresarial',
-    description: 'Conheça instituições e projetos que procuram apoio empresarial financeiro, em produtos ou serviços ao abrigo da Lei do Mecenato.',
-    keywords: 'instituições elegíveis, IPSS, fundações, associações, projetos sociais',
+    title: 'Projetos e Instituicoes Elegiveis | Lei do Mecenato',
+    description: 'Conheca instituicoes e projetos que procuram apoio empresarial financeiro, em produtos ou servicos, ao abrigo da Lei do Mecenato.',
+    keywords: 'instituicoes elegiveis, IPSS, fundacoes, associacoes, projetos sociais, mecenato empresarial',
     path: '/instituicoes',
+    schemaType: 'CollectionPage',
   },
   relatorios: {
-    title: 'Relatórios de Impacto ESG para Donativos',
-    description: 'Relatórios de impacto para donativos empresariais com Impact Score, ODS, dados fiscais, evidências, narrativa ESG e pack de comunicação.',
-    keywords: 'relatório ESG, relatório de impacto, Impact Score, ODS, sustentabilidade empresarial',
+    title: 'Relatorios de Impacto para Donativos Empresariais',
+    description: 'Relatorios de impacto para donativos empresariais com metricas, ODS, dados fiscais, evidencias e narrativa de comunicacao.',
+    keywords: 'relatorio de impacto, relatorio ESG, metricas de impacto, ODS, sustentabilidade empresarial',
     path: '/relatorios',
   },
   simulador: {
-    title: 'Simulador Lei do Mecenato | Dedução IRC de Donativos',
-    description: 'Simule donativos financeiros, em produtos ou serviços e veja dedução fiscal, poupança estimada, custo real e valor para projetos sociais.',
-    keywords: 'simulador lei do mecenato, dedução IRC, benefício fiscal donativos, simulador donativos',
+    title: 'Simulador Lei do Mecenato | Beneficio Fiscal IRC',
+    description: 'Simule donativos financeiros, em produtos ou servicos, e veja beneficio fiscal, custo real estimado e valor entregue ao projeto.',
+    keywords: 'simulador lei do mecenato, deducao IRC, beneficio fiscal donativos, simulador donativos',
     path: '/simulador',
   },
   'lei-mecenato': {
-    title: 'Lei do Mecenato em Portugal | Benefícios Fiscais e Documentos',
-    description: 'Resumo prático do regime fiscal do mecenato, artigo 62.º do EBF, documentos necessários, checklist RGPD e validação contabilística.',
-    keywords: 'lei do mecenato Portugal, estatuto benefícios fiscais, artigo 62 EBF, documentos donativo',
+    title: 'Lei do Mecenato em Portugal | Beneficios Fiscais e Documentos',
+    description: 'Resumo pratico do regime fiscal do mecenato, documentos necessarios, recibo de donativo, artigo 62 do Codigo do IRC e validacao contabilistica.',
+    keywords: 'lei do mecenato Portugal, artigo 62 Codigo IRC, beneficios fiscais donativos, recibo donativo',
     path: '/lei-do-mecenato',
+    schemaType: 'Article',
   },
   'impacto-real': {
-    title: 'Impacto Real | Histórias, Projetos e Métricas de Donativos',
-    description: 'Veja projetos concluídos, donativos confirmados, instituições apoiadas, ODS, beneficiários e resultados de impacto.',
-    keywords: 'impacto real, projetos sociais, ODS, donativos confirmados, resultados impacto',
-    path: '/impacto-real',
+    title: 'Historias de Impacto | Donativos Concluidos',
+    description: 'Veja donativos concluidos, projetos apoiados, galerias de fotografias, instituicoes beneficiarias, mecenas, ODS e resultados de impacto.',
+    keywords: 'historias de impacto, projetos sociais, ODS, donativos confirmados, resultados impacto',
+    path: '/historias-de-impacto',
+    schemaType: 'CollectionPage',
   },
   projeto: {
     title: 'Projeto Social para Apoiar | Lei do Mecenato',
-    description: 'Página de projeto com resumo executivo, instituição, contactos, ODS, metas, progresso de financiamento e acesso ao donativo empresarial.',
-    keywords: 'projeto social, apoiar instituição, donativo empresa, ODS, impacto social',
+    description: 'Pagina de projeto com resumo executivo, instituicao, ODS, metas, KPI, progresso de financiamento e acesso ao donativo empresarial.',
+    keywords: 'projeto social, apoiar instituicao, donativo empresa, ODS, impacto social',
     path: '/projetos',
   },
   faq: {
-    title: 'FAQ | Lei do Mecenato, Donativos, IRC, ESG e RGPD',
-    description: 'Perguntas frequentes sobre Lei do Mecenato, donativos empresariais, instituições, relatórios de impacto ESG, RGPD, pagamentos e dedução fiscal em IRC.',
-    keywords: 'FAQ lei do mecenato, perguntas frequentes donativos, IRC, RGPD, ESG',
+    title: 'FAQ | Lei do Mecenato, Donativos, IRC e RGPD',
+    description: 'Perguntas frequentes sobre Lei do Mecenato, donativos empresariais, instituicoes, relatorios de impacto, RGPD, pagamentos e deducao fiscal em IRC.',
+    keywords: 'FAQ lei do mecenato, perguntas frequentes donativos, IRC, RGPD, relatorio de impacto',
     path: '/faq',
+    schemaType: 'FAQPage',
   },
   privacidade: {
-    title: 'Política de Privacidade e RGPD',
-    description: 'Política de privacidade da plataforma, com informação sobre dados tratados, bases legais, direitos RGPD, conservação, segurança e CNPD.',
+    title: 'Politica de Privacidade e RGPD',
+    description: 'Politica de privacidade da plataforma, com informacao sobre dados tratados, bases legais, direitos RGPD, conservacao e seguranca.',
     path: '/privacidade',
   },
   termos: {
     title: 'Termos de Servico | Lei do Mecenato',
-    description: 'Termos de utilização da plataforma para empresas, instituições e administradores, incluindo responsabilidades, documentos, dados e relatórios.',
+    description: 'Termos de utilizacao da plataforma para empresas, instituicoes e administradores, incluindo responsabilidades, documentos, dados e relatorios.',
     path: '/termos',
   },
   cookies: {
-    title: 'Política de Cookies e Armazenamento Local',
-    description: 'Informação sobre cookies necessários, armazenamento local, tecnologias semelhantes, consentimento e enquadramento RGPD.',
+    title: 'Politica de Cookies e Armazenamento Local',
+    description: 'Informacao sobre cookies necessarios, armazenamento local, tecnologias semelhantes, consentimento e enquadramento RGPD.',
     path: '/cookies',
   },
   login: {
-    title: 'Entrar ou Registar | Empresas e Instituições',
-    description: 'Crie conta como empresa ou instituição para gerir donativos, documentos, comprovativos, chats e relatórios ESG.',
+    title: 'Entrar ou Registar | Empresas e Instituicoes',
+    description: 'Crie conta como empresa ou instituicao para gerir donativos, documentos, comprovativos, mensagens e relatorios.',
     path: '/entrar',
     noindex: true,
   },
   'area-privada': {
-    title: 'Área Privada',
-    description: 'Área reservada para empresas e instituições gerirem donativos, documentos, comprovativos e relatórios ESG.',
+    title: 'Area Privada',
+    description: 'Area reservada para empresas e instituicoes gerirem donativos, documentos, comprovativos e relatorios.',
     path: '/area-privada',
     noindex: true,
   },
   admin: {
-    title: 'Administração',
-    description: 'Área de administração da plataforma.',
+    title: 'Administracao',
+    description: 'Area de administracao da plataforma.',
     path: '/admin',
     noindex: true,
   },
+}
+
+function absoluteUrl(pathOrUrl: string) {
+  if (!pathOrUrl) return DEFAULT_IMAGE
+  if (/^https?:\/\//.test(pathOrUrl)) return pathOrUrl
+  return `${BASE_URL}${pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`}`
+}
+
+function truncate(value: string, max = 155) {
+  const clean = value.replace(/\s+/g, ' ').trim()
+  if (clean.length <= max) return clean
+  return `${clean.slice(0, max - 1).trim()}…`
 }
 
 function setMeta(name: string, content: string, attr: 'name' | 'property' = 'name') {
@@ -129,14 +159,16 @@ function setMeta(name: string, content: string, attr: 'name' | 'property' = 'nam
   el.content = content
 }
 
-function setCanonical(url: string) {
-  let el = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
+function setLink(rel: string, href: string, attrs?: Record<string, string>) {
+  const selector = attrs?.hreflang ? `link[rel="${rel}"][hreflang="${attrs.hreflang}"]` : `link[rel="${rel}"]`
+  let el = document.head.querySelector<HTMLLinkElement>(selector)
   if (!el) {
     el = document.createElement('link')
-    el.rel = 'canonical'
+    el.rel = rel
     document.head.appendChild(el)
   }
-  el.href = url
+  el.href = href
+  Object.entries(attrs || {}).forEach(([key, value]) => el.setAttribute(key, value))
 }
 
 function setJsonLd(id: string, data: object) {
@@ -161,26 +193,76 @@ function canonicalPath(view: ViewType, fallbackPath: string) {
   return fallbackPath
 }
 
-function pageSchema(title: string, description: string, canonical: string, view: ViewType) {
-  const type = view === 'faq' ? 'FAQPage' : 'WebPage'
+function currentProjectMeta(meta: MetaConfig): MetaConfig {
+  const slug = window.location.pathname.split('/').filter(Boolean).pop()
+  if (!slug) return meta
+  const entry = findProjectEntry(slug)
+  if (!entry) return meta
+
+  const projectName = entry.project.projectName || `${entry.project.category}: ${entry.project.subcategory}`
+  const description = truncate(entry.project.executiveSummary || entry.project.description || entry.institution.description)
+  const image = entry.project.projectPhotoUrls?.[0] || entry.institution.logo || DEFAULT_IMAGE
+  const ods = entry.project.sdgGoals.map(goal => `ODS ${goal}`).join(', ')
+
+  return {
+    ...meta,
+    title: `${projectName} | ${entry.institution.name}`,
+    description,
+    keywords: [
+      projectName,
+      entry.institution.name,
+      entry.institution.category,
+      entry.institution.municipality,
+      ods,
+      'Lei do Mecenato',
+      'donativo empresarial',
+    ].filter(Boolean).join(', '),
+    image,
+    path: window.location.pathname,
+  }
+}
+
+function webPageSchema(title: string, description: string, canonical: string, view: ViewType, schemaType: MetaConfig['schemaType']) {
   return {
     '@context': 'https://schema.org',
-    '@type': type,
+    '@type': schemaType || (view === 'impacto-real' ? 'CollectionPage' : 'WebPage'),
     name: title,
+    headline: title,
     description,
     url: canonical,
     inLanguage: 'pt-PT',
     isPartOf: {
       '@type': 'WebSite',
       name: 'leidomecenato.pt',
-      url: BASE_URL,
+      url: `${BASE_URL}/`,
     },
-    publisher: {
-      '@type': 'Organization',
-      name: 'leidomecenato.pt',
-      url: BASE_URL,
-      logo: DEFAULT_IMAGE,
+    publisher: organizationSchema(),
+  }
+}
+
+function organizationSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'leidomecenato.pt',
+    url: `${BASE_URL}/`,
+    logo: DEFAULT_IMAGE,
+    email: 'geral@leidomecenato.pt',
+    areaServed: {
+      '@type': 'Country',
+      name: 'Portugal',
     },
+  }
+}
+
+function websiteSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'leidomecenato.pt',
+    url: `${BASE_URL}/`,
+    inLanguage: 'pt-PT',
+    publisher: organizationSchema(),
   }
 }
 
@@ -192,7 +274,7 @@ function breadcrumbSchema(title: string, canonical: string) {
       {
         '@type': 'ListItem',
         position: 1,
-        name: 'Inicio',
+        name: 'Início',
         item: `${BASE_URL}/`,
       },
       {
@@ -215,7 +297,7 @@ function faqSchema() {
         name: 'A plataforma fica com alguma percentagem do donativo?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Não. O donativo vai 100% da empresa para a instituição. A plataforma cobra apenas o serviço de relatório de impacto.',
+          text: 'Não. O donativo vai integralmente da empresa para a instituição. A plataforma cobra apenas o serviço de relatório de impacto, quando contratado.',
         },
       },
       {
@@ -242,20 +324,22 @@ function productSchema() {
   return {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: 'Packs de Relatório de Impacto',
+    name: 'Relatórios de Impacto',
     itemListElement: [
       {
         '@type': 'Product',
         position: 1,
         name: 'Relatório de Impacto',
         description: 'Relatório PDF de impacto para donativos empresariais.',
+        brand: { '@type': 'Brand', name: 'leidomecenato.pt' },
         offers: { '@type': 'Offer', price: '150', priceCurrency: 'EUR', availability: 'https://schema.org/InStock' },
       },
       {
         '@type': 'Product',
         position: 2,
         name: 'Relatório de Impacto Premium',
-        description: 'Relatório premium com análise ESG, ODS, narrativa e evidências.',
+        description: 'Relatório premium com análise de impacto, ODS, narrativa e evidências.',
+        brand: { '@type': 'Brand', name: 'leidomecenato.pt' },
         offers: { '@type': 'Offer', price: '250', priceCurrency: 'EUR', availability: 'https://schema.org/InStock' },
       },
       {
@@ -263,9 +347,47 @@ function productSchema() {
         position: 3,
         name: 'Relatório de Impacto Premium + Pack Redes Sociais',
         description: 'Relatório premium com pack de comunicação para redes sociais.',
+        brand: { '@type': 'Brand', name: 'leidomecenato.pt' },
         offers: { '@type': 'Offer', price: '400', priceCurrency: 'EUR', availability: 'https://schema.org/InStock' },
       },
     ],
+  }
+}
+
+function projectSchema(canonical: string) {
+  const slug = window.location.pathname.split('/').filter(Boolean).pop()
+  if (!slug) return null
+  const entry = findProjectEntry(slug)
+  if (!entry) return null
+
+  const projectName = entry.project.projectName || `${entry.project.category}: ${entry.project.subcategory}`
+  const image = entry.project.projectPhotoUrls?.[0] || entry.institution.logo || DEFAULT_IMAGE
+  const amount = entry.project.requestedAmount || entry.project.totalProjectCost || entry.project.estimatedValue
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Project',
+    name: projectName,
+    description: truncate(entry.project.executiveSummary || entry.project.description, 240),
+    url: canonical,
+    image: absoluteUrl(image),
+    location: [entry.institution.municipality, entry.institution.district].filter(Boolean).join(', '),
+    about: entry.project.sdgGoals.map(goal => `ODS ${goal}`),
+    sponsor: {
+      '@type': 'Organization',
+      name: entry.institution.name,
+      url: canonical,
+    },
+    ...(amount ? {
+      funding: {
+        '@type': 'MonetaryGrant',
+        amount: {
+          '@type': 'MonetaryAmount',
+          value: amount,
+          currency: 'EUR',
+        },
+      },
+    } : {}),
   }
 }
 
@@ -273,43 +395,61 @@ export default function BrandSync({ view = 'home' }: Props) {
   const brand = useBrand()
 
   useEffect(() => {
-    const meta = viewMeta[view] || viewMeta.home!
-    const title = `${meta.title} | ${brand.name}`
+    const baseMeta = viewMeta[view] || viewMeta.home!
+    const meta = view === 'projeto' ? currentProjectMeta(baseMeta) : baseMeta
+    const siteSuffix = brand.name || 'leidomecenato.pt'
+    const title = `${meta.title} | ${siteSuffix}`
     const path = canonicalPath(view, meta.path)
     const canonical = `${BASE_URL}${path}`
+    const image = absoluteUrl(meta.image || DEFAULT_IMAGE)
 
     document.title = title
     document.documentElement.lang = 'pt-PT'
 
     setMeta('description', meta.description)
+    setMeta('keywords', meta.keywords || defaultKeywords)
     setMeta('robots', meta.noindex ? 'noindex,nofollow,noarchive' : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1')
-    setMeta('googlebot', meta.noindex ? 'noindex,nofollow' : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1')
-    setMeta('author', brand.name)
-    setMeta('application-name', brand.name)
-    if (meta.keywords) setMeta('keywords', meta.keywords)
-    setCanonical(canonical)
+    setMeta('googlebot', meta.noindex ? 'noindex,nofollow,noarchive' : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1')
+    setMeta('author', siteSuffix)
+    setMeta('application-name', siteSuffix)
+    setMeta('language', 'pt-PT')
+    setMeta('geo.region', 'PT')
+    setMeta('geo.placename', 'Portugal')
+
+    setLink('canonical', canonical)
+    setLink('alternate', canonical, { hreflang: 'pt-PT' })
+    setLink('alternate', canonical, { hreflang: 'x-default' })
 
     setMeta('og:title', title, 'property')
     setMeta('og:description', meta.description, 'property')
     setMeta('og:url', canonical, 'property')
-    setMeta('og:site_name', brand.name, 'property')
-    setMeta('og:type', 'website', 'property')
+    setMeta('og:site_name', siteSuffix, 'property')
+    setMeta('og:type', view === 'lei-mecenato' ? 'article' : 'website', 'property')
     setMeta('og:locale', 'pt_PT', 'property')
-    setMeta('og:image', DEFAULT_IMAGE, 'property')
-    setMeta('og:image:alt', `${brand.name} - Lei do Mecenato`, 'property')
+    setMeta('og:image', image, 'property')
+    setMeta('og:image:secure_url', image, 'property')
+    setMeta('og:image:alt', `${meta.title} - ${siteSuffix}`, 'property')
 
     setMeta('twitter:card', 'summary_large_image')
     setMeta('twitter:title', title)
     setMeta('twitter:description', meta.description)
-    setMeta('twitter:image', DEFAULT_IMAGE)
-    setMeta('twitter:image:alt', `${brand.name} - Lei do Mecenato`)
+    setMeta('twitter:image', image)
+    setMeta('twitter:image:alt', `${meta.title} - ${siteSuffix}`)
 
-    setJsonLd('ld-page', pageSchema(title, meta.description, canonical, view))
+    setJsonLd('ld-organization', organizationSchema())
+    setJsonLd('ld-website', websiteSchema())
+    setJsonLd('ld-page', webPageSchema(title, meta.description, canonical, view, meta.schemaType))
     setJsonLd('ld-breadcrumb', breadcrumbSchema(meta.title, canonical))
+
     if (view === 'faq') setJsonLd('ld-faq', faqSchema())
     else removeJsonLd('ld-faq')
+
     if (view === 'relatorios' || view === 'empresa') setJsonLd('ld-products', productSchema())
     else removeJsonLd('ld-products')
+
+    const projectStructuredData = view === 'projeto' ? projectSchema(canonical) : null
+    if (projectStructuredData) setJsonLd('ld-project', projectStructuredData)
+    else removeJsonLd('ld-project')
 
     const root = document.documentElement
     root.style.setProperty('--brand-primary', brand.primaryColor)

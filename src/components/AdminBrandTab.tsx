@@ -94,7 +94,7 @@ export default function AdminBrandTab() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-black text-slate-900">🎨 Kit de Identidade da Marca</h2>
+          <h2 className="text-2xl font-black text-slate-900"> Kit de Identidade da Marca</h2>
           <p className="text-sm text-slate-500">Os valores aqui guardados são aplicados em todos os documentos gerados.</p>
         </div>
         <div className="flex gap-2">
@@ -102,7 +102,7 @@ export default function AdminBrandTab() {
           <button onClick={handleReset} className="bg-slate-200 text-slate-700 text-sm px-4 py-2 rounded-xl">Repor</button>
           <button onClick={handleSave}
             className={`text-white text-sm font-bold px-5 py-2 rounded-xl transition ${saved ? 'bg-green-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
-            {saved ? '✓ Guardado' : '💾 Guardar Identidade'}
+            {saved ? ' Guardado' : ' Guardar Identidade'}
           </button>
         </div>
       </div>
@@ -110,7 +110,7 @@ export default function AdminBrandTab() {
       {/* IMPORT/EXPORT */}
       <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200 rounded-3xl p-6">
         <div className="flex items-start gap-4 mb-4">
-          <div className="text-4xl">📦</div>
+          <div className="text-4xl"></div>
           <div className="flex-1">
             <h3 className="font-black text-slate-900 text-lg">Importar Pasta de Identidade</h3>
             <p className="text-sm text-slate-600 mt-1">
@@ -122,7 +122,7 @@ export default function AdminBrandTab() {
         <div className="grid md:grid-cols-3 gap-3 mb-4">
           {/* Upload de pasta inteira */}
           <label className={`bg-white border-2 border-dashed border-indigo-300 rounded-2xl p-4 text-center cursor-pointer hover:bg-indigo-50 transition ${importing ? 'opacity-50' : ''}`}>
-            <div className="text-3xl mb-2">📁</div>
+            <div className="text-3xl mb-2"></div>
             <p className="font-bold text-indigo-700 text-sm">Carregar Pasta</p>
             <p className="text-xs text-slate-500 mt-1">{importing ? 'A processar...' : 'Selecionar uma pasta inteira'}</p>
             <input
@@ -138,7 +138,7 @@ export default function AdminBrandTab() {
 
           {/* Upload de ficheiros individuais */}
           <label className="bg-white border-2 border-dashed border-blue-300 rounded-2xl p-4 text-center cursor-pointer hover:bg-blue-50 transition">
-            <div className="text-3xl mb-2">📄</div>
+            <div className="text-3xl mb-2"></div>
             <p className="font-bold text-blue-700 text-sm">Carregar Ficheiros</p>
             <p className="text-xs text-slate-500 mt-1">Selecionar vários ficheiros</p>
             <input
@@ -152,7 +152,7 @@ export default function AdminBrandTab() {
           {/* Download exemplo */}
           <button onClick={downloadFolderTemplate}
             className="bg-white border-2 border-slate-300 rounded-2xl p-4 text-center cursor-pointer hover:bg-slate-50 transition">
-            <div className="text-3xl mb-2">📥</div>
+            <div className="text-3xl mb-2"></div>
             <p className="font-bold text-slate-700 text-sm">Guia de Estrutura</p>
             <p className="text-xs text-slate-500 mt-1">Descarregar exemplo</p>
           </button>
@@ -184,26 +184,26 @@ export default function AdminBrandTab() {
           <div className="flex gap-2">
             <button onClick={() => exportBrandAsJson(brand)}
               className="bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-lg">
-              📤 JSON
+               JSON
             </button>
             <button onClick={() => exportBrandAsTypeScript(brand)}
               className="bg-slate-900 hover:bg-black text-white text-xs font-bold px-4 py-2 rounded-lg">
-              💻 Código TS
+               Código TS
             </button>
           </div>
         </div>
 
         <div className="mt-3 bg-white border border-indigo-100 rounded-xl p-3 text-xs text-slate-600">
-          <strong>Guardar em código:</strong> depois de ajustares a identidade, clica em <strong>💻 Código TS</strong> para descarregar um ficheiro TypeScript com todos os valores atuais. Esse ficheiro pode ser colocado no repositório para que a identidade fique versionada e não dependa apenas do armazenamento local do browser.
+          <strong>Guardar em código:</strong> depois de ajustares a identidade, clica em <strong> Código TS</strong> para descarregar um ficheiro TypeScript com todos os valores atuais. Esse ficheiro pode ser colocado no repositório para que a identidade fique versionada e não dependa apenas do armazenamento local do browser.
         </div>
 
         {/* Relatório de importação */}
         {importReport && (
           <div className="mt-4 pt-4 border-t border-indigo-200 space-y-2">
-            <h4 className="font-bold text-slate-800 text-sm">📋 Relatório de Importação</h4>
+            <h4 className="font-bold text-slate-800 text-sm"> Relatório de Importação</h4>
             {importReport.applied.length > 0 && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-3">
-                <p className="text-xs font-bold text-green-800 mb-1">✓ Aplicado ({importReport.applied.length}):</p>
+                <p className="text-xs font-bold text-green-800 mb-1"> Aplicado ({importReport.applied.length}):</p>
                 <ul className="text-xs text-green-700 space-y-0.5">
                   {importReport.applied.map((a, i) => <li key={i}>• {a}</li>)}
                 </ul>
@@ -211,18 +211,18 @@ export default function AdminBrandTab() {
             )}
             {importReport.ignored.length > 0 && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                <p className="text-xs font-bold text-amber-800 mb-1">⚠ Ignorado ({importReport.ignored.length}):</p>
+                <p className="text-xs font-bold text-amber-800 mb-1"> Ignorado ({importReport.ignored.length}):</p>
                 <p className="text-xs text-amber-700">{importReport.ignored.join(', ')}</p>
               </div>
             )}
             {importReport.errors.length > 0 && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-                <p className="text-xs font-bold text-red-800 mb-1">✕ Erros:</p>
+                <p className="text-xs font-bold text-red-800 mb-1"> Erros:</p>
                 <ul className="text-xs text-red-700">{importReport.errors.map((e, i) => <li key={i}>• {e}</li>)}</ul>
               </div>
             )}
             <p className="text-xs text-slate-500 italic">
-              Lembra-te de clicar em "💾 Guardar Identidade" para confirmar as alterações.
+              Lembra-te de clicar em " Guardar Identidade" para confirmar as alterações.
             </p>
           </div>
         )}
@@ -253,14 +253,14 @@ export default function AdminBrandTab() {
       </div>
 
       {/* IDENTIDADE BÁSICA */}
-      <Section title="📛 Identidade Básica">
+      <Section title=" Identidade Básica">
         <Field label="Nome da Marca" value={brand.name} onChange={v => update('name', v)} />
         <Field label="Tagline / Slogan" value={brand.tagline} onChange={v => update('tagline', v)} />
         <FieldArea label="Descrição da Marca" value={brand.description} onChange={v => update('description', v)} rows={3} />
       </Section>
 
       {/* LOGÓTIPOS */}
-      <Section title="🖼️ Logótipos">
+      <Section title=" Logótipos">
         <div className="grid md:grid-cols-2 gap-4">
           <LogoUploader
             label="Logótipo Principal"
@@ -278,7 +278,7 @@ export default function AdminBrandTab() {
       </Section>
 
       {/* CORES */}
-      <Section title="🎨 Paleta de Cores">
+      <Section title=" Paleta de Cores">
         <div className="grid md:grid-cols-2 gap-4 mb-4">
           <ColorField label="Cor Principal (header, títulos)" value={brand.primaryColor} onChange={v => update('primaryColor', v)} />
           <ColorField label="Cor Secundária (destaque)" value={brand.secondaryColor} onChange={v => update('secondaryColor', v)} />
@@ -304,7 +304,7 @@ export default function AdminBrandTab() {
       </Section>
 
       {/* TIPOGRAFIA */}
-      <Section title="✍️ Tipografia">
+      <Section title=" Tipografia">
         <div className="grid md:grid-cols-2 gap-4">
           <Field label="Fonte Principal (títulos)" value={brand.primaryFont} onChange={v => update('primaryFont', v)} placeholder="Ex: Helvetica, Inter, Montserrat" />
           <Field label="Fonte Secundária (corpo)" value={brand.secondaryFont} onChange={v => update('secondaryFont', v)} placeholder="Ex: Helvetica, Open Sans" />
@@ -324,7 +324,7 @@ export default function AdminBrandTab() {
       </Section>
 
       {/* COMUNICAÇÃO */}
-      <Section title="🗣️ Tom de Comunicação">
+      <Section title=" Tom de Comunicação">
         <FieldArea label="Tom de Voz" value={brand.voiceTone} onChange={v => update('voiceTone', v)} rows={3}
           help="Como queres que a marca soe? (ex: profissional, próximo, técnico...)" />
 
@@ -346,11 +346,11 @@ export default function AdminBrandTab() {
       </Section>
 
       {/* REGRAS */}
-      <Section title="✅ Regras de Utilização">
+      <Section title=" Regras de Utilização">
         <div className="grid md:grid-cols-2 gap-6">
           <div className="bg-green-50 rounded-xl p-4">
             <div className="flex justify-between mb-3">
-              <h4 className="font-bold text-green-800">✅ FAZER</h4>
+              <h4 className="font-bold text-green-800"> FAZER</h4>
               <button onClick={() => addArrayItem('doRules')} className="text-xs text-green-600">+ Adicionar</button>
             </div>
             <div className="space-y-2">
@@ -365,7 +365,7 @@ export default function AdminBrandTab() {
           </div>
           <div className="bg-red-50 rounded-xl p-4">
             <div className="flex justify-between mb-3">
-              <h4 className="font-bold text-red-800">❌ NÃO FAZER</h4>
+              <h4 className="font-bold text-red-800"> NÃO FAZER</h4>
               <button onClick={() => addArrayItem('dontRules')} className="text-xs text-red-600">+ Adicionar</button>
             </div>
             <div className="space-y-2">
@@ -382,7 +382,7 @@ export default function AdminBrandTab() {
       </Section>
 
       {/* CONTACTOS */}
-      <Section title="📞 Contactos">
+      <Section title=" Contactos">
         <div className="grid md:grid-cols-2 gap-4">
           <Field label="Email" value={brand.contactEmail} onChange={v => update('contactEmail', v)} />
           <Field label="Telefone" value={brand.contactPhone} onChange={v => update('contactPhone', v)} />
@@ -392,7 +392,7 @@ export default function AdminBrandTab() {
       </Section>
 
       {/* DISCLAIMER */}
-      <Section title="⚖️ Disclaimer Legal Base">
+      <Section title=" Disclaimer Legal Base">
         <FieldArea label="Texto base usado em PDFs e documentos" value={brand.legalDisclaimer} onChange={v => update('legalDisclaimer', v)} rows={4}
           help="Este texto pode ser referenciado pelos templates através do placeholder {{disclaimer_marca}}." />
       </Section>
@@ -403,7 +403,7 @@ export default function AdminBrandTab() {
         <button onClick={handleReset} className="bg-slate-200 text-slate-700 text-sm px-4 py-2 rounded-xl">Repor</button>
         <button onClick={handleSave}
           className={`text-white text-sm font-bold px-6 py-2 rounded-xl transition ${saved ? 'bg-green-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
-          {saved ? '✓ Identidade Guardada' : '💾 Guardar Identidade'}
+          {saved ? ' Identidade Guardada' : ' Guardar Identidade'}
         </button>
       </div>
     </div>

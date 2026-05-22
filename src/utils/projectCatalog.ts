@@ -25,7 +25,7 @@ function registrationToInstitution(reg: ReturnType<typeof listInstitutionRegistr
     category: reg.category || 'Instituição',
     description: reg.description || reg.mission || 'Instituição registada na plataforma.',
     mission: reg.mission || 'Gerar impacto social através de projetos apoiados por mecenas.',
-    logo: reg.logoUrl || '🏛️',
+    logo: reg.logoUrl || '',
     municipality: reg.municipality || '',
     district: reg.district || '',
     peopleReachedPerYear: reg.peopleReachedPerYear || 0,

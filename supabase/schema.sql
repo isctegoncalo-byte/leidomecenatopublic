@@ -290,3 +290,63 @@ using (
   bucket_id = 'documents'
   and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin())
 );
+
+drop policy if exists "storage_images_public_read" on storage.objects;
+create policy "storage_images_public_read"
+on storage.objects for select
+using (bucket_id = 'images');
+
+drop policy if exists "storage_images_insert_own_or_admin" on storage.objects;
+create policy "storage_images_insert_own_or_admin"
+on storage.objects for insert
+with check (
+  bucket_id = 'images'
+  and (
+    public.is_admin()
+    or (
+      auth.uid() is not null
+      and (storage.foldername(name))[1] = auth.uid()::text
+    )
+  )
+);
+
+drop policy if exists "storage_images_update_own_or_admin" on storage.objects;
+create policy "storage_images_update_own_or_admin"
+on storage.objects for update
+using (
+  bucket_id = 'images'
+  and (
+    public.is_admin()
+    or (
+      auth.uid() is not null
+      and (storage.foldername(name))[1] = auth.uid()::text
+    )
+  )
+)
+with check (
+  bucket_id = 'images'
+  and (
+    public.is_admin()
+    or (
+      auth.uid() is not null
+      and (storage.foldername(name))[1] = auth.uid()::text
+    )
+  )
+);
+
+drop policy if exists "storage_images_delete_own_or_admin" on storage.objects;
+create policy "storage_images_delete_own_or_admin"
+on storage.objects for delete
+using (
+  bucket_id = 'images'
+  and (
+    public.is_admin()
+    or (
+      auth.uid() is not null
+      and (storage.foldername(name))[1] = auth.uid()::text
+    )
+  )
+);
+
+comment on table public.profiles is 'Perfis aplicacionais. O role e protegido por trigger; cliente comum nao pode promover contas para admin.';
+comment on table public.documents is 'Documentos privados de contas. A leitura e limitada ao dono ou administrador; o estado accepted e revisto por admin.';

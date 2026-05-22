@@ -13,18 +13,18 @@ import {
 } from '../utils/projectLimits'
 
 const NEED_CATEGORIES = [
-  { value: 'Educação', label: '📚 Educação', subcategories: ['Material Escolar', 'Tecnologia Educativa', 'Bolsas de Estudo', 'Formação Profissional', 'Programas Escolares'] },
-  { value: 'Saúde', label: '🏥 Saúde', subcategories: ['Equipamento Médico', 'Medicação', 'Saúde Mental', 'Reabilitação', 'Prevenção'] },
-  { value: 'Alimentação', label: '🍽️ Alimentação', subcategories: ['Refeições', 'Banco Alimentar', 'Cabazes', 'Cozinha Social'] },
-  { value: 'Habitação', label: '🏠 Habitação', subcategories: ['Remodelação', 'Equipamento Doméstico', 'Apoio ao Arrendamento'] },
-  { value: 'Tecnologia', label: '💻 Tecnologia', subcategories: ['Hardware', 'Software', 'Conectividade', 'IoT/Sensores'] },
-  { value: 'Infraestrutura', label: '🏗️ Infraestrutura', subcategories: ['Espaços', 'Requalificação', 'Acessibilidade', 'Equipamento'] },
-  { value: 'Ambiente', label: '🌳 Ambiente', subcategories: ['Reflorestação', 'Monitorização', 'Sensibilização', 'Energia Renovável'] },
-  { value: 'Cultura', label: '🎨 Cultura', subcategories: ['Exposições', 'Digitalização', 'Conservação', 'Publicações'] },
-  { value: 'Desporto', label: '⚽ Desporto', subcategories: ['Equipamento', 'Instalações', 'Formação', 'Bolsas de Participação'] },
-  { value: 'Social', label: '🤲 Social', subcategories: ['Inclusão', 'Bolsas', 'Apoio Psicossocial', 'Transporte'] },
-  { value: 'Ciência', label: '🔬 Ciência', subcategories: ['Equipamento Laboratorial', 'Bolsas de Investigação', 'Publicações', 'Divulgação'] },
-  { value: 'Recursos Humanos', label: '👥 Recursos Humanos', subcategories: ['Formação', 'Voluntariado', 'Contratação', 'Certificações'] },
+  { value: 'Educação', label: 'Educação', subcategories: ['Material Escolar', 'Tecnologia Educativa', 'Bolsas de Estudo', 'Formação Profissional', 'Programas Escolares'] },
+  { value: 'Saúde', label: 'Saúde', subcategories: ['Equipamento Médico', 'Medicação', 'Saúde Mental', 'Reabilitação', 'Prevenção'] },
+  { value: 'Alimentação', label: 'Alimentação', subcategories: ['Refeições', 'Banco Alimentar', 'Cabazes', 'Cozinha Social'] },
+  { value: 'Habitação', label: 'Habitação', subcategories: ['Remodelação', 'Equipamento Doméstico', 'Apoio ao Arrendamento'] },
+  { value: 'Tecnologia', label: 'Tecnologia', subcategories: ['Hardware', 'Software', 'Conectividade', 'IoT/Sensores'] },
+  { value: 'Infraestrutura', label: 'Infraestrutura', subcategories: ['Espaços', 'Requalificação', 'Acessibilidade', 'Equipamento'] },
+  { value: 'Ambiente', label: 'Ambiente', subcategories: ['Reflorestação', 'Monitorização', 'Sensibilização', 'Energia Renovável'] },
+  { value: 'Cultura', label: 'Cultura', subcategories: ['Exposições', 'Digitalização', 'Conservação', 'Publicações'] },
+  { value: 'Desporto', label: 'Desporto', subcategories: ['Equipamento', 'Instalações', 'Formação', 'Bolsas de Participação'] },
+  { value: 'Social', label: 'Social', subcategories: ['Inclusão', 'Bolsas', 'Apoio Psicossocial', 'Transporte'] },
+  { value: 'Ciência', label: 'Ciência', subcategories: ['Equipamento Laboratorial', 'Bolsas de Investigação', 'Publicações', 'Divulgação'] },
+  { value: 'Recursos Humanos', label: 'Recursos Humanos', subcategories: ['Formação', 'Voluntariado', 'Contratação', 'Certificações'] },
 ]
 
 
@@ -340,7 +340,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
         <div className="bg-white rounded-3xl shadow-xl p-12 max-w-lg text-center">
-          <div className="text-7xl mb-6">🎉</div>
+          <div className="text-7xl mb-6"></div>
           <h2 className="text-3xl font-black text-slate-900 mb-4">Registo Submetido!</h2>
           <p className="text-slate-500 mb-4">
             O perfil de <strong>{identity.name}</strong> foi submetido para verificação. 
@@ -349,10 +349,10 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-left">
             <p className="text-green-800 text-sm font-semibold mb-2">Próximos passos:</p>
             <ul className="text-green-700 text-sm space-y-1">
-              <li>✅ Análise do perfil ESG (1–2 dias úteis)</li>
-              <li>✅ Verificação dos documentos submetidos</li>
-              <li>✅ Ativação e publicação na plataforma</li>
-              <li>✅ Notificação por email: <strong>{identity.email}</strong></li>
+              <li> Análise do perfil ESG (1–2 dias úteis)</li>
+              <li> Verificação dos documentos submetidos</li>
+              <li> Ativação e publicação na plataforma</li>
+              <li> Notificação por email: <strong>{identity.email}</strong></li>
             </ul>
           </div>
           <button onClick={onComplete} className="bg-blue-600 text-white font-bold py-3 px-8 rounded-xl hover:bg-blue-700 transition">
@@ -384,7 +384,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                     i < step ? 'bg-blue-600 border-blue-600 text-white' :
                     i === step ? 'bg-white border-blue-600 text-blue-600' :
                     'bg-white border-slate-300 text-slate-400'
-                  }`}>{i < step ? '✓' : i + 1}</div>
+                  }`}>{i < step ? '' : i + 1}</div>
                   {i < STEPS.length - 1 && (
                     <div className={`flex-1 h-0.5 mx-1 transition ${i < step ? 'bg-blue-600' : 'bg-slate-200'}`} />
                   )}
@@ -403,7 +403,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
           {/* STEP 0: Identity */}
           {step === 0 && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
-              <h2 className="text-xl font-bold text-slate-800 mb-6">🏛️ Identidade da Instituição</h2>
+              <h2 className="text-xl font-bold text-slate-800 mb-6">Identidade da Instituição</h2>
 
               {/* Logótipo da Instituição (obrigatório) */}
               <div className="mb-6">
@@ -560,7 +560,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
               </div>
 
               <div className="mt-8">
-                <h3 className="text-lg font-bold text-slate-800 mb-3">📷 Fotografias da Instituição (opcional)</h3>
+                <h3 className="text-lg font-bold text-slate-800 mb-3"> Fotografias da Instituição (opcional)</h3>
                 <p className="text-sm text-slate-500 mb-4">
                   Podes carregar até 4 fotografias da instituição e/ou do projeto a ser apoiado. As imagens carregadas farão parte do relatório ESG. Este passo não é obrigatório.
                 </p>
@@ -591,7 +591,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
           {/* STEP 1: Mission & Impact */}
           {step === 1 && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
-              <h2 className="text-xl font-bold text-slate-800 mb-6">🎯 Missão e Impacto</h2>
+              <h2 className="text-xl font-bold text-slate-800 mb-6"> Missão e Impacto</h2>
               <div className="space-y-5">
                 <div>
                   <label className="block text-sm font-semibold text-slate-600 mb-2">Descrição da Instituição *</label>
@@ -636,7 +636,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
           {/* STEP 2: Team & Resources */}
           {step === 2 && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
-              <h2 className="text-xl font-bold text-slate-800 mb-6">👥 Equipa e Recursos</h2>
+              <h2 className="text-xl font-bold text-slate-800 mb-6"> Equipa e Recursos</h2>
               <div className="grid md:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm font-semibold text-slate-600 mb-2">Colaboradores a Tempo Inteiro</label>
@@ -692,7 +692,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
 
               <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200">
                 <p className="text-xs text-amber-700">
-                  <strong>📎 Nota:</strong> Após a submissão, a nossa equipa entrará em contacto para recolha dos documentos em formato digital. 
+                  <strong> Nota:</strong> Após a submissão, a nossa equipa entrará em contacto para recolha dos documentos em formato digital. 
                   As instituições com Estatuto de Utilidade Pública recebem um <strong>badge de verificação</strong> e têm prioridade no matching com empresas.
                 </p>
               </div>
@@ -703,10 +703,10 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
           {step === 3 && (
             <div className="space-y-6">
               <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
-                <h2 className="text-xl font-bold text-blue-800 mb-2">📋 Necessidades ESG Detalhadas</h2>
+                <h2 className="text-xl font-bold text-blue-800 mb-2"> Necessidades ESG Detalhadas</h2>
                 <p className="text-blue-700 text-sm">
                   Esta é a secção mais importante. Quanto mais detalhe fornecer, melhor será o 
-                  <strong> Impact Score</strong> gerado e maior a probabilidade de atrair donativos. 
+                  <strong> métricas de impacto</strong> gerado e maior a probabilidade de atrair donativos. 
                   Cada necessidade é classificada por <strong>pilar ESG</strong> e <strong>alinhamento com os ODS da ONU</strong>.
                 </p>
                 <p className="text-blue-800 text-sm font-bold mt-3">
@@ -722,7 +722,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                       <h3 className="font-bold text-white">Necessidade #{idx + 1}</h3>
                       {needs.length > 1 && (
                         <button onClick={() => removeNeed(idx)} className="text-red-400 hover:text-red-300 text-sm font-medium">
-                          ✕ Remover
+                           Remover
                         </button>
                       )}
                     </div>
@@ -768,7 +768,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                               S: 'border-blue-400 bg-blue-50 text-blue-700',
                               G: 'border-purple-400 bg-purple-50 text-purple-700',
                             }
-                            const labels = { E: '🌱 Ambiental', S: '👥 Social', G: '⚖️ Governação' }
+                            const labels = { E: ' Ambiental', S: ' Social', G: '' }
                             return (
                               <button key={p} onClick={() => updateNeed(idx, 'esgPillar', p)}
                                 className={`p-2 rounded-xl border-2 text-xs font-bold transition ${need.esgPillar === p ? colors[p] : 'border-slate-200 text-slate-400'}`}>
@@ -789,7 +789,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                               media: 'border-yellow-400 bg-yellow-50 text-yellow-700',
                               baixa: 'border-green-400 bg-green-50 text-green-700',
                             }
-                            const labels = { alta: '🔴 Alta', media: '🟡 Média', baixa: '🟢 Baixa' }
+                            const labels = { alta: ' Alta', media: ' Média', baixa: ' Baixa' }
                             return (
                               <button key={u} onClick={() => updateNeed(idx, 'urgency', u)}
                                 className={`p-2 rounded-xl border-2 text-xs font-bold transition ${need.urgency === u ? colors[u] : 'border-slate-200 text-slate-400'}`}>
@@ -933,7 +933,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
 
               <div className="bg-green-50 border border-green-200 rounded-xl p-4">
                 <p className="text-sm text-green-700">
-                  <strong>💡 Dica:</strong> As instituições com 3 ou mais necessidades detalhadas, com métricas de impacto claras
+                  <strong> Dica:</strong> As instituições com 3 ou mais necessidades detalhadas, com métricas de impacto claras
                   e alinhamento ODS definido, recebem em média <strong>3x mais donativos</strong> do que as que têm perfis incompletos.
                 </p>
               </div>
@@ -943,11 +943,11 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
           {/* STEP 4: Review */}
           {step === 4 && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
-              <h2 className="text-xl font-bold text-slate-800 mb-6">✅ Revisão do Perfil</h2>
+              <h2 className="text-xl font-bold text-slate-800 mb-6"> Revisão do Perfil</h2>
 
               <div className="space-y-6">
                 <div className="bg-slate-50 rounded-xl p-5">
-                  <h3 className="font-bold text-slate-700 mb-3">🏛️ Identidade</h3>
+                  <h3 className="font-bold text-slate-700 mb-3">Identidade</h3>
                   <div className="flex items-center gap-4">
                     <div className="w-20 h-20 rounded-xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                       {logoUrl ? (
@@ -969,16 +969,16 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                 </div>
 
                 <div className="bg-slate-50 rounded-xl p-5">
-                  <h3 className="font-bold text-slate-700 mb-3">👥 Equipa</h3>
+                  <h3 className="font-bold text-slate-700 mb-3"> Equipa</h3>
                   <div className="grid md:grid-cols-3 gap-4 text-center">
                     <div><p className="text-2xl font-black text-blue-600">{team.fullTimeStaff || 0}</p><p className="text-xs text-slate-500">Tempo Inteiro</p></div>
                     <div><p className="text-2xl font-black text-green-600">{team.volunteers || 0}</p><p className="text-xs text-slate-500">Voluntários</p></div>
-                    <div><p className="text-lg font-bold text-slate-600">{team.utilidadePublica ? '✅ UP' : '—'}</p><p className="text-xs text-slate-500">Utilidade Pública</p></div>
+                    <div><p className="text-lg font-bold text-slate-600">{team.utilidadePublica ? ' UP' : '—'}</p><p className="text-xs text-slate-500">Utilidade Pública</p></div>
                   </div>
                 </div>
 
                 <div className="bg-slate-50 rounded-xl p-5">
-                  <h3 className="font-bold text-slate-700 mb-3">📋 Necessidades ({needs.length})</h3>
+                  <h3 className="font-bold text-slate-700 mb-3"> Necessidades ({needs.length})</h3>
                   <div className="space-y-2">
                     {needs.map((n) => (
                       <div key={n.id} className="flex items-center gap-3 text-sm">
@@ -995,7 +995,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                 </div>
 
                 <div className="bg-slate-50 rounded-xl p-5">
-                  <h3 className="font-bold text-slate-700 mb-3">📷 Fotografias para o Relatório ESG</h3>
+                  <h3 className="font-bold text-slate-700 mb-3"> Fotografias para o Relatório ESG</h3>
                   <div className="grid grid-cols-2 gap-3">
                     {photoUrls.map((url, idx) => (
                       <div key={idx} className="border border-slate-200 rounded-xl overflow-hidden bg-white">
@@ -1065,7 +1065,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                 {submitting ? (
                   <><span className="animate-spin">⏳</span> A processar...</>
                 ) : (
-                  '✅ Submeter Registo'
+                  ' Submeter Registo'
                 )}
               </button>
             )}

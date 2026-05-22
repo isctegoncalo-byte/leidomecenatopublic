@@ -1,1 +1,52 @@
 @import "tailwindcss";
+
+:focus-visible {
+  outline: 3px solid #facc15;
+  outline-offset: 3px;
+}
+
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 100;
+  transform: translateY(-150%);
+  border-radius: 0.75rem;
+  background: #facc15;
+  color: #0f172a;
+  padding: 0.75rem 1rem;
+  font-weight: 900;
+  box-shadow: 0 12px 30px rgb(15 23 42 / 0.24);
+  transition: transform 160ms ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes sponsor-ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.sponsor-ticker-track {
+  width: max-content;
+  animation: sponsor-ticker 24s linear infinite;
+}
+
+.sponsor-ticker-track:hover {
+  animation-play-state: paused;
+}

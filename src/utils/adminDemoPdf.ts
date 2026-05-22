@@ -43,8 +43,6 @@ export function buildDemoReportForInstitution(templateName: string, institutionI
       highlights: inst.esgScore.highlights,
       risks: inst.esgScore.risks,
     },
-    rating: inst.esgScore.total >= 85 ? 'AA+' : inst.esgScore.total >= 75 ? 'AA' : inst.esgScore.total >= 65 ? 'A+' : inst.esgScore.total >= 55 ? 'A' : 'B+',
-    ratingColor: inst.esgScore.total >= 85 ? '#16a34a' : inst.esgScore.total >= 75 ? '#22c55e' : inst.esgScore.total >= 65 ? '#84cc16' : inst.esgScore.total >= 55 ? '#eab308' : '#f97316',
     coverageRatio: Math.round(coveragePercent),
     impactPerEuro: parseFloat((totalBeneficiaries / Math.max(donationAmount, 1)).toFixed(3)),
     co2Impact: inst.esgScore.sdgAlignment.includes(13) || inst.esgScore.sdgAlignment.includes(15) ? Math.round(donationAmount * 0.012) : 0,

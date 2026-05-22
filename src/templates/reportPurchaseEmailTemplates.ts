@@ -17,7 +17,7 @@ const packConfirmation: Record<ReportPackId, { title: string; text: string; deli
   },
   premium: {
     title: 'Relatório de Impacto Premium',
-    text: 'Confirmamos a compra do Relatório de Impacto Premium. Este pack inclui análise detalhada, Impact Score, narrativa de impacto, evidências visuais, ODS, riscos ESG e dados prontos para relatório de sustentabilidade.',
+    text: 'Confirmamos a compra do Relatório de Impacto Premium. Este pack inclui análise detalhada, métricas de impacto, narrativa de impacto, evidências visuais, ODS, riscos ESG e dados prontos para relatório de sustentabilidade.',
     delivery: 'Entrega prevista: até 10 dias úteis após validação do donativo pela empresa e pela instituição.',
   },
   social: {

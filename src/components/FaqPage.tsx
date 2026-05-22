@@ -21,7 +21,7 @@ const FAQS: FaqCategory[] = [
   {
     id: 'geral',
     title: 'Sobre a Plataforma',
-    icon: '🤝',
+    icon: '',
     items: [
       {
         q: 'O que é a Lei do Mecenato?',
@@ -40,7 +40,7 @@ const FAQS: FaqCategory[] = [
   {
     id: 'empresas',
     title: 'Para Empresas',
-    icon: '🏢',
+    icon: '',
     items: [
       {
         q: 'Como faço um donativo?',
@@ -56,14 +56,14 @@ const FAQS: FaqCategory[] = [
       },
       {
         q: 'O que recebo em troca?',
-        a: 'Recebes um código único do donativo e, após pagamento do serviço, um Relatório de Impacto em PDF (com 9 páginas: capa, índice, sumário, instituição, scores ESG, alinhamento ODS, necessidades, galeria e dados fiscais). As cores do relatório correspondem ao ODS principal apoiado.',
+        a: 'Recebes um código único do donativo e, após pagamento do serviço, um Relatório de Impacto em PDF (com 9 páginas: capa, índice, sumário, instituição, métricas ESG, alinhamento ODS, necessidades, galeria e dados fiscais). As cores do relatório correspondem ao ODS principal apoiado.',
       },
     ],
   },
   {
     id: 'instituicoes',
     title: 'Para Instituições',
-    icon: '🏛️',
+    icon: '',
     items: [
       {
         q: 'Como me registo como instituição?',
@@ -86,7 +86,7 @@ const FAQS: FaqCategory[] = [
   {
     id: 'relatorio',
     title: 'Sobre o Relatório de Impacto',
-    icon: '📊',
+    icon: '',
     items: [
       {
         q: 'Como acedo ao relatório?',
@@ -94,7 +94,7 @@ const FAQS: FaqCategory[] = [
       },
       {
         q: 'O que tem o Relatório de Impacto?',
-        a: '9 páginas: capa, índice, sumário executivo, ficha da empresa e instituição, decomposição do Impact Score (E+S+G), alinhamento com ODS, necessidades apoiadas, galeria de fotografias e dados fiscais para o IRC.',
+        a: '9 páginas: capa, índice, sumário executivo, ficha da empresa e instituição, decomposição do métricas de impacto (E+S+G), alinhamento com ODS, necessidades apoiadas, galeria de fotografias e dados fiscais para o IRC.',
       },
       {
         q: 'Porque é que as cores do relatório mudam?',
@@ -109,7 +109,7 @@ const FAQS: FaqCategory[] = [
   {
     id: 'fiscal',
     title: 'Aspetos Fiscais e Legais',
-    icon: '⚖️',
+    icon: '',
     items: [
       {
         q: 'O que é o Estatuto do Mecenato?',
@@ -215,7 +215,7 @@ export default function FaqPage({ setCurrentView }: Props) {
               href="mailto:info@leidomecenato.pt"
               className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-black py-4 px-8 rounded-2xl transition no-underline"
             >
-              📧 Contactar a Equipa
+               Contactar a Equipa
             </a>
             <button
               onClick={() => setCurrentView('home')}

@@ -10,8 +10,6 @@
 //   {{instituicao}}   — nome da instituição beneficiária
 //   {{donativo}}      — valor do donativo (ex: "10.000")
 //   {{data}}          — data do donativo
-//   {{rating}}        — rating ESG (ex: "AA")
-//   {{score}}         — score total (ex: "78")
 //   {{beneficiarios}} — n.º de beneficiários
 //   {{ods_principal}} — nome do ODS principal
 //   {{cobertura}}     — % de cobertura do projeto
@@ -62,8 +60,8 @@ export interface ReportTemplate {
   kpiStyle: 'cards' | 'badges' | 'table'
 
   // Labels e textos de secções
-  ratingMethodTitle: string
-  ratingMethodText: string
+  methodTitle: string
+  methodText: string
   thankYouTitle: string
   galleryTitle: string
   needsTitle: string
@@ -81,7 +79,7 @@ const defaultSections: ReportSection[] = [
   { id: 'toc',         label: 'Índice',                    enabled: true },
   { id: 'summary',     label: 'Sumário Executivo',         enabled: true },
   { id: 'overview',    label: 'A Empresa & A Instituição', enabled: true },
-  { id: 'scores',      label: 'Impact Score & Rating',     enabled: true },
+  { id: 'metrics',     label: 'Métricas de impacto',     enabled: true },
   { id: 'sdg',         label: 'Alinhamento com os ODS',    enabled: true },
   { id: 'needs',       label: 'Necessidades Apoiadas',     enabled: true },
   { id: 'gallery',     label: 'Galeria do Projeto',        enabled: true },
@@ -100,8 +98,8 @@ export const defaultReportAdvanced = {
   cornerRadius: 4,
   imageTreatment: 'rounded' as const,
   kpiStyle: 'cards' as const,
-  ratingMethodTitle: 'Como é atribuído o rating',
-  ratingMethodText: 'O Impact Score (0-100) é o resultado ponderado dos três pilares ESG: Ambiental (35%), Social (45%) e Governação (20%). Cada pilar é calculado com base nas necessidades apoiadas, considerando urgência, alinhamento com ODS e dimensão de beneficiários.',
+  methodTitle: 'Como são apuradas as métricas',
+  methodText: 'As métricas de impacto são apresentadas a partir dos dados declarados pela instituição, dos ODS associados, dos KPIs do projeto, dos beneficiários previstos e das evidências documentais recolhidas.',
   thankYouTitle: 'Mensagem de agradecimento da instituição',
   galleryTitle: 'Fotografias carregadas pela instituição apoiada',
   needsTitle: 'Necessidades Apoiadas',
@@ -155,7 +153,7 @@ export const reportTemplates: ReportTemplate[] = [
     sections: [...defaultSections],
     coverTitle: 'ESG Impact\nReport',
     coverSubtitle: 'Powered by Lei do Mecenato',
-    aboutText: 'Este relatório documenta o impacto social, ambiental e de governação gerado pelo donativo de {{empresa}} a {{instituicao}}, com rating {{rating}} e {{beneficiarios}} beneficiários diretos.',
+    aboutText: 'Este relatório documenta o impacto social, ambiental e de governação gerado pelo donativo de {{empresa}} a {{instituicao}}, com métricas verificadas e {{beneficiarios}} beneficiários diretos.',
     footerText: 'Lei do Mecenato  •  ESG Impact Report',
     disclaimer: 'Este relatório foi gerado pela plataforma Lei do Mecenato — uma iniciativa privada independente, sem qualquer vínculo a organismos públicos. Não é uma entidade certificadora oficial. O donativo referenciado é elegível para dedução fiscal nos termos do artigo 62.º do Código do IRC — confirme com o seu TOC.',
     ...defaultReportAdvanced,

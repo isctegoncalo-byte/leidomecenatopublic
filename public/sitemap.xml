@@ -2,86 +2,98 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://leidomecenato.pt/</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://leidomecenato.pt/lei-do-mecenato</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-22</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.95</priority>
   </url>
   <url>
     <loc>https://leidomecenato.pt/simulador</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-22</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.95</priority>
   </url>
   <url>
     <loc>https://leidomecenato.pt/empresa/donativo</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
   </url>
   <url>
     <loc>https://leidomecenato.pt/instituicao/registo</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://leidomecenato.pt/empresas</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://leidomecenato.pt/instituicoes</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://leidomecenato.pt/relatorios</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://leidomecenato.pt/impacto-real</loc>
-    <lastmod>2026-05-08</lastmod>
+    <loc>https://leidomecenato.pt/historias-de-impacto</loc>
+    <lastmod>2026-05-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://leidomecenato.pt/rating-de-impacto</loc>
-    <lastmod>2026-05-08</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
     <loc>https://leidomecenato.pt/faq</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-22</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://leidomecenato.pt/privacidade</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-22</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.45</priority>
   </url>
   <url>
     <loc>https://leidomecenato.pt/termos</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-22</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.45</priority>
   </url>
   <url>
     <loc>https://leidomecenato.pt/cookies</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-22</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://leidomecenato.pt/projeto/associacao-crescer-juntos-educacao-centro-de-estudo-e-apoio-familiar-cj-centro-estudo-familias</loc>
+    <lastmod>2026-05-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://leidomecenato.pt/projeto/centro-de-reabilitacao-horizonte-saude-equipamento-de-reabilitacao-neuromotora-horizonte-reabilitacao-neuromotora</loc>
+    <lastmod>2026-05-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://leidomecenato.pt/projeto/fundacao-arte-memoria-cultura-arquivo-vivo-e-oficinas-escolares-arte-memoria-arquivo-vivo</loc>
+    <lastmod>2026-05-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.75</priority>
   </url>
 </urlset>

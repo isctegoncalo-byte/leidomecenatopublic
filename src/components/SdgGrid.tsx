@@ -28,7 +28,7 @@ function SdgTile({ sdg, isSelected, onToggle }: {
         {/* Badge de seleção */}
         {isSelected && (
           <div className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center text-white text-xs font-bold shadow-lg z-10">
-            ✓
+            
           </div>
         )}
       </button>

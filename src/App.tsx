@@ -41,6 +41,7 @@ const pathToView = (path: string): ViewType => {
     '/simulador': 'simulador',
     '/lei-do-mecenato': 'lei-mecenato',
     '/impacto-real': 'impacto-real',
+    '/historias-de-impacto': 'impacto-real',
     '/faq': 'faq',
     '/entrar': 'login',
     '/area-privada': 'area-privada',
@@ -62,7 +63,7 @@ const viewToPath = (view: ViewType): string => {
     relatorios: '/relatorios',
     simulador: '/simulador',
     'lei-mecenato': '/lei-do-mecenato',
-    'impacto-real': '/impacto-real',
+    'impacto-real': '/historias-de-impacto',
     projeto: window.location.pathname.startsWith('/projeto/') || window.location.pathname.startsWith('/projetos/') ? window.location.pathname : '/projetos',
     faq: '/faq',
     login: '/entrar',
@@ -144,6 +145,7 @@ export default function App() {
         donationType: contract.donationType,
         selectedNeedIds: contract.selectedNeedIds,
         amount: contract.donationAmount,
+        publicDonationAmountConsent: contract.publicDonationAmountConsent,
         projectCost: contract.projectCost,
         date: contract.donationDate,
         description: `Donativo (${contract.donationType === 'dinheiro' ? 'apoio financeiro' : 'produtos/serviços'}) à ${contract.institutionName}`,
@@ -209,9 +211,10 @@ export default function App() {
   return (
     <div className="flex flex-col min-h-screen">
       <BrandSync view={view} />
+      <a href="#conteudo-principal" className="skip-link">Saltar para o conteúdo principal</a>
       <Header currentView={view} setCurrentView={setView} session={session} />
 
-      <main className="flex-1">
+      <main id="conteudo-principal" className="flex-1" tabIndex={-1}>
         {view === 'home' && <HomePage setCurrentView={setView} />}
         {view === 'lei-mecenato' && <MecenatoLawPage setCurrentView={setView} />}
         {view === 'impacto-real' && <ImpactStoriesPage setCurrentView={setView} />}
@@ -227,7 +230,7 @@ export default function App() {
         {(view === 'empresas' || view === 'instituicoes' || view === 'relatorios') && (
           <div className="min-h-screen bg-slate-50 flex items-center justify-center py-20 px-4">
              <div className="max-w-2xl text-center bg-white p-12 rounded-3xl shadow-xl border border-slate-100">
-                <div className="text-6xl mb-6">🚀</div>
+                <div className="text-6xl mb-6"></div>
                 <h1 className="text-3xl font-black mb-4 capitalize">{view}</h1>
                 <p className="text-slate-500 mb-8 text-lg">Estamos a preparar conteúdos exclusivos para esta página. Junte-se à plataforma para ser notificado.</p>
                 <button onClick={() => setView('login')} className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold">Criar Conta Gratuitamente</button>

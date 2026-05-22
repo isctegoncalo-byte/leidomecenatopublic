@@ -22,6 +22,7 @@ const DEMO_PROOFS: DonationProof[] = [
     confirmedAmount: 8000,
     companyConfirmedAmount: 8000,
     institutionConfirmedAmount: 8000,
+    publicDonationAmountConsent: true,
     date: '2026-05-05',
     description: 'Apoio financeiro para reforço do centro de estudo e acompanhamento familiar.',
     proofFileName: 'comprovativo-transferencia-techglobal.pdf',
@@ -57,6 +58,7 @@ const DEMO_PROOFS: DonationProof[] = [
     projectCost: 56000,
     confirmedAmount: 5000,
     companyConfirmedAmount: 5000,
+    publicDonationAmountConsent: true,
     date: '2026-05-15',
     description: 'Donativo submetido pela empresa, a aguardar confirmação da instituição.',
     proofFileName: 'transferencia-lusitano-energia.pdf',
@@ -80,6 +82,7 @@ const DEMO_PROOFS: DonationProof[] = [
     selectedNeedIds: ['horizonte-reabilitacao-neuromotora'],
     amount: 18000,
     projectCost: 118000,
+    publicDonationAmountConsent: true,
     date: '2026-05-18',
     description: 'Cedência proposta de sensores de equilíbrio e licenças de software clínico, ainda sem documento final da empresa.',
     companyConfirmed: false,
@@ -103,6 +106,7 @@ const DEMO_PROOFS: DonationProof[] = [
     confirmedAmount: 12000,
     companyConfirmedAmount: 12000,
     institutionConfirmedAmount: 12000,
+    publicDonationAmountConsent: true,
     date: '2026-05-11',
     description: 'Apoio complementar para instalação e formação técnica da unidade de reabilitação.',
     proofFileName: 'comprovativo-saudeprime.pdf',
@@ -133,6 +137,7 @@ const DEMO_PROOFS: DonationProof[] = [
     selectedNeedIds: ['arte-memoria-arquivo-vivo'],
     amount: 3000,
     projectCost: 48000,
+    publicDonationAmountConsent: false,
     date: '2026-05-09',
     description: 'Registo rejeitado por divergência entre o valor indicado e o valor recebido.',
     proofFileName: 'comprovativo-cultura-norte.pdf',
@@ -289,7 +294,7 @@ function sendZapierReportWebhook(proof: DonationProof) {
       proof,
       projects: selectedProjectsForProof(proof),
     }),
-  }).catch(err => console.log('Webhook enviado'))
+  }).catch(() => console.log('Webhook enviado'))
 }
 
 function recomputeStatus(proof: DonationProof) {

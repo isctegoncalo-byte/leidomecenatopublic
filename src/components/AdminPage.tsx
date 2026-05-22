@@ -17,7 +17,6 @@ import {
 import { validateImageUpload } from '../utils/uploadSecurity'
 import { listProofs } from '../utils/proofStore'
 import { listProjectInstitutions } from '../utils/projectCatalog'
-import { calculateDonationImpactRating, calculateProjectImpactRating, impactRatingLabel, requestedContribution } from '../utils/impactRating'
 
 interface Props {
   setCurrentView: (v: ViewType) => void
@@ -36,7 +35,7 @@ const mockReport: GeneratedESGReport = {
   scores: { environmental: 52, social: 91, governance: 78, total: 78, sdgAlignment: [2, 3, 4, 10],
     beneficiaries: 1200, impactNarrative: 'Donativo de €10.000 com impacto em 1.200 beneficiários.',
     highlights: ['1.200 crianças/ano'], risks: ['Dependência de financiamento'] },
-  rating: 'AA', ratingColor: '#22c55e', coverageRatio: 40, impactPerEuro: 0.12, co2Impact: 0,
+  coverageRatio: 40, impactPerEuro: 0.12, co2Impact: 0,
   relevantNeeds: [
     { id: 'n1', category: 'Educação', subcategory: 'Material Escolar', description: 'Material para 200 crianças',
       urgency: 'alta', sdgGoals: [4], esgPillar: 'S', impactMetric: '200 crianças com material escolar', estimatedValue: 8000, beneficiaries: 200 },
@@ -55,8 +54,6 @@ function buildPlaceholderVars(report: GeneratedESGReport): Record<string, string
     instituicao: report.institution,
     donativo: report.donationAmount.toLocaleString('pt-PT'),
     data: report.donationDate,
-    rating: report.rating,
-    score: String(report.scores.total),
     beneficiarios: report.scores.beneficiaries.toLocaleString(),
     ods_principal: report.sdgAlignment.length > 0 ? `ODS ${report.sdgAlignment[0]}` : '—',
     ods_numeros: report.sdgAlignment.map(s => `ODS ${s}`).join(', '),
@@ -100,7 +97,7 @@ export default function AdminPage({ setCurrentView, session, onLogout }: Props) 
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
         <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-sm w-full text-center">
-          <div className="text-5xl mb-4">🔐</div>
+          <div className="text-5xl mb-4"></div>
           <h1 className="text-2xl font-black text-slate-900 mb-2">Administração</h1>
           {session ? (
             <>
@@ -132,7 +129,7 @@ where email = '${session.email}';`}</pre>
       {/* Header */}
       <div className="bg-slate-900 text-white py-4 px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">⚙️</span>
+          <span className="text-2xl"></span>
           <div><h1 className="font-black text-lg">Administração</h1><p className="text-xs text-slate-400">Templates & Configuração</p></div>
         </div>
         <div className="flex gap-2">
@@ -146,9 +143,9 @@ where email = '${session.email}';`}</pre>
         {([
           { id: 'users-docs' as const, label: 'Utilizadores e Documentos' },
           { id: 'donation-history' as const, label: 'Historico de Donativos' },
-          { id: 'brand' as const, label: '🎨 Identidade da Marca' },
-          { id: 'report-templates' as const, label: '📄 Templates de Relatório' },
-          { id: 'preview' as const, label: '👁️ Pré-visualização' },
+          { id: 'brand' as const, label: 'Identidade da Marca' },
+          { id: 'report-templates' as const, label: 'Templates de Relatório' },
+          { id: 'preview' as const, label: 'Pré-visualização' },
         ]).map(t => (
           <button key={t.id} onClick={() => { setTab(t.id); setEditingRT(null) }}
             className={`px-5 py-3 text-sm font-semibold border-b-2 transition whitespace-nowrap ${tab === t.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500'}`}>
@@ -194,7 +191,7 @@ where email = '${session.email}';`}</pre>
 
             {/* Report preview */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6">
-              <h3 className="font-bold text-slate-800 mb-4">📄 Template de Relatório</h3>
+              <h3 className="font-bold text-slate-800 mb-4"> Template de Relatório</h3>
               <select value={previewReportId} onChange={e => setPreviewReportId(e.target.value)} className="px-4 py-2 border border-slate-300 rounded-xl mb-4">
                 <option value="">Selecionar template...</option>
                 {rTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -222,7 +219,7 @@ where email = '${session.email}';`}</pre>
 
             {/* Placeholders reference */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6">
-              <h3 className="font-bold text-slate-800 mb-4">📋 Referência de Placeholders</h3>
+              <h3 className="font-bold text-slate-800 mb-4"> Referência de Placeholders</h3>
               <div className="grid md:grid-cols-3 gap-2 text-xs">
                 {Object.entries(buildPlaceholderVars(mockReport)).map(([key, value]) => (
                   <div key={key} className="flex justify-between bg-slate-50 rounded-lg px-3 py-2">
@@ -542,160 +539,16 @@ function parseDonationYear(date: string) {
   return parts[2] || ''
 }
 
-function exportDonationRatingImage(item: ReturnType<typeof buildDonationHistoryItems>[number]) {
-  const canvas = document.createElement('canvas')
-  canvas.width = 1600
-  canvas.height = 1000
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-
-  const rating = item.donationRating
-  const projectName = item.project?.projectName || item.project?.category || 'Projeto não identificado'
-  const sdgs = item.project?.sdgGoals || []
-  const donated = `EUR ${rating.donatedAmount.toLocaleString('pt-PT')}`
-  const requested = `EUR ${rating.requestedContribution.toLocaleString('pt-PT')}`
-  const proofName = item.proof.proofFileName || item.proof.companyInvoiceFileName || 'Não anexado'
-
-  const roundRect = (x: number, y: number, width: number, height: number, radius = 24, fill = true, stroke = false) => {
-    ctx.beginPath()
-    ctx.roundRect(x, y, width, height, radius)
-    if (fill) ctx.fill()
-    if (stroke) ctx.stroke()
-  }
-
-  const fitText = (text: string, maxWidth: number) => {
-    let value = text
-    while (ctx.measureText(value).width > maxWidth && value.length > 8) {
-      value = `${value.slice(0, -2)}…`
-    }
-    return value
-  }
-
-  const label = (text: string, x: number, y: number) => {
-    ctx.fillStyle = '#64748b'
-    ctx.font = '700 18px Arial'
-    ctx.fillText(text.toUpperCase(), x, y)
-  }
-
-  const value = (text: string, x: number, y: number, maxWidth = 440) => {
-    ctx.fillStyle = '#0f172a'
-    ctx.font = '700 26px Arial'
-    ctx.fillText(fitText(text, maxWidth), x, y)
-  }
-
-  const metricBar = (title: string, score: number, x: number, y: number, color: string) => {
-    ctx.fillStyle = '#0f172a'
-    ctx.font = '700 24px Arial'
-    ctx.fillText(title, x, y)
-    ctx.fillStyle = '#64748b'
-    ctx.font = '700 20px Arial'
-    ctx.fillText(`${Math.round(score)}/100`, x + 510, y)
-    ctx.fillStyle = '#e2e8f0'
-    roundRect(x, y + 18, 590, 18, 999)
-    ctx.fillStyle = color
-    roundRect(x, y + 18, Math.max(10, Math.min(590, (score / 100) * 590)), 18, 999)
-  }
-
-  const chip = (text: string, x: number, y: number, color: string, width = 132) => {
-    ctx.fillStyle = color
-    roundRect(x, y, width, 48, 14)
-    ctx.fillStyle = '#ffffff'
-    ctx.font = '700 21px Arial'
-    ctx.fillText(text, x + 20, y + 31)
-  }
-
-  ctx.fillStyle = '#eef4f8'
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-  ctx.fillStyle = '#0f2f3d'
-  ctx.fillRect(0, 0, canvas.width, 210)
-  ctx.fillStyle = '#2f7d68'
-  ctx.fillRect(0, 210, canvas.width, 10)
-  ctx.fillStyle = '#ffffff'
-  ctx.font = '700 24px Arial'
-  ctx.fillText('LEI DO MECENATO', 70, 72)
-  ctx.font = '700 48px Arial'
-  ctx.fillText('Infografia de rating privado do donativo', 70, 132)
-  ctx.font = '400 25px Arial'
-  ctx.fillStyle = '#c6d7df'
-  ctx.fillText(fitText(`${item.companyName} → ${item.proof.institutionName}`, 1180), 70, 176)
-
-  ctx.fillStyle = '#ffffff'
-  ctx.strokeStyle = '#d9e3ea'
-  ctx.lineWidth = 2
-  roundRect(70, 260, 455, 305, 28, true, true)
-  ctx.fillStyle = '#f8fafc'
-  roundRect(95, 285, 405, 255, 22)
-  ctx.fillStyle = '#2563eb'
-  ctx.font = '700 92px Arial'
-  ctx.fillText(`${rating.donationRating}`, 128, 405)
-  ctx.font = '700 36px Arial'
-  ctx.fillText('/100', 290, 405)
-  ctx.fillStyle = '#0f172a'
-  ctx.font = '700 29px Arial'
-  ctx.fillText('Rating do donativo', 128, 456)
-  ctx.fillStyle = '#64748b'
-  ctx.font = '400 20px Arial'
-  ctx.fillText('Indicador interno para análise e relatório.', 128, 494)
-
-  ctx.fillStyle = '#ffffff'
-  roundRect(560, 260, 970, 305, 28, true, true)
-  metricBar('Rating do projeto', rating.projectRating.total, 610, 330, '#2563eb')
-  metricBar('Cobertura do pedido', Math.min(100, rating.contributionPercent), 610, 425, '#059669')
-  metricBar('Ajuste do donativo', rating.donationRating, 610, 520, '#7c3aed')
-
-  ctx.fillStyle = '#ffffff'
-  roundRect(70, 610, 705, 270, 28, true, true)
-  label('Projeto apoiado', 110, 660)
-  value(projectName, 110, 696, 590)
-  label('Instituição beneficiária', 110, 755)
-  value(item.proof.institutionName, 110, 791, 590)
-  label('ODS associados', 110, 850)
-  if (sdgs.length) {
-    sdgs.slice(0, 5).forEach((sdg, index) => chip(`ODS ${sdg}`, 110 + index * 145, 866, '#334155', 118))
-  } else {
-    value('Não indicado', 110, 886, 300)
-  }
-
-  ctx.fillStyle = '#ffffff'
-  roundRect(825, 610, 705, 270, 28, true, true)
-  const rows = [
-    ['Valor doado', donated],
-    ['Contribuição solicitada', requested],
-    ['Cobertura', `${rating.contributionPercent.toFixed(1)}%`],
-    ['Comprovativo', proofName],
-  ]
-  rows.forEach(([rowLabel, rowValue], index) => {
-    const y = 660 + index * 56
-    label(rowLabel, 865, y)
-    value(rowValue, 865, y + 31, 560)
-  })
-
-  ctx.fillStyle = '#64748b'
-  ctx.font = '400 16px Arial'
-  ctx.fillText('Imagem gerada na área de administração. O rating do donativo é privado e não é apresentado na página pública do projeto.', 70, 946)
-  ctx.fillText(`Gerado em ${new Date().toLocaleDateString('pt-PT')} · ${item.proof.status}`, 70, 972)
-
-  const link = document.createElement('a')
-  link.href = canvas.toDataURL('image/png')
-  link.download = `rating-donativo-${item.proof.id}.png`
-  link.click()
-}
-
 function buildDonationHistoryItems() {
   const institutions = listProjectInstitutions()
   return listProofs()
     .map(proof => {
       const institution = institutions.find(inst => inst.name === proof.institutionName || inst.id === proof.institutionAccountId)
       const project = institution?.needs.find(n => proof.selectedNeedIds?.includes(n.id)) || institution?.needs[0]
-      const projectRating = institution && project ? calculateProjectImpactRating(institution, project) : null
-      const donationRating = institution && project ? calculateDonationImpactRating(institution, project, proof) : null
       return {
         proof,
         institution,
         project,
-        projectRating,
-        donationRating,
         year: parseDonationYear(proof.confirmedAt || proof.date),
         companyName: proof.companyName || proof.companyEmail || proof.companyAccountId || 'Empresa não identificada',
       }
@@ -729,7 +582,7 @@ function AdminDonationHistoryTab() {
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-2xl font-black text-slate-900">Historico de Donativos</h2>
-          <p className="text-sm text-slate-500">Área privada para consultar donativos, comprovativos e rating específico de cada donativo.</p>
+          <p className="text-sm text-slate-500">Área privada para consultar donativos, comprovativos e dados objetivos de cada apoio.</p>
         </div>
         <div className="grid grid-cols-3 gap-3">
           <AdminMetric label="Donativos" value={items.length} />
@@ -794,54 +647,25 @@ function AdminDonationHistoryTab() {
                   <h3 className="text-xl font-black text-slate-900">{selected.companyName}</h3>
                   <p className="text-sm text-slate-500">{selected.proof.institutionName}</p>
                 </div>
-                {selected.donationRating && (
-                  <button onClick={() => exportDonationRatingImage(selected)} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-black text-white hover:bg-slate-800">
-                    Exportar imagem
-                  </button>
-                )}
               </div>
 
-              {selected.donationRating ? (
-                <div className="grid gap-3 md:grid-cols-3">
-                  <div className="rounded-2xl bg-blue-50 p-4">
-                    <p className="text-xs font-black uppercase text-blue-700">Rating do donativo</p>
-                    <p className="mt-1 text-3xl font-black text-blue-800">{selected.donationRating.donationRating}/100</p>
-                  </div>
-                  <div className="rounded-2xl bg-emerald-50 p-4">
-                    <p className="text-xs font-black uppercase text-emerald-700">Rating do projeto</p>
-                    <p className="mt-1 text-3xl font-black text-emerald-800">{selected.donationRating.projectRating.total}/100</p>
-                    <p className="text-xs font-bold text-emerald-700">{impactRatingLabel(selected.donationRating.projectRating.total)}</p>
-                  </div>
-                  <div className="rounded-2xl bg-amber-50 p-4">
-                    <p className="text-xs font-black uppercase text-amber-700">Cobertura</p>
-                    <p className="mt-1 text-3xl font-black text-amber-800">{selected.donationRating.contributionPercent.toFixed(1)}%</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                  Não foi possível calcular o rating porque o projeto associado não foi encontrado.
-                </div>
-              )}
-
-              {selected.project && selected.projectRating && (
+              {selected.project && (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <h4 className="font-black text-slate-900">Projeto apoiado</h4>
                   <p className="mt-1 text-sm font-bold text-slate-700">{selected.project.category} - {selected.project.subcategory}</p>
                   <p className="mt-2 text-sm text-slate-600">{selected.project.description}</p>
                   <div className="mt-4 grid gap-2 text-xs md:grid-cols-2">
-                    <InfoPill label="Abrangencia" value={`${selected.projectRating.scope}/100`} />
-                    <InfoPill label="Benef. diretos" value={`${selected.projectRating.directBeneficiaries}/100`} />
-                    <InfoPill label="Benef. indiretos" value={`${selected.projectRating.indirectBeneficiaries}/100`} />
-                    <InfoPill label="ODS/relevancia" value={`${selected.projectRating.socialRelevance}/100`} />
-                    <InfoPill label="Sustentabilidade" value={`${selected.projectRating.sustainability}/100`} />
-                    <InfoPill label="Evidencia" value={`${selected.projectRating.evidence}/100`} />
+                    <InfoPill label="Benef. diretos" value={`${(selected.project.beneficiaries || 0).toLocaleString('pt-PT')}`} />
+                    <InfoPill label="ODS" value={selected.project.sdgGoals.map(s => `ODS ${s}`).join(', ') || 'Nao indicado'} />
+                    <InfoPill label="Metrica" value={selected.project.impactMetric || 'Nao indicada'} />
+                    <InfoPill label="Fase" value={selected.project.implementationPhase || 'candidatura'} />
                   </div>
                 </div>
               )}
 
               <div className="grid gap-3 md:grid-cols-2">
                 <InfoPill label="Valor doado" value={`EUR ${(selected.proof.confirmedAmount || selected.proof.amount).toLocaleString('pt-PT')}`} />
-                <InfoPill label="Contribuicao solicitada" value={`EUR ${selected.project ? requestedContribution(selected.project, selected.proof).toLocaleString('pt-PT') : '0'}`} />
+                <InfoPill label="Contribuicao solicitada" value={`EUR ${selected.project ? (selected.project.requestedAmount || selected.project.totalProjectCost || selected.project.estimatedValue || selected.proof.projectCost || 0).toLocaleString('pt-PT') : '0'}`} />
                 <InfoPill label="Data" value={selected.proof.date} />
                 <InfoPill label="Estado" value={selected.proof.status} />
               </div>
@@ -857,7 +681,7 @@ function AdminDonationHistoryTab() {
                     Descarregar comprovativo
                   </a>
                 ) : (
-                  <p className="mt-2 text-sm text-slate-500">Não existe comprovativo anexado a este donativo.</p>
+                  <p className="mt-2 text-sm text-slate-500">Nao existe comprovativo anexado a este donativo.</p>
                 )}
               </div>
             </div>
@@ -896,7 +720,7 @@ function makeNewRT(): ReportTemplate {
     note: '', sections: [
       { id: 'cover', label: 'Capa', enabled: true }, { id: 'toc', label: 'Índice', enabled: true },
       { id: 'summary', label: 'Sumário Executivo', enabled: true }, { id: 'overview', label: 'Empresa & Instituição', enabled: true },
-      { id: 'scores', label: 'Impact Score', enabled: true }, { id: 'sdg', label: 'ODS', enabled: true },
+      { id: 'metrics', label: 'Métricas de impacto', enabled: true }, { id: 'sdg', label: 'ODS', enabled: true },
       { id: 'needs', label: 'Necessidades', enabled: true }, { id: 'gallery', label: 'Galeria', enabled: true },
       { id: 'fiscal', label: 'Dados Fiscais', enabled: true },
     ],
@@ -945,7 +769,7 @@ function RTCard({ template: t, onEdit, onDelete }: { template: ReportTemplate; o
         <button onClick={onEdit} className="flex-1 bg-blue-50 text-blue-700 text-xs font-bold py-2 rounded-lg hover:bg-blue-100">Editar</button>
         <button onClick={handleDownload} disabled={downloading}
           className="flex-1 bg-green-50 text-green-700 text-xs font-bold py-2 rounded-lg hover:bg-green-100 disabled:opacity-50">
-          {downloading ? '⏳...' : '📥 PDF'}
+          {downloading ? '⏳...' : ' PDF'}
         </button>
         <button onClick={onDelete} className="bg-red-50 text-red-600 text-xs font-bold px-3 py-2 rounded-lg hover:bg-red-100">×</button>
       </div>
@@ -1027,7 +851,7 @@ function RTEditor({ template, onSave, onCancel }: { template: ReportTemplate; on
 
       {/* Opções avançadas de layout */}
       <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200">
-        <h3 className="font-bold text-slate-800 mb-4">⚙️ Opções Avançadas de Layout</h3>
+        <h3 className="font-bold text-slate-800 mb-4">Opções Avançadas de Layout</h3>
         <div className="grid md:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">Estilo de Layout</label>
@@ -1128,11 +952,11 @@ function RTEditor({ template, onSave, onCancel }: { template: ReportTemplate; on
 
       {/* Textos de secções */}
       <div className="bg-blue-50 rounded-2xl p-5 border border-blue-200">
-        <h3 className="font-bold text-blue-900 mb-4">✍️ Textos e Labels de Secções</h3>
+        <h3 className="font-bold text-blue-900 mb-4">Textos e Labels de Secções</h3>
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-blue-700 mb-1">Título da explicação do rating</label>
-            <input value={t.ratingMethodTitle} onChange={e => update({ ratingMethodTitle: e.target.value })} className="w-full px-3 py-2 border border-blue-200 rounded-xl text-sm" />
+            <label className="block text-xs font-semibold text-blue-700 mb-1">Título da explicação das métricas</label>
+            <input value={t.methodTitle} onChange={e => update({ methodTitle: e.target.value })} className="w-full px-3 py-2 border border-blue-200 rounded-xl text-sm" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-blue-700 mb-1">Título da mensagem de agradecimento</label>
@@ -1148,8 +972,8 @@ function RTEditor({ template, onSave, onCancel }: { template: ReportTemplate; on
           </div>
         </div>
         <div className="mt-4">
-          <label className="block text-xs font-semibold text-blue-700 mb-1">Texto da metodologia do rating</label>
-          <textarea value={t.ratingMethodText} onChange={e => update({ ratingMethodText: e.target.value })} rows={4} className="w-full px-3 py-2 border border-blue-200 rounded-xl resize-none text-sm" />
+          <label className="block text-xs font-semibold text-blue-700 mb-1">Texto da metodologia das métricas</label>
+          <textarea value={t.methodText} onChange={e => update({ methodText: e.target.value })} rows={4} className="w-full px-3 py-2 border border-blue-200 rounded-xl resize-none text-sm" />
         </div>
       </div>
 
@@ -1167,7 +991,7 @@ function RTEditor({ template, onSave, onCancel }: { template: ReportTemplate; on
 
       {/* Fundos de página */}
       <div className="bg-purple-50 rounded-2xl p-5 border border-purple-200">
-        <h3 className="font-bold text-purple-900 mb-2">🖼️ Fundos por Página</h3>
+        <h3 className="font-bold text-purple-900 mb-2">Fundos por Página</h3>
         <p className="text-xs text-purple-700 mb-4">
           Pode carregar uma imagem JPG/PNG para o fundo de cada página. Recomendado: proporção A4 vertical (ex: 1240×1754 px). Se não carregar imagem, é usada a cor do template/ODS.
         </p>

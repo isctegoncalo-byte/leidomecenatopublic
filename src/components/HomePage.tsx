@@ -80,6 +80,8 @@ export default function HomePage({ setCurrentView }: Props) {
           <button
             key={i}
             onClick={() => onChange(i)}
+            aria-label={`Ir para página ${i + 1}`}
+            aria-current={current === i ? 'page' : undefined}
             className={`w-10 h-10 rounded-xl font-bold transition ${
               current === i ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-200 hover:border-blue-300 hover:text-blue-600'
             }`}
@@ -125,7 +127,7 @@ export default function HomePage({ setCurrentView }: Props) {
           <div className="mt-3 space-y-1.5">
             {needs.map(need => (
               <div key={need.id} className="text-xs text-slate-600 flex items-start gap-2">
-                <span className={mode === 'product' ? 'text-green-600' : 'text-blue-600'}>{mode === 'product' ? '📦' : '💶'}</span>
+                <span className={mode === 'product' ? 'text-green-600' : 'text-blue-600'}>{mode === 'product' ? '' : ''}</span>
                 <span className="line-clamp-2">{projectTitle(need)}</span>
               </div>
             ))}
@@ -200,19 +202,10 @@ export default function HomePage({ setCurrentView }: Props) {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 mb-5 mt-auto rounded-2xl bg-slate-50 border border-slate-100 p-4">
-            <div className="flex-1">
-              <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
-                <span>Ambiental {inst.esgScore.environmental}</span>
-                <span>Social {inst.esgScore.social}</span>
-                <span>Governação {inst.esgScore.governance}</span>
-              </div>
-              <div className="flex gap-0.5 h-3 rounded-full overflow-hidden bg-slate-200">
-                <div className="bg-green-500 rounded-l-full" style={{ width: `${inst.esgScore.environmental * 0.35}%` }} />
-                <div className="bg-blue-500" style={{ width: `${inst.esgScore.social * 0.45}%` }} />
-                <div className="bg-purple-500 rounded-r-full" style={{ width: `${inst.esgScore.governance * 0.20}%` }} />
-              </div>
-            </div>
+
+          <div className="mb-5 mt-auto rounded-2xl bg-slate-50 border border-slate-100 p-4">
+            <p className="text-xs font-black uppercase tracking-wide text-slate-400 mb-2">Indicadores do projeto</p>
+            <p className="text-sm text-slate-600">ODS, KPIs e necessidades documentadas na página pública do projeto.</p>
           </div>
 
           <div className="space-y-2 mb-5">
@@ -309,7 +302,7 @@ export default function HomePage({ setCurrentView }: Props) {
                 Instituições apresentam necessidades concretas e recebem 100% do apoio diretamente.
               </p>
               <p className="text-base text-blue-200 mb-8 max-w-2xl">
-                Donativos financeiros, produtos ou serviços. Enquadramento fiscal, Impact Score, ODS, comprovativos e conteúdos de comunicação num único fluxo.
+                Donativos financeiros, produtos ou serviços. Enquadramento fiscal, métricas de impacto, ODS, comprovativos e conteúdos de comunicação num único fluxo.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <button onClick={() => setCurrentView('simulador')}
@@ -384,6 +377,59 @@ export default function HomePage({ setCurrentView }: Props) {
       {/* ═══════════════════════════════════════════════
           1. HERO
       ═══════════════════════════════════════════════ */}
+      <section className="border-b border-slate-200 bg-slate-50 py-16">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-10 max-w-3xl">
+              <p className="mb-3 text-sm font-black uppercase tracking-wide text-blue-600">Confiança e validação</p>
+              <h2 className="mb-4 text-3xl font-black text-slate-900">Um fluxo pensado para decisão empresarial, prova documental e segurança</h2>
+              <p className="text-lg leading-relaxed text-slate-600">
+                A plataforma organiza a relação entre empresa e instituição sem intermediar o donativo. Cada passo deixa evidência útil para gestão interna, contabilidade, validação documental e comunicação de impacto.
+              </p>
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-3">
+              {[
+                {
+                  title: 'Separação clara de fluxos',
+                  body: 'O donativo é transferido diretamente para a instituição. A plataforma apenas regista a intenção, recolhe evidências e permite contratar o relatório de impacto.',
+                  points: ['Sem retenção do donativo', 'Confirmação por empresa e instituição', 'Registo de comprovativos'],
+                },
+                {
+                  title: 'Documentos sob controlo',
+                  body: 'Os documentos ficam associados à conta certa e podem ser verificados pelo administrador, com estado de aceitação por ficheiro.',
+                  points: ['Uploads validados por tipo e tamanho', 'Acesso privado por dono ou administrador', 'Histórico de revisão documental'],
+                },
+                {
+                  title: 'Conteúdo pronto para auditoria',
+                  body: 'Cada projeto público estrutura ODS, KPI, objetivos, populações-chave, fotografias e progresso, criando uma base consistente para reporte.',
+                  points: ['ODS e KPI sempre visíveis', 'Recibo e comprovativo ligados ao donativo', 'Relatório com metodologia e evidências'],
+                },
+              ].map(item => (
+                <article key={item.title} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <h3 className="mb-3 text-lg font-black text-slate-900">{item.title}</h3>
+                  <p className="mb-5 text-sm leading-relaxed text-slate-600">{item.body}</p>
+                  <ul className="space-y-2">
+                    {item.points.map(point => (
+                      <li key={point} className="flex gap-2 text-sm font-semibold text-slate-700">
+                        <span aria-hidden="true" className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-emerald-500" />
+                        <span>{point}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+
+            <div className="mt-8 grid gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-900 md:grid-cols-3">
+              <p><strong>Para a empresa:</strong> decisão com simulação fiscal, projeto concreto e evidência para reporte.</p>
+              <p><strong>Para a instituição:</strong> pedido público estruturado e confirmação do valor recebido.</p>
+              <p><strong>Para o administrador:</strong> visibilidade sobre contas, documentos, aceitação e consistência dos dados.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-10 left-10 w-64 h-64 bg-blue-500 rounded-full blur-3xl" />
@@ -402,16 +448,16 @@ export default function HomePage({ setCurrentView }: Props) {
               O donativo vai <strong className="text-white">100% da empresa para a instituição</strong> — nós quantificamos e reportamos o benefício social gerado.
             </p>
             <p className="text-lg text-blue-300 mb-10 max-w-3xl mx-auto">
-              Dedução de <strong className="text-yellow-400">140% em IRC</strong>. Impact Score. Relatórios com alinhamento aos ODS da ONU. Conteúdos prontos para redes sociais.
+              Dedução de <strong className="text-yellow-400">140% em IRC</strong>. métricas de impacto. Relatórios com alinhamento aos ODS da ONU. Conteúdos prontos para redes sociais.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button onClick={() => setCurrentView('login')}
                 className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-slate-900 font-black py-4 px-10 rounded-2xl text-lg transition transform hover:scale-105 shadow-2xl">
-                🏢 Sou Empresa
+                 Sou Empresa
               </button>
               <button onClick={() => setCurrentView('login')}
                 className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white font-black py-4 px-10 rounded-2xl text-lg transition transform hover:scale-105 shadow-2xl">
-                🏛️ Sou Instituição
+                Sou Instituição
               </button>
             </div>
           </div>
@@ -493,7 +539,7 @@ export default function HomePage({ setCurrentView }: Props) {
               <div>
                 <div className="flex items-center justify-between gap-4 mb-8">
                   <div>
-                    <h3 className="text-2xl font-black text-slate-900">💶 Projetos a financiar</h3>
+                    <h3 className="text-2xl font-black text-slate-900"> Projetos a financiar</h3>
                     <p className="text-sm text-slate-500">Projetos e causas com custo total definido</p>
                   </div>
                   <span className="text-xs font-bold bg-blue-100 text-blue-700 rounded-full px-3 py-1">{moneyInstitutions.length} instituições</span>
@@ -519,7 +565,7 @@ export default function HomePage({ setCurrentView }: Props) {
               <div>
                 <div className="flex items-center justify-between gap-4 mb-8">
                   <div>
-                    <h3 className="text-2xl font-black text-slate-900">📦 Projetos que necessitam de produtos/serviços</h3>
+                    <h3 className="text-2xl font-black text-slate-900"> Projetos que necessitam de produtos/serviços</h3>
                     <p className="text-sm text-slate-500">Necessidades concretas para satisfação direta</p>
                   </div>
                   <span className="text-xs font-bold bg-green-100 text-green-700 rounded-full px-3 py-1">{productInstitutions.length} instituições</span>
@@ -568,10 +614,10 @@ export default function HomePage({ setCurrentView }: Props) {
               </h3>
               <div className="space-y-4">
                 {[
-                  { step: '1', icon: '💶', title: 'Faz o donativo diretamente', desc: 'A empresa transfere 100% do valor diretamente para a instituição que escolher. O valor do donativo nunca passa pela plataforma.' },
-                  { step: '2', icon: '📋', title: 'Regista o donativo connosco', desc: 'Indica-nos o valor, a instituição e as necessidades apoiadas. 2 minutos.' },
-                  { step: '3', icon: '📊', title: 'Escolhe o tipo de relatório', desc: 'Relatório de Impacto, Premium ou Premium com conteúdos para redes sociais.' },
-                  { step: '4', icon: '📬', title: 'Recebe o Relatório de Impacto', desc: 'Impact Score, alinhamento ODS, métricas — pronto para demonstrar o impacto do donativo.' },
+                  { step: '1', icon: '', title: 'Faz o donativo diretamente', desc: 'A empresa transfere 100% do valor diretamente para a instituição que escolher. O valor do donativo nunca passa pela plataforma.' },
+                  { step: '2', icon: '', title: 'Regista o donativo connosco', desc: 'Indica-nos o valor, a instituição e as necessidades apoiadas. 2 minutos.' },
+                  { step: '3', icon: '', title: 'Escolhe o tipo de relatório', desc: 'Relatório de Impacto, Premium ou Premium com conteúdos para redes sociais.' },
+                  { step: '4', icon: '', title: 'Recebe o Relatório de Impacto', desc: 'métricas de impacto, alinhamento ODS, métricas — pronto para demonstrar o impacto do donativo.' },
                 ].map(item => (
                   <div key={item.step} className="flex gap-4">
                     <div className="flex-shrink-0 w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center font-black text-yellow-700">{item.step}</div>
@@ -589,10 +635,10 @@ export default function HomePage({ setCurrentView }: Props) {
               </h3>
               <div className="space-y-4">
                 {[
-                  { step: '1', icon: '📝', title: 'Regista o perfil detalhado', desc: 'Completa o perfil com necessidades categorizadas por pilar ESG e ODS. Quanto mais detalhe, melhor o relatório de impacto.' },
-                  { step: '2', icon: '🔍', title: 'Torna-se visível para empresas', desc: 'As empresas encontram a sua instituição pelo match entre necessidades e prioridades de responsabilidade social.' },
-                  { step: '3', icon: '📡', title: 'A empresa contacta diretamente', desc: 'O donativo acontece fora da plataforma, diretamente entre a empresa e a instituição. A plataforma nunca retém qualquer valor do donativo.' },
-                  { step: '4', icon: '📊', title: 'O impacto é medido e reportado', desc: 'Se a empresa contratar o nosso serviço, produzimos o relatório de impacto com base no perfil ESG que registou.' },
+                  { step: '1', icon: '', title: 'Regista o perfil detalhado', desc: 'Completa o perfil com necessidades categorizadas por pilar ESG e ODS. Quanto mais detalhe, melhor o relatório de impacto.' },
+                  { step: '2', icon: '', title: 'Torna-se visível para empresas', desc: 'As empresas encontram a sua instituição pelo match entre necessidades e prioridades de responsabilidade social.' },
+                  { step: '3', icon: '', title: 'A empresa contacta diretamente', desc: 'O donativo acontece fora da plataforma, diretamente entre a empresa e a instituição. A plataforma nunca retém qualquer valor do donativo.' },
+                  { step: '4', icon: '', title: 'O impacto é medido e reportado', desc: 'Se a empresa contratar o nosso serviço, produzimos o relatório de impacto com base no perfil ESG que registou.' },
                 ].map(item => (
                   <div key={item.step} className="flex gap-4">
                     <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-full flex items-center justify-center font-black text-green-700">{item.step}</div>
@@ -668,7 +714,7 @@ export default function HomePage({ setCurrentView }: Props) {
                     <ul className="space-y-2">
                       {t.features.map(f => (
                         <li key={f} className="text-xs text-slate-600 flex items-start gap-1.5">
-                          <span className="text-green-500 mt-0.5 flex-shrink-0">✓</span> {f}
+                          <span className="text-green-500 mt-0.5 flex-shrink-0"></span> {f}
                         </li>
                       ))}
                     </ul>
@@ -688,10 +734,11 @@ export default function HomePage({ setCurrentView }: Props) {
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-black text-slate-900 mb-4">Resumo para um donativo de € {simAmount.toLocaleString('pt-PT')}</h2>
-              <p className="text-slate-500">Arraste para ver como muda o impacto</p>
+              <p id="sim-amount-help" className="text-slate-500">Arraste para ver como muda o impacto</p>
             </div>
             <div className="mb-8">
-              <input type="range" min={500} max={100000} step={500} value={simAmount} onChange={e => setSimAmount(+e.target.value)} className="w-full accent-blue-600" />
+              <label className="sr-only" htmlFor="sim-amount-range">Valor do donativo a simular</label>
+              <input id="sim-amount-range" aria-describedby="sim-amount-help" type="range" min={500} max={100000} step={500} value={simAmount} onChange={e => setSimAmount(+e.target.value)} className="w-full accent-blue-600" />
               <div className="flex justify-between text-xs text-slate-400 mt-1"><span>€ 500</span><span>€ 100.000</span></div>
             </div>
             <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-2xl p-8 border border-green-100">
@@ -713,7 +760,7 @@ export default function HomePage({ setCurrentView }: Props) {
                 </div>
               </div>
               <div className="mt-6 text-center p-4 bg-green-100 rounded-xl">
-                <p className="text-green-800 font-bold text-sm">✅ O donativo vai 100% para a instituição. Paga apenas € {tier.price.toLocaleString()} pelo relatório de impacto.</p>
+                <p className="text-green-800 font-bold text-sm"> O donativo vai 100% para a instituição. Paga apenas € {tier.price.toLocaleString()} pelo relatório de impacto.</p>
               </div>
             </div>
             <div className="text-center mt-8">
@@ -741,12 +788,12 @@ export default function HomePage({ setCurrentView }: Props) {
             </div>
             <div className="grid md:grid-cols-3 gap-6 mb-12">
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl border border-blue-200 p-6">
-                <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white text-2xl mb-4">🏢</div>
+                <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white text-2xl mb-4"></div>
                 <h3 className="text-xl font-black text-blue-800 mb-3">A Empresa ganha</h3>
                 <ul className="space-y-2.5">
                   {[
                     { bold: 'Poupança fiscal real', text: '— dedução de 140% no IRC. Cada 100€ doados custam apenas ~70€.' },
-                    { bold: 'Relatório ESG pronto', text: '— com Impact Score, ODS e métricas para o relatório de sustentabilidade.' },
+                    { bold: 'Relatório ESG pronto', text: '— com métricas de impacto, ODS e métricas para o relatório de sustentabilidade.' },
                     { bold: 'Reputação verificável', text: '— impacto documentado com dados, não com promessas.' },
                     { bold: 'Conteúdo para comunicação', text: '— infografias e textos prontos para comunicação interna e institucional.' },
                     { bold: 'Escoamento de stock', text: '— transforma inventário parado em impacto social (donativos em produtos).' },
@@ -758,7 +805,7 @@ export default function HomePage({ setCurrentView }: Props) {
                 </ul>
               </div>
               <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl border border-green-200 p-6">
-                <div className="w-14 h-14 rounded-2xl bg-green-600 flex items-center justify-center text-white text-2xl mb-4">🏛️</div>
+                <div className="w-14 h-14 rounded-2xl bg-green-600 flex items-center justify-center text-white text-2xl mb-4"></div>
                 <h3 className="text-xl font-black text-green-800 mb-3">A Instituição ganha</h3>
                 <ul className="space-y-2.5">
                   {[
@@ -775,7 +822,7 @@ export default function HomePage({ setCurrentView }: Props) {
                 </ul>
               </div>
               <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-3xl border border-amber-200 p-6">
-                <div className="w-14 h-14 rounded-2xl bg-amber-500 flex items-center justify-center text-white text-2xl mb-4">🌍</div>
+                <div className="w-14 h-14 rounded-2xl bg-amber-500 flex items-center justify-center text-white text-2xl mb-4"></div>
                 <h3 className="text-xl font-black text-amber-800 mb-3">A Sociedade ganha</h3>
                 <ul className="space-y-2.5">
                   {[
@@ -796,28 +843,28 @@ export default function HomePage({ setCurrentView }: Props) {
               <h3 className="text-2xl font-black mb-4">O Ciclo Win-Win-Win</h3>
               <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6">
                 <div className="bg-blue-600 rounded-2xl px-6 py-4 text-center">
-                  <p className="text-2xl mb-1">🏢</p>
+                  <p className="text-2xl mb-1"></p>
                   <p className="font-bold text-sm">Empresa doa</p>
                   <p className="text-xs text-blue-200">e poupa no IRC</p>
                 </div>
                 <span className="text-2xl hidden md:block">→</span>
                 <span className="text-2xl md:hidden rotate-90">→</span>
                 <div className="bg-green-600 rounded-2xl px-6 py-4 text-center">
-                  <p className="text-2xl mb-1">🏛️</p>
+                  <p className="text-2xl mb-1"></p>
                   <p className="font-bold text-sm">Instituição recebe</p>
                   <p className="text-xs text-green-200">100% do donativo</p>
                 </div>
                 <span className="text-2xl hidden md:block">→</span>
                 <span className="text-2xl md:hidden rotate-90">→</span>
                 <div className="bg-amber-500 rounded-2xl px-6 py-4 text-center">
-                  <p className="text-2xl mb-1">🌍</p>
+                  <p className="text-2xl mb-1"></p>
                   <p className="font-bold text-sm">Sociedade beneficia</p>
                   <p className="text-xs text-amber-200">impacto real e medido</p>
                 </div>
                 <span className="text-2xl hidden md:block">→</span>
                 <span className="text-2xl md:hidden rotate-90">→</span>
                 <div className="bg-purple-600 rounded-2xl px-6 py-4 text-center">
-                  <p className="text-2xl mb-1">📊</p>
+                  <p className="text-2xl mb-1"></p>
                   <p className="font-bold text-sm">Relatório comprova</p>
                   <p className="text-xs text-purple-200">e o ciclo recomeça</p>
                 </div>

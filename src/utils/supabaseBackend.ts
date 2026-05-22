@@ -79,6 +79,11 @@ export function realBackendEnabled() {
   return isSupabaseConfigured && Boolean(supabase)
 }
 
+type SupabaseAuthResult =
+  | { ok: true; account: Account; needsEmailConfirmation?: false }
+  | { ok: true; needsEmailConfirmation: true; message: string }
+  | { ok: false; error: string }
+
 export async function getRealSessionAccount(): Promise<Account | null> {
   if (!supabase) return null
   const { data: sessionData } = await supabase.auth.getSession()
@@ -95,7 +100,7 @@ export async function getRealSessionAccount(): Promise<Account | null> {
   return toAccount(data as AdminProfile)
 }
 
-export async function loginReal(email: string, password: string): Promise<{ ok: true; account: Account } | { ok: false; error: string }> {
+export async function loginReal(email: string, password: string): Promise<SupabaseAuthResult> {
   if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
 
   const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password })
@@ -259,12 +264,7 @@ async function upsertProfileFromUser(user: User, fallback?: SupabaseRegisterPayl
   return toAccount(data as AdminProfile)
 }
 
-type RegisterResult =
-  | { ok: true; account: Account; needsEmailConfirmation?: false }
-  | { ok: true; needsEmailConfirmation: true; message: string }
-  | { ok: false; error: string }
-
-export async function registerReal(payload: SupabaseRegisterPayload): Promise<RegisterResult> {
+export async function registerReal(payload: SupabaseRegisterPayload): Promise<SupabaseAuthResult> {
   if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
 
   const emailRedirectTo = typeof window !== 'undefined' ? `${window.location.origin}/entrar` : undefined
@@ -324,7 +324,8 @@ export async function ensureRealProfileAfterLogin(user: User): Promise<Account |
 
 export async function listDocsReal(ownerId: string): Promise<UploadedDoc[]> {
   if (!supabase) return []
-  const { data, error } = await supabase
+  const client = supabase
+  const { data, error } = await client
     .from('documents')
     .select('*')
     .eq('owner_id', ownerId)
@@ -333,7 +334,7 @@ export async function listDocsReal(ownerId: string): Promise<UploadedDoc[]> {
   if (error || !data) return []
   const rows = data as AdminDocument[]
   const docs = await Promise.all(rows.map(async row => {
-    const { data: signed } = await supabase.storage
+    const { data: signed } = await client.storage
       .from('documents')
       .createSignedUrl(row.storage_path, 60 * 10)
     return toDoc({ ...row, public_url: signed?.signedUrl || row.public_url })
@@ -403,8 +404,9 @@ export async function listAdminProfilesReal(): Promise<{ ok: true; profiles: Adm
 
 export async function listAdminDocumentsReal(): Promise<{ ok: true; documents: AdminDocument[] } | { ok: false; error: string }> {
   if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+  const client = supabase
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('documents')
     .select('*, profiles:owner_id(name,email,role)')
     .order('created_at', { ascending: false })
@@ -413,7 +415,7 @@ export async function listAdminDocumentsReal(): Promise<{ ok: true; documents: A
 
   const rows = (data || []) as AdminDocument[]
   const documents = await Promise.all(rows.map(async row => {
-    const { data: signed } = await supabase.storage
+    const { data: signed } = await client.storage
       .from('documents')
       .createSignedUrl(row.storage_path, 60 * 10)
     return { ...row, public_url: signed?.signedUrl || row.public_url }

@@ -10,8 +10,6 @@
 //   {{instituicao}}   — nome da instituição beneficiária
 //   {{donativo}}      — valor do donativo (ex: "10.000")
 //   {{data}}          — data do donativo
-//   {{rating}}        — rating ESG (ex: "AA")
-//   {{score}}         — score total (ex: "78")
 //   {{beneficiarios}} — n.º de beneficiários
 //   {{ods_principal}} — nome do ODS principal
 //   {{ods_numeros}}   — ex: "ODS 4, ODS 10, ODS 13"
@@ -50,7 +48,7 @@ export const socialTemplates: SocialTemplate[] = [
 
 Temos o prazer de comunicar que a {{empresa}} efetuou um donativo de €{{donativo}} à {{instituicao}}, ao abrigo da Lei do Mecenato.
 
-O Relatório de Impacto produzido atribuiu um Impact Score de {{score}}/100 (rating {{rating}}), com impacto direto em {{beneficiarios}} beneficiários. Este donativo está alinhado com os Objetivos de Desenvolvimento Sustentável: {{ods_numeros}}.
+O Relatório de Impacto documenta impacto direto em {{beneficiarios}} beneficiários e alinhamento com os Objetivos de Desenvolvimento Sustentável: {{ods_numeros}}.
 
 Necessidades apoiadas:
 • {{necessidade_1}}
@@ -75,7 +73,7 @@ Quero partilhar uma história que nos orgulha a todos.
 
 A {{empresa}} apoiou {{instituicao}} — uma organização dedicada a {{necessidade_1}} — com um donativo de €{{donativo}} ao abrigo da Lei do Mecenato. Este apoio chegou a {{beneficiarios}} pessoas.
 
-O Relatório de Impacto atribuiu-nos um rating de {{rating}} ({{score}}/100). Isto significa que o nosso donativo não só fez a diferença na vida de quem precisa, como está alinhado com os Objetivos de Desenvolvimento Sustentável da ONU ({{ods_numeros}}).
+O Relatório de Impacto atribuiu-nos um métricas verificadas. Isto significa que o nosso donativo não só fez a diferença na vida de quem precisa, como está alinhado com os Objetivos de Desenvolvimento Sustentável da ONU ({{ods_numeros}}).
 
 Lembrem-se: 100% do donativo foi para a instituição. E com a dedução de 140% no IRC, o custo real para a empresa foi significativamente inferior.
 
@@ -96,7 +94,7 @@ Obrigado por fazerem parte de uma empresa com propósito.`,
 
 ┌─────────────────────────────────────┐
 │ DONATIVO         €{{donativo}}            │
-│ IMPACT SCORE     {{score}}/100 ({{rating}})     │
+│ Métricas de impacto     {{beneficiarios}} beneficiários      │
 │ BENEFICIÁRIOS    {{beneficiarios}}               │
 │ ODS              {{ods_numeros}}       │
 │ COBERTURA        {{cobertura}}%              │
@@ -127,8 +125,6 @@ export function buildPlaceholderVars(report: GeneratedESGReport): Record<string,
     instituicao: report.institution,
     donativo: report.donationAmount.toLocaleString('pt-PT'),
     data: report.donationDate,
-    rating: report.rating,
-    score: String(report.scores.total),
     beneficiarios: report.scores.beneficiaries.toLocaleString(),
     ods_principal: report.sdgAlignment.length > 0 ? `ODS ${report.sdgAlignment[0]}` : '—',
     ods_numeros: report.sdgAlignment.map(s => `ODS ${s}`).join(', '),

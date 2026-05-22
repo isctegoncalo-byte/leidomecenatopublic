@@ -1,236 +1,264 @@
-import { ViewType } from '../types'
+import { DonationProof, NeedItem, ViewType } from '../types'
 import { listProofs } from '../utils/proofStore'
-import { sampleInstitutions } from '../data/institutions'
-import { listInstitutionRegistrations } from '../utils/institutionRegistry'
-import { completedProjects, projectSecured, projectTarget } from '../utils/projectFunding'
+import { listProjectInstitutions, projectSlug } from '../utils/projectCatalog'
+import { getProjectGallery } from '../utils/projectGalleries'
+import { projectSecured, projectTarget } from '../utils/projectFunding'
 import SdgIcon from './SdgIcon'
 
 interface Props {
   setCurrentView: (v: ViewType) => void
 }
 
+type StoryProject = {
+  id: string
+  proof: DonationProof
+  institutionId: string
+  institutionName: string
+  institutionCategory: string
+  project: NeedItem
+  title: string
+  description: string
+  target: number
+  secured: number
+  gallery: string[]
+  slug: string
+}
+
+function findProjectForProof(proof: DonationProof): StoryProject | null {
+  const institutions = listProjectInstitutions()
+  const institution = institutions.find(item => item.name === proof.institutionName)
+  if (!institution) return null
+
+  const selectedProject = proof.selectedNeedIds?.length
+    ? institution.needs.find(project => proof.selectedNeedIds?.includes(project.id))
+    : undefined
+  const project = selectedProject || institution.needs[0]
+  if (!project) return null
+
+  const target = projectTarget(project) || proof.projectCost || proof.amount
+  const secured = projectSecured(project, [proof], institution.name) || proof.confirmedAmount || proof.amount
+  const title = project.projectName || `${project.category} - ${project.subcategory}`
+
+  return {
+    id: `${proof.id}-${project.id}`,
+    proof,
+    institutionId: institution.id,
+    institutionName: institution.name,
+    institutionCategory: institution.category,
+    project,
+    title,
+    description: project.executiveSummary || project.description,
+    target,
+    secured,
+    gallery: getProjectGallery(project, institution),
+    slug: projectSlug(institution, project),
+  }
+}
+
+function formatCurrency(value: number) {
+  return `€ ${value.toLocaleString('pt-PT')}`
+}
+
+function publicDonationValue(proof: DonationProof) {
+  return proof.publicDonationAmountConsent ? formatCurrency(proof.confirmedAmount || proof.amount) : 'Valor não divulgado'
+}
+
+function formatDate(value?: string) {
+  if (!value) return 'Data a confirmar'
+  return new Date(value).toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })
+}
+
 export default function ImpactStoriesPage({ setCurrentView }: Props) {
   const proofs = listProofs()
-  const confirmedProofs = proofs.filter(p => p.status === 'confirmed')
-  const highlightedProjects = sampleInstitutions
-    .flatMap(inst => inst.needs.slice(0, 1).map(item => {
-      const target = projectTarget(item)
-      const secured = projectSecured(item, confirmedProofs, inst.name)
-      return {
-        id: `${inst.id}-${item.id}`,
-        institution: inst.name,
-        title: item.projectName || `${item.category} - ${item.subcategory}`,
-        description: item.executiveSummary || item.description,
-        amount: secured,
-        projectCost: target,
-        beneficiaries: item.beneficiaries || inst.peopleReachedPerYear,
-        sdgs: item.sdgGoals,
-        coverage: target > 0 ? Math.round((secured / target) * 100) : 0,
-      }
-    }))
-    .slice(0, 2)
+  const confirmedProofs = proofs
+    .filter(proof => proof.status === 'confirmed')
+    .sort((a, b) => String(b.confirmedAt || b.date).localeCompare(String(a.confirmedAt || a.date)))
+  const stories = confirmedProofs.map(findProjectForProof).filter(Boolean) as StoryProject[]
+
   const donationCount = confirmedProofs.length
-  const donatedValue = confirmedProofs.reduce((sum, p) => sum + (p.confirmedAmount || p.amount || 0), 0)
-  const supportedInstitutions = new Set(confirmedProofs.map(p => p.institutionName)).size
-  const producedReports = confirmedProofs.length
-  const registeredCompletedProjects = listInstitutionRegistrations().flatMap(inst =>
-    completedProjects(inst.needs, confirmedProofs, inst.name).map(project => ({
-      id: `${inst.nif}-${project.id}`,
-      institutionName: inst.name,
-      institutionCategory: inst.category,
-      title: project.projectName || `${project.category} - ${project.subcategory}`,
-      description: project.executiveSummary || project.description,
-      sdgGoals: project.sdgGoals,
-      secured: projectSecured(project, confirmedProofs, inst.name),
-      target: projectTarget(project),
+  const donatedValue = confirmedProofs
+    .filter(proof => proof.publicDonationAmountConsent)
+    .reduce((sum, proof) => sum + (proof.confirmedAmount || proof.amount || 0), 0)
+  const supportedInstitutions = new Set(confirmedProofs.map(proof => proof.institutionName)).size
+  const supportedProjects = new Set(stories.map(story => story.project.id)).size
+  const beneficiaries = stories.reduce((sum, story) => sum + (story.project.beneficiaries || 0), 0)
+  const gallery = stories.flatMap(story =>
+    story.gallery.slice(0, 3).map((photo, index) => ({
+      id: `${story.id}-${index}`,
+      photo,
+      title: story.title,
+      institution: story.institutionName,
+      donation: publicDonationValue(story.proof),
     }))
-  )
-  const sampleCompletedProjects = sampleInstitutions.flatMap(inst =>
-    completedProjects(inst.needs, confirmedProofs, inst.name).map(project => ({
-      id: `${inst.id}-${project.id}`,
-      institutionName: inst.name,
-      institutionCategory: inst.category,
-      title: project.projectName || `${project.category} - ${project.subcategory}`,
-      description: project.executiveSummary || project.description,
-      sdgGoals: project.sdgGoals,
-      secured: projectSecured(project, confirmedProofs, inst.name),
-      target: projectTarget(project),
-    }))
-  )
-  const completed = [...registeredCompletedProjects, ...sampleCompletedProjects]
+  ).slice(0, 9)
+
+  const openProject = (slug: string) => {
+    window.history.pushState({}, '', `/projeto/${slug}`)
+    setCurrentView('projeto')
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* HERO */}
-      <section className="bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 text-white py-20">
-        <div className="container mx-auto px-4 max-w-4xl text-center">
-          <p className="text-sm font-bold text-emerald-400 uppercase tracking-wide mb-3">Impacto Real</p>
-          <h1 className="text-4xl md:text-5xl font-black mb-4 leading-tight">
-            Onde os donativos se transformam<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-yellow-400">
-              em mudança verdadeira.
-            </span>
-          </h1>
-          <p className="text-blue-200 text-lg max-w-2xl mx-auto">
-            Histórias reais de empresas que apoiaram instituições através da Lei do Mecenato — 
-            com impacto medido, beneficiários identificados e resultados quantificados.
-          </p>
+    <div className="min-h-screen bg-[#f7faf8] text-slate-900">
+      <section className="relative overflow-hidden bg-slate-950 text-white">
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(16,185,129,0.25),transparent_34%),radial-gradient(circle_at_78%_22%,rgba(245,158,11,0.18),transparent_28%)]" />
+          {gallery[0] && (
+            <img src={gallery[0].photo} alt="" className="h-full w-full object-cover opacity-20 mix-blend-screen" />
+          )}
         </div>
-      </section>
-
-      {/* STATS BAR */}
-      <section className="bg-white border-b border-slate-200 py-6">
-        <div className="container mx-auto px-4 max-w-6xl">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
-            <div>
-              <p className="text-2xl md:text-3xl font-black text-blue-700">{donationCount || '—'}</p>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Donativos registados</p>
-            </div>
-            <div>
-              <p className="text-2xl md:text-3xl font-black text-emerald-600">{donatedValue ? `€ ${donatedValue.toLocaleString('pt-PT')}` : '—'}</p>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Valor doado</p>
-            </div>
-            <div>
-              <p className="text-2xl md:text-3xl font-black text-green-600">{supportedInstitutions || completed.length || '—'}</p>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Instituições apoiadas</p>
-            </div>
-            <div>
-              <p className="text-2xl md:text-3xl font-black text-purple-600">—</p>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Beneficiários totais</p>
-            </div>
-            <div>
-              <p className="text-2xl md:text-3xl font-black text-amber-600">{producedReports || '—'}</p>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Relatórios produzidos</p>
-            </div>
+        <div className="relative container mx-auto max-w-6xl px-4 py-20 md:py-24">
+          <div className="max-w-3xl">
+            <p className="mb-4 text-sm font-black uppercase tracking-[0.22em] text-emerald-300">Histórias de Impacto</p>
+            <h1 className="text-4xl font-black leading-tight md:text-6xl">
+              Donativos concluídos, resultados visíveis e histórias prontas a inspirar.
+            </h1>
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200">
+              Esta página reúne apoios já validados entre empresas e instituições, com resumo do donativo,
+              projeto apoiado, ODS associados e evidências visuais que ajudam a contar o impacto gerado.
+            </p>
           </div>
         </div>
       </section>
 
-      {/* COMPLETED PROJECTS */}
-      {completed.length > 0 && (
-        <section className="py-16 bg-white border-b border-slate-200">
-          <div className="container mx-auto px-4 max-w-6xl">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-black text-slate-900 mb-3">Projetos concluídos</h2>
-              <p className="text-slate-500">
-                Projetos que atingiram 100% da verba pretendida e deixaram de aparecer na página inicial.
+      <section className="-mt-10 relative z-10">
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="grid gap-3 rounded-2xl border border-white/70 bg-white p-4 shadow-xl md:grid-cols-5">
+            <ImpactMetric label="Donativos concluídos" value={donationCount || '—'} tone="text-blue-700" />
+            <ImpactMetric label="Valor confirmado" value={donatedValue ? formatCurrency(donatedValue) : '—'} tone="text-emerald-700" />
+            <ImpactMetric label="Instituições apoiadas" value={supportedInstitutions || '—'} tone="text-purple-700" />
+            <ImpactMetric label="Projetos apoiados" value={supportedProjects || '—'} tone="text-amber-700" />
+            <ImpactMetric label="Beneficiários diretos" value={beneficiaries ? beneficiaries.toLocaleString('pt-PT') : '—'} tone="text-rose-700" />
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16">
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="mb-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div>
+              <p className="text-sm font-black uppercase tracking-wide text-emerald-700">Resumo dos apoios</p>
+              <h2 className="mt-2 text-3xl font-black text-slate-950">Donativos concluídos</h2>
+            </div>
+            <p className="max-w-2xl text-sm leading-6 text-slate-600">
+              Cada cartão resume uma validação concluída: empresa mecenas, instituição beneficiária,
+              valor confirmado, data, ODS e projeto associado.
+            </p>
+          </div>
+
+          {stories.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+              <h3 className="text-xl font-black text-slate-900">Ainda não existem histórias publicadas.</h3>
+              <p className="mt-2 text-slate-500">Quando um donativo for confirmado por ambas as partes, aparece aqui automaticamente.</p>
+            </div>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-2">
+              {stories.map(story => {
+                const coverage = story.target > 0 ? Math.min(100, Math.round((story.secured / story.target) * 100)) : 100
+                return (
+                  <article key={story.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <div className="relative h-64">
+                      <img src={story.gallery[0]} alt={story.title} className="h-full w-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                        <p className="text-xs font-black uppercase tracking-wide text-emerald-200">Donativo concluído</p>
+                        <h3 className="mt-2 text-2xl font-black leading-tight">{story.title}</h3>
+                        <p className="mt-1 text-sm text-slate-200">{story.institutionName}</p>
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+                        <StoryStat label="Valor" value={publicDonationValue(story.proof)} />
+                        <StoryStat label="Validação" value={formatDate(story.proof.confirmedAt || story.proof.date)} />
+                        <StoryStat label="Cobertura" value={`${coverage}%`} />
+                        <StoryStat label="Beneficiários" value={(story.project.beneficiaries || 0).toLocaleString('pt-PT')} />
+                      </div>
+                      <div className="mb-4 flex flex-wrap gap-2">
+                        {story.project.sdgGoals.map(sdg => (
+                          <SdgIcon key={sdg} n={sdg} size="sm" />
+                        ))}
+                      </div>
+                      <p className="line-clamp-4 text-sm leading-6 text-slate-600">{story.description}</p>
+                      {story.proof.institutionThankYouMessage && (
+                        <div className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+                          <p className="text-xs font-black uppercase tracking-wide text-emerald-800">Mensagem da instituição</p>
+                          <p className="mt-2 text-sm leading-6 text-emerald-900">{story.proof.institutionThankYouMessage}</p>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => openProject(story.slug)}
+                        className="mt-5 w-full rounded-xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800"
+                      >
+                        Ver página do projeto
+                      </button>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {gallery.length > 0 && (
+        <section className="bg-white py-16">
+          <div className="container mx-auto max-w-6xl px-4">
+            <div className="mb-10 text-center">
+              <p className="text-sm font-black uppercase tracking-wide text-blue-700">Galeria de impacto</p>
+              <h2 className="mt-2 text-3xl font-black text-slate-950">Imagens dos projetos apoiados</h2>
+              <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                As fotografias carregadas ou associadas aos projetos passam para esta área quando os donativos são concluídos.
               </p>
             </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {completed.map(project => (
-                <article key={project.id} className="bg-white rounded-2xl border border-green-200 shadow-sm overflow-hidden">
-                  <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-5 text-white">
-                    <p className="text-xs font-black uppercase tracking-wide text-green-100">Projeto concluído</p>
-                    <h3 className="mt-1 text-lg font-black leading-tight">{project.title}</h3>
-                    <p className="mt-1 text-sm text-green-100">{project.institutionName}</p>
-                  </div>
-                  <div className="p-5">
-                    <div className="mb-4 flex flex-wrap gap-2">
-                      {project.sdgGoals.map(sdg => (
-                        <SdgIcon key={sdg} n={sdg} size="sm" />
-                      ))}
-                    </div>
-                    <p className="text-sm text-slate-600 line-clamp-3">{project.description}</p>
-                    <div className="mt-5 rounded-2xl bg-green-50 border border-green-100 p-4">
-                      <div className="flex justify-between text-sm font-black text-green-800">
-                        <span>€ {project.secured.toLocaleString('pt-PT')}</span>
-                        <span>100%</span>
-                      </div>
-                      <div className="mt-2 h-3 overflow-hidden rounded-full bg-green-100">
-                        <div className="h-full rounded-full bg-green-600" style={{ width: '100%' }} />
-                      </div>
-                      <p className="mt-2 text-xs font-semibold text-green-700">
-                        Meta atingida: € {project.target.toLocaleString('pt-PT')}
-                      </p>
-                    </div>
-                  </div>
-                </article>
+            <div className="grid auto-rows-[210px] gap-4 md:grid-cols-4">
+              {gallery.map((item, index) => (
+                <figure
+                  key={item.id}
+                  className={`group relative overflow-hidden rounded-2xl bg-slate-200 shadow-sm ${index === 0 || index === 5 ? 'md:col-span-2 md:row-span-2' : ''}`}
+                >
+                  <img src={item.photo} alt={item.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                  <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 to-transparent p-4 text-white">
+                    <p className="text-sm font-black leading-tight">{item.title}</p>
+                    <p className="mt-1 text-xs text-slate-200">{item.institution} · {item.donation}</p>
+                  </figcaption>
+                </figure>
               ))}
             </div>
           </div>
         </section>
       )}
 
-      {/* HIGHLIGHTED PROJECTS */}
-      <section className="py-16">
-        <div className="container mx-auto px-4 max-w-6xl">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-black text-slate-900 mb-3">Projetos em destaque</h2>
-            <p className="text-slate-500">
-              Projetos publicados na plataforma com informação pública completa para empresas mecenas.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            {highlightedProjects.map(item => (
-              <article
-                key={item.id}
-                className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col"
-              >
-                <div className="bg-gradient-to-br from-slate-900 to-blue-900 h-44 p-6 text-white flex flex-col justify-between">
-                  <div className="flex flex-wrap gap-2">
-                    {item.sdgs.map(sdg => (
-                      <SdgIcon key={sdg} n={sdg} size="sm" className="ring-2 ring-white/20" />
-                    ))}
-                  </div>
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-wide text-blue-200">Projeto publicado</p>
-                    <h3 className="text-xl font-black leading-tight">{item.title}</h3>
-                  </div>
-                </div>
-                <div className="p-5 flex-1 flex flex-col">
-                  <div className="grid grid-cols-3 gap-3 mb-5">
-                    <div className="rounded-xl bg-blue-50 p-3 text-center">
-                      <p className="text-lg font-black text-blue-700">€ {item.amount.toLocaleString('pt-PT')}</p>
-                      <p className="text-[10px] font-bold uppercase text-slate-500">Donativo</p>
-                    </div>
-                    <div className="rounded-xl bg-emerald-50 p-3 text-center">
-                      <p className="text-lg font-black text-emerald-700">{item.coverage}%</p>
-                      <p className="text-[10px] font-bold uppercase text-slate-500">Cobertura</p>
-                    </div>
-                    <div className="rounded-xl bg-amber-50 p-3 text-center">
-                      <p className="text-lg font-black text-amber-700">{item.beneficiaries.toLocaleString('pt-PT')}</p>
-                      <p className="text-[10px] font-bold uppercase text-slate-500">Pessoas</p>
-                    </div>
-                  </div>
-                  <p className="text-sm text-slate-500 mb-4 flex-1">
-                    {item.description}
-                  </p>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 mb-4">
-                    <p className="text-xs font-black uppercase tracking-wide text-blue-700">Resumo do apoio</p>
-                    <p className="mt-2 text-sm text-slate-600">
-                      Donativo aplicado num projeto com custo total de € {item.projectCost.toLocaleString('pt-PT')} e cobertura de {item.coverage}%.
-                    </p>
-                  </div>
-                  <div className="flex justify-between items-center pt-3 border-t border-slate-100 text-xs text-slate-500">
-                    <span>{item.institution}</span>
-                    <span>Projeto ativo</span>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-16 bg-gradient-to-br from-blue-700 to-indigo-800 text-white">
-        <div className="container mx-auto px-4 text-center max-w-3xl">
-          <h2 className="text-3xl md:text-4xl font-black mb-4">A sua empresa pode estar aqui</h2>
-          <p className="text-blue-200 mb-8">
-            Faça um donativo, peça o relatório de impacto e veja a sua história de sucesso publicada nesta página.
+      <section className="bg-slate-950 py-16 text-white">
+        <div className="container mx-auto max-w-4xl px-4 text-center">
+          <h2 className="text-3xl font-black md:text-4xl">A próxima história pode nascer do seu apoio.</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-slate-300">
+            Escolha um projeto, registe o donativo e acompanhe a validação até ao relatório de impacto.
           </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-3">
-            <button
-              onClick={() => setCurrentView('login')}
-              className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-black py-4 px-8 rounded-2xl transition"
-            >
-              Registar / Entrar
-            </button>
-          </div>
+          <button
+            onClick={() => setCurrentView('empresa')}
+            className="mt-8 rounded-xl bg-emerald-500 px-8 py-4 font-black text-slate-950 transition hover:bg-emerald-400"
+          >
+            Encontrar projeto para apoiar
+          </button>
         </div>
       </section>
+    </div>
+  )
+}
+
+function ImpactMetric({ label, value, tone }: { label: string; value: string | number; tone: string }) {
+  return (
+    <div className="rounded-xl bg-slate-50 p-4 text-center">
+      <p className={`text-2xl font-black ${tone}`}>{value}</p>
+      <p className="mt-1 text-[11px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
+    </div>
+  )
+}
+
+function StoryStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+      <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-sm font-black text-slate-900">{value}</p>
     </div>
   )
 }

@@ -37,7 +37,7 @@ export default function PartnersBar() {
                 )}
                 <div className="min-w-0">
                   <p className="font-bold text-slate-800 text-sm truncate">{p.name}</p>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wide">🏢 Empresa</p>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wide"> Empresa</p>
                 </div>
               </div>
             ))}

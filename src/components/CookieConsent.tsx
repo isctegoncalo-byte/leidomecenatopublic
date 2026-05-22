@@ -26,7 +26,7 @@ export default function CookieConsent({ setCurrentView }: Props) {
       <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl md:p-6">
         <div className="flex flex-col gap-5 md:flex-row md:items-start">
           <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-blue-50 text-2xl">
-            🍪
+            
           </div>
           <div className="flex-1">
             <h2 className="text-xl font-black text-slate-900">Utilização de cookies</h2>

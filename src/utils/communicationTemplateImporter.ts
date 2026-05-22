@@ -65,7 +65,7 @@ export function downloadCommunicationTemplateExample() {
 
 A {{empresa}} efetuou um donativo de €{{donativo}} à {{instituicao}}.
 
-Este apoio gerou impacto direto em {{beneficiarios}} beneficiários e obteve um Impact Score de {{score}}/100 (rating {{rating}}).
+Este apoio gerou impacto direto em {{beneficiarios}} beneficiários.
 
 ODS alinhados: {{ods_numeros}}
 

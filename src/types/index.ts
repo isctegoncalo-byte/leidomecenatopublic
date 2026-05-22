@@ -69,6 +69,7 @@ export interface DonationProof {
   confirmedAmount?: number
   companyConfirmedAmount?: number
   institutionConfirmedAmount?: number
+  publicDonationAmountConsent?: boolean
   date: string
   description: string
   proofDocId?: string          // documento submetido pela empresa
@@ -199,6 +200,7 @@ export interface NeedItem {
   territorialScope?: {
     national?: boolean
     districtLevel?: boolean
+    municipalityLevel?: boolean
     districts?: string[]
     municipalities?: string[]
   }
@@ -311,6 +313,7 @@ export interface ImpactContract {
   institutionName: string
   donationType: DonationType
   donationAmount: number   // valor TOTAL do donativo — 100% foi para a instituição
+  publicDonationAmountConsent?: boolean
   donationDate: string
   reportTier: ReportTier
   reportPrice: number      // preço do serviço de relatório de impacto
@@ -350,8 +353,6 @@ export interface GeneratedESGReport {
   institutionPhotoUrls?: string[]
   institutionThankYouMessage?: string
   scores: ESGScore
-  rating: string
-  ratingColor: string
   coverageRatio: number
   impactPerEuro: number
   co2Impact: number
@@ -373,7 +374,7 @@ export const REPORT_TIERS: ReportTier[] = [
     features: [
       'Relatório PDF com 6 páginas, incluindo capa',
       'Sumário do impacto gerado',
-      'Impact Score e métricas do apoio',
+      'métricas de impacto e métricas do apoio',
       'Principais necessidades apoiadas',
       'Dados fiscais e dedução de 140% no IRC',
     ],
@@ -387,7 +388,7 @@ export const REPORT_TIERS: ReportTier[] = [
     features: [
       'Relatório PDF com 15 páginas, incluindo capa',
       'Tudo do Relatório de Impacto',
-      'Impact Score detalhado com métricas',
+      'métricas de impacto detalhado com métricas',
       'Narrativa de impacto personalizada',
       'Análise de riscos ESG',
       'Galeria e evidências visuais',

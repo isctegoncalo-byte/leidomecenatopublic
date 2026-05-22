@@ -1,4 +1,4 @@
-import { Account, ViewType } from '../types'
+import { Account, DonationProof, ViewType } from '../types'
 import { findProjectEntry } from '../utils/projectCatalog'
 import { isProjectComplete, projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
 import { listProofs } from '../utils/proofStore'
@@ -11,6 +11,46 @@ import SdgIcon from './SdgIcon'
 interface Props {
   account: Account | null
   setCurrentView: (v: ViewType) => void
+}
+
+type ProjectSponsor = {
+  id: string
+  name: string
+  valueLabel: string
+}
+
+function formatCurrency(value: number) {
+  return `€ ${value.toLocaleString('pt-PT')}`
+}
+
+function publicDonationValue(proof: DonationProof) {
+  return proof.publicDonationAmountConsent ? formatCurrency(proof.confirmedAmount || proof.amount) : 'Valor não divulgado'
+}
+
+function sponsorInitials(name: string) {
+  return name
+    .replace(/\b(sa|lda|s\.a\.|ltd|portugal|servicos|serviços)\b/gi, '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase())
+    .join('') || 'M'
+}
+
+function sponsorsForProject(projectId: string, institutionName: string, proofs: DonationProof[]): ProjectSponsor[] {
+  const sponsors = proofs
+    .filter(proof => proof.status === 'confirmed')
+    .filter(proof => proof.institutionName === institutionName)
+    .filter(proof => !proof.selectedNeedIds?.length || proof.selectedNeedIds.includes(projectId))
+    .map(proof => ({
+      id: proof.id,
+      name: proof.companyName || proof.companyEmail || 'Empresa mecenas',
+      valueLabel: publicDonationValue(proof),
+    }))
+
+  return sponsors.filter((sponsor, index, all) =>
+    all.findIndex(item => item.name === sponsor.name && item.valueLabel === sponsor.valueLabel) === index
+  )
 }
 
 export default function ProjectDetailPage({ account, setCurrentView }: Props) {
@@ -37,6 +77,7 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
   const secured = projectSecured(project, proofs, institution.name)
   const progress = projectProgress(project, proofs, institution.name)
   const complete = isProjectComplete(project, proofs, institution.name)
+  const sponsors = sponsorsForProject(project.id, institution.name, proofs)
   const gallery = getProjectGallery(project, institution)
   const contacts = getInstitutionContacts(institution, registration)
   const socialLinks = [
@@ -156,6 +197,16 @@ export default function ProjectDetailPage({ account, setCurrentView }: Props) {
                 </div>
               )}
             </article>
+
+            {sponsors.length > 0 && (
+              <article className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white">
+                <div className="border-b border-white/10 p-6">
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-300">Mecenas deste projeto</p>
+                  <h2 className="mt-2 text-2xl font-black">Empresas que tornaram este impacto possível</h2>
+                </div>
+                <SponsorTicker sponsors={sponsors} />
+              </article>
+            )}
 
             <article className="bg-white border border-slate-200 rounded-2xl p-6">
               <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
@@ -378,7 +429,7 @@ function HeroStat({ label, value }: { label: string; value: string }) {
 function TrustItem({ title, text }: { title: string; text: string }) {
   return (
     <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-black text-emerald-700">✓</div>
+      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-black text-emerald-700"></div>
       <h3 className="font-black text-slate-900">{title}</h3>
       <p className="mt-1 text-sm leading-relaxed text-slate-600">{text}</p>
     </div>
@@ -388,5 +439,33 @@ function TrustItem({ title, text }: { title: string; text: string }) {
 function StepNumber({ n }: { n: number }) {
   return (
     <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-black text-blue-700">{n}</span>
+  )
+}
+
+function SponsorTicker({ sponsors }: { sponsors: ProjectSponsor[] }) {
+  const tickerItems = sponsors.length > 1 ? [...sponsors, ...sponsors] : sponsors
+
+  return (
+    <div className="relative overflow-hidden p-5">
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-slate-950 to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-slate-950 to-transparent" />
+      <div className={`flex gap-4 ${sponsors.length > 1 ? 'sponsor-ticker-track' : 'justify-center'}`}>
+        {tickerItems.map((sponsor, index) => (
+          <SponsorLogoCard key={`${sponsor.id}-${index}`} sponsor={sponsor} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SponsorLogoCard({ sponsor }: { sponsor: ProjectSponsor }) {
+  return (
+    <div className="w-40 flex-shrink-0 rounded-2xl border border-white/10 bg-white p-4 text-center text-slate-950 shadow-sm">
+      <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-emerald-50 text-2xl font-black text-slate-900">
+        {sponsorInitials(sponsor.name)}
+      </div>
+      <p className="mt-3 line-clamp-2 min-h-[32px] text-xs font-black leading-tight">{sponsor.name}</p>
+      <p className="mt-2 rounded-lg bg-emerald-50 px-2 py-1 text-sm font-black text-emerald-700">{sponsor.valueLabel}</p>
+    </div>
   )
 }

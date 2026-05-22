@@ -36,8 +36,8 @@ type Tab = 'perfil' | 'documentos' | 'donativos' | 'comprovativos' | 'relatorios
 const STATUS_LABEL: Record<DonationProof['status'], { text: string; color: string; bg: string }> = {
   'pending-company':     { text: 'Aguarda confirmação da empresa', color: 'text-amber-700', bg: 'bg-amber-100' },
   'pending-institution': { text: 'Aguarda confirmação da instituição', color: 'text-blue-700', bg: 'bg-blue-100' },
-  'confirmed':           { text: '✓ Validado por ambas as partes', color: 'text-green-700', bg: 'bg-green-100' },
-  'rejected':            { text: '✕ Rejeitado', color: 'text-red-700', bg: 'bg-red-100' },
+  'confirmed':           { text: ' Validado por ambas as partes', color: 'text-green-700', bg: 'bg-green-100' },
+  'rejected':            { text: ' Rejeitado', color: 'text-red-700', bg: 'bg-red-100' },
 }
 
 export default function PrivateAreaPage({ account, onLogout, setCurrentView }: Props) {
@@ -83,7 +83,7 @@ export default function PrivateAreaPage({ account, onLogout, setCurrentView }: P
             <p className="text-xs uppercase tracking-wide text-blue-300 font-bold mb-1">Área Privada</p>
             <h1 className="text-2xl md:text-3xl font-black">{account.name}</h1>
             <p className="text-blue-200 text-sm mt-1">
-              {account.role === 'empresa' ? '🏢 Conta de Empresa' : '🏛️ Conta de Instituição'} • {account.email}
+              {account.role === 'empresa' ? ' Conta de Empresa' : ' Conta de Instituição'} • {account.email}
             </p>
           </div>
           <div className="flex gap-2">
@@ -104,21 +104,21 @@ export default function PrivateAreaPage({ account, onLogout, setCurrentView }: P
         <div className="container mx-auto px-4 max-w-6xl flex overflow-x-auto">
           {(() => {
             const baseTabs: { id: Tab; label: string }[] = [
-              { id: 'perfil',         label: '👤 Perfil' },
-              { id: 'donativos',      label: '💶 Donativos' },
+              { id: 'perfil',         label: ' Perfil' },
+              { id: 'donativos',      label: ' Donativos' },
             ]
             if (account.role === 'instituicao') {
-              baseTabs.splice(1, 0, { id: 'documentos', label: '📁 Documentos' })
-              baseTabs.splice(2, 0, { id: 'projetos', label: '📋 Projetos' })
+              baseTabs.splice(1, 0, { id: 'documentos', label: ' Documentos' })
+              baseTabs.splice(2, 0, { id: 'projetos', label: ' Projetos' })
             }
             // Notificações para empresas e instituições
             const unread = notifications.filter((n: PlatformNotification) => !n.read).length
-            baseTabs.push({ id: 'notificacoes', label: `📨 Notificações${unread ? ` (${unread})` : ''}` })
-            baseTabs.push({ id: 'chat', label: `💬 Chat${chatThreads.length ? ` (${chatThreads.length})` : ''}` })
+            baseTabs.push({ id: 'notificacoes', label: ` Notificações${unread ? ` (${unread})` : ''}` })
+            baseTabs.push({ id: 'chat', label: ` Chat${chatThreads.length ? ` (${chatThreads.length})` : ''}` })
 
             // Apenas as empresas têm acesso à tab de Relatórios ESG
             if (account.role === 'empresa') {
-              baseTabs.push({ id: 'relatorios-esg', label: '📊 Relatórios ESG' })
+              baseTabs.push({ id: 'relatorios-esg', label: ' Relatórios ESG' })
             }
             return baseTabs
           })().map(t => (
@@ -398,7 +398,7 @@ function OnboardingPanel({
             >
               <div className="mb-3 flex items-center justify-between gap-2">
                 <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-black ${step.done ? 'bg-green-600 text-white' : 'bg-white text-slate-500 border border-slate-200'}`}>
-                  {step.done ? '✓' : index + 1}
+                  {step.done ? '' : index + 1}
                 </span>
                 <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${step.done ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                   {step.done ? 'Concluído' : 'Pendente'}
@@ -894,7 +894,7 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
   return (
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 text-blue-700 text-sm">
-        <strong>📋 Projetos para apoio:</strong> adicione necessidades/projetos que a sua instituição pretende divulgar a empresas mecenas.
+        <strong> Projetos para apoio:</strong> adicione necessidades/projetos que a sua instituição pretende divulgar a empresas mecenas.
       </div>
 
       <div className={`rounded-2xl border p-5 text-sm ${missingRequiredDocs.length ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-green-200 bg-green-50 text-green-800'}`}>
@@ -904,7 +904,7 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
             const uploaded = !missingRequiredDocs.includes(label)
             return (
               <div key={label} className="flex items-center gap-2 rounded-xl bg-white/70 px-3 py-2">
-                <span className={uploaded ? 'text-green-600' : 'text-amber-600'}>{uploaded ? '✓' : '!'}</span>
+                <span className={uploaded ? 'text-green-600' : 'text-amber-600'}>{uploaded ? '' : '!'}</span>
                 <span className="font-semibold">{label}</span>
               </div>
             )
@@ -1340,7 +1340,7 @@ function NotificationsTab({ account, notifications, onChange }: { account: Accou
   return (
     <div className="space-y-4">
       <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 text-blue-700 text-sm">
-        <strong>📨 Notificações:</strong> aqui aparecem intenções de donativo, confirmações, rejeições e avisos sobre relatórios ESG.
+        <strong> Notificações:</strong> aqui aparecem intenções de donativo, confirmações, rejeições e avisos sobre relatórios ESG.
         <button onClick={() => { markAllNotificationsRead(account.id); onChange() }} className="ml-3 underline font-bold">Marcar todas como lidas</button>
       </div>
       {notifications.map(n => (
@@ -1480,7 +1480,7 @@ function DocumentsTab({
           <label className="block">
             <span className="block text-sm font-semibold text-slate-600 mb-2">Ficheiro</span>
             <div className="border-2 border-dashed border-slate-300 rounded-xl px-4 py-3 bg-slate-50 hover:bg-slate-100 cursor-pointer flex items-center gap-3">
-              <span className="text-2xl">📎</span>
+              <span className="text-2xl"></span>
               <span className="text-sm text-slate-600 flex-1">{uploading ? 'A carregar...' : 'Selecionar ficheiro (PDF, imagem, doc...)'}</span>
               <input type="file" accept={ACCEPTED_DOCUMENT_INPUT} className="hidden" disabled={uploading}
                 onChange={e => handleUpload(e.target.files?.[0])} />
@@ -1506,7 +1506,7 @@ function DocumentsTab({
           <ul className="divide-y divide-slate-100">
             {docs.map(d => (
               <li key={d.id} className="flex items-center gap-3 py-3">
-                <span className="text-2xl">📄</span>
+                <span className="text-2xl"></span>
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-bold text-slate-800 truncate">{d.name}</p>
@@ -1663,7 +1663,7 @@ function DonationsTab({
                         <div className="rounded-xl border border-green-200 bg-green-50 p-4">
                           <label className="block text-sm font-black text-green-900">Recibo ao abrigo da Lei do Mecenato *</label>
                           <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-green-300 bg-white p-3 hover:bg-green-50">
-                            <span className="text-2xl">🧾</span>
+                            <span className="text-2xl"></span>
                             <span className="flex-1 text-sm font-bold text-slate-800">
                               {institutionReceipts[p.id]?.name || p.institutionReceiptFileName || 'Submeter recibo obrigatório'}
                             </span>
@@ -1869,7 +1869,7 @@ function ProofsTab({
                       Para confirmar a submissão do donativo, carregue a fatura ou documento comprovativo associado ao donativo.
                     </p>
                     <label className="flex items-center gap-3 bg-white border-2 border-dashed border-amber-300 rounded-xl p-3 cursor-pointer hover:bg-amber-50 transition">
-                      <span className="text-2xl">📄</span>
+                      <span className="text-2xl"></span>
                       <div className="flex-1">
                         <p className="font-bold text-slate-800 text-sm">
                           {companyInvoices[p.id]?.name || p.companyInvoiceFileName || 'Carregar fatura/documento'}
@@ -1933,7 +1933,7 @@ function ProofsTab({
                         Para confirmar a receção do donativo, carregue o recibo/declaração de donativo emitido ao abrigo da Lei do Mecenato, indicando que não existe contrapartida.
                       </p>
                       <label className="flex items-center gap-3 bg-white border-2 border-dashed border-green-300 rounded-xl p-3 cursor-pointer hover:bg-green-50 transition">
-                        <span className="text-2xl">🧾</span>
+                        <span className="text-2xl"></span>
                         <div className="flex-1">
                           <p className="font-bold text-slate-800 text-sm">
                             {institutionReceipts[p.id]?.name || p.institutionReceiptFileName || 'Carregar recibo'}
@@ -2032,7 +2032,7 @@ function ProofsTab({
                         onChange()
                       }}
                         className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-xl text-sm">
-                        ✓ Confirmar este donativo
+                         Confirmar este donativo
                       </button>
                     )}
                     {myConfirmed && !otherConfirmed && (
@@ -2065,13 +2065,13 @@ function ProofsTab({
                 {/* Donativo confirmado */}
                 {p.status === 'confirmed' && (
                   <div className="mt-4 pt-4 border-t border-slate-100">
-                    <p className="font-bold text-green-700 text-sm">✅ Donativo confirmado por ambas as partes</p>
+                    <p className="font-bold text-green-700 text-sm"> Donativo confirmado por ambas as partes</p>
                     <p className="text-xs text-green-700 mt-1">
                       Valor que atualizou o progresso do projeto: € {(p.confirmedAmount || p.amount).toLocaleString('pt-PT')}
                     </p>
                     {account.role === 'empresa' && (
                       <p className="text-xs text-slate-500 mt-1">
-                        O Relatório ESG está disponível na tab "📊 Relatórios ESG".
+                        O Relatório ESG está disponível na tab " Relatórios ESG".
                       </p>
                     )}
                   </div>
@@ -2131,7 +2131,7 @@ function ESGReportsTab({
     <div className="space-y-6">
       {/* Aviso de funcionamento */}
       <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 text-blue-700 text-sm">
-        <strong>📊 Como funciona:</strong> O Relatório ESG só fica disponível depois de <strong>ambas as partes</strong> (empresa e instituição) confirmarem que o donativo aconteceu. Esta área é exclusiva da empresa doadora.
+        <strong> Como funciona:</strong> O Relatório ESG só fica disponível depois de <strong>ambas as partes</strong> (empresa e instituição) confirmarem que o donativo aconteceu. Esta área é exclusiva da empresa doadora.
       </div>
 
       {/* Relatórios disponíveis */}
@@ -2140,7 +2140,7 @@ function ESGReportsTab({
 
         {confirmed.length === 0 ? (
           <div className="text-center py-10">
-            <div className="text-5xl mb-3 opacity-40">🔒</div>
+            <div className="text-5xl mb-3 opacity-40"></div>
             <p className="text-slate-500 text-sm">Ainda não tem relatórios ESG disponíveis.</p>
             <p className="text-slate-400 text-xs mt-1">Os relatórios aparecem aqui automaticamente quando o donativo é confirmado por ambas as partes.</p>
           </div>
@@ -2150,7 +2150,7 @@ function ESGReportsTab({
               <div key={p.id} className="border border-green-200 bg-green-50 rounded-xl p-4 flex items-center justify-between gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-bold bg-green-600 text-white px-2 py-0.5 rounded-full">✓ VALIDADO</span>
+                    <span className="text-xs font-bold bg-green-600 text-white px-2 py-0.5 rounded-full"> VALIDADO</span>
                     <p className="font-bold text-slate-800">{p.institutionName}</p>
                   </div>
                   <p className="text-xs text-slate-500">
@@ -2159,7 +2159,7 @@ function ESGReportsTab({
                 </div>
                 <button onClick={() => buildAndDownload(p)}
                   className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold py-2 px-4 rounded-xl whitespace-nowrap">
-                  📥 Descarregar Relatório ESG
+                   Descarregar Relatório ESG
                 </button>
               </div>
             ))}
@@ -2172,7 +2172,7 @@ function ESGReportsTab({
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
           <h2 className="text-xl font-black text-slate-900 mb-4">A aguardar validação ({pending.length})</h2>
           <p className="text-xs text-slate-500 mb-4">
-            Estes relatórios ficam disponíveis assim que ambas as partes confirmarem o donativo na tab "✅ Comprovativos".
+            Estes relatórios ficam disponíveis assim que ambas as partes confirmarem o donativo na tab " Comprovativos".
           </p>
           <div className="space-y-3">
             {pending.map(p => {
@@ -2182,16 +2182,16 @@ function ESGReportsTab({
               return (
                 <div key={p.id} className="border border-slate-200 bg-slate-50 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg opacity-50">🔒</span>
+                    <span className="text-lg opacity-50"></span>
                     <p className="font-bold text-slate-700">{p.institutionName}</p>
                   </div>
                   <p className="text-xs text-slate-500 mb-2">€ {p.amount.toLocaleString('pt-PT')} • {p.date}</p>
                   <div className="flex gap-2 text-xs">
                     <span className={`px-2 py-1 rounded ${myConfirmed ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                      Empresa: {myConfirmed ? '✓' : 'Aguarda'}
+                      Empresa: {myConfirmed ? '' : 'Aguarda'}
                     </span>
                     <span className={`px-2 py-1 rounded ${otherConfirmed ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                      Instituição: {otherConfirmed ? '✓' : 'Aguarda'}
+                      Instituição: {otherConfirmed ? '' : 'Aguarda'}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 mt-2 italic">A aguardar {waitingFor}.</p>
@@ -2209,7 +2209,7 @@ function ConfirmBox({ label, confirmed }: { label: string; confirmed: boolean })
     <div className={`rounded-xl p-3 border ${confirmed ? 'border-green-300 bg-green-50' : 'border-slate-200 bg-slate-50'}`}>
       <p className="text-xs text-slate-500 uppercase tracking-wide font-bold">{label}</p>
       <p className={`font-bold text-sm mt-1 ${confirmed ? 'text-green-700' : 'text-slate-500'}`}>
-        {confirmed ? '✓ Confirmado' : 'Aguarda confirmação'}
+        {confirmed ? ' Confirmado' : 'Aguarda confirmação'}
       </p>
     </div>
   )

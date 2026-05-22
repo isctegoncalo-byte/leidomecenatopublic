@@ -43,8 +43,6 @@ export function downloadDemoPdf() {
         'Alta rotatividade de voluntários no período de verão',
       ],
     },
-    rating: 'AA',
-    ratingColor: '#22c55e',
     coverageRatio: 40,
     impactPerEuro: 0.12,
     co2Impact: 0,

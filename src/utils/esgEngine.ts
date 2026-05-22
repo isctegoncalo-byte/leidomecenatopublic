@@ -2,18 +2,18 @@ import { Institution, NeedItem, ImpactContract, GeneratedESGReport } from '../ty
 import { findInstitutionRegistration } from './institutionRegistry'
 
 export const sdgInfo: Record<number, { name: string; color: string; icon: string }> = {
-  1:  { name: 'Erradicação da Pobreza',       color: '#E5243B', icon: '🏚️' },
-  2:  { name: 'Fome Zero',                     color: '#DDA63A', icon: '🌾' },
-  3:  { name: 'Saúde de Qualidade',            color: '#4C9F38', icon: '💚' },
-  4:  { name: 'Educação de Qualidade',         color: '#C5192D', icon: '📚' },
-  5:  { name: 'Igualdade de Género',           color: '#FF3A21', icon: '⚧️' },
-  8:  { name: 'Trabalho Digno',                color: '#A21942', icon: '💼' },
-  10: { name: 'Redução das Desigualdades',     color: '#DD1367', icon: '⚖️' },
-  11: { name: 'Cidades Sustentáveis',          color: '#FD9D24', icon: '🏙️' },
-  13: { name: 'Ação Climática',                color: '#3F7E44', icon: '🌡️' },
-  14: { name: 'Vida Abaixo d\'Água',           color: '#0A97D9', icon: '🌊' },
-  15: { name: 'Vida Terrestre',                color: '#56C02B', icon: '🌿' },
-  17: { name: 'Parcerias para os Objetivos',   color: '#19486A', icon: '🤝' },
+  1:  { name: 'Erradicação da Pobreza',       color: '#E5243B', icon: '' },
+  2:  { name: 'Fome Zero',                     color: '#DDA63A', icon: '' },
+  3:  { name: 'Saúde de Qualidade',            color: '#4C9F38', icon: '' },
+  4:  { name: 'Educação de Qualidade',         color: '#C5192D', icon: '' },
+  5:  { name: 'Igualdade de Género',           color: '#FF3A21', icon: '' },
+  8:  { name: 'Trabalho Digno',                color: '#A21942', icon: '' },
+  10: { name: 'Redução das Desigualdades',     color: '#DD1367', icon: '' },
+  11: { name: 'Cidades Sustentáveis',          color: '#FD9D24', icon: '' },
+  13: { name: 'Ação Climática',                color: '#3F7E44', icon: '' },
+  14: { name: 'Vida Abaixo d\'Água',           color: '#0A97D9', icon: '' },
+  15: { name: 'Vida Terrestre',                color: '#56C02B', icon: '' },
+  17: { name: 'Parcerias para os Objetivos',   color: '#19486A', icon: '' },
 }
 
 export const esgPillarInfo = {
@@ -126,15 +126,6 @@ export function generateESGReport(
 
   const simplerReport = contract.donationType === 'produtos' && exactMatch
 
-  let rating: string
-  let ratingColor: string
-  if (totalScore >= 85) { rating = 'AA+'; ratingColor = '#16a34a' }
-  else if (totalScore >= 75) { rating = 'AA';  ratingColor = '#22c55e' }
-  else if (totalScore >= 65) { rating = 'A+';  ratingColor = '#84cc16' }
-  else if (totalScore >= 55) { rating = 'A';   ratingColor = '#eab308' }
-  else if (totalScore >= 45) { rating = 'B+';  ratingColor = '#f97316' }
-  else                       { rating = 'B';   ratingColor = '#f43f5e' }
-
   const generatedAt = new Date().toLocaleDateString('pt-PT', {
     day: '2-digit', month: 'long', year: 'numeric'
   })
@@ -165,15 +156,13 @@ export function generateESGReport(
       sdgAlignment: allSDGs,
       beneficiaries: totalBeneficiaries,
       impactNarrative: contract.donationMode === 'causa-com-projeto' && projectCost
-        ? `O donativo de €${contract.donationAmount.toLocaleString('pt-PT')} foi aplicado numa causa/projeto com custo total de €${projectCost.toLocaleString('pt-PT')}. A cobertura estimada do projeto é de ${coveragePercent?.toFixed(1)}% e contribuiu diretamente para o Rating de Impacto, com impacto direto em ${totalBeneficiaries.toLocaleString()} beneficiários.`
+        ? `O donativo de €${contract.donationAmount.toLocaleString('pt-PT')} foi aplicado numa causa/projeto com custo total de €${projectCost.toLocaleString('pt-PT')}. A cobertura estimada do projeto é de ${coveragePercent?.toFixed(1)}% e gerou impacto direto em ${totalBeneficiaries.toLocaleString()} beneficiários.`
         : exactMatch
           ? `O donativo em géneros/serviços de €${contract.donationAmount.toLocaleString('pt-PT')} corresponde exatamente a uma necessidade da instituição, simplificando a modelação do impacto e apoiando ${totalBeneficiaries.toLocaleString()} beneficiários.`
           : `O donativo de €${contract.donationAmount.toLocaleString('pt-PT')} — 100% entregue diretamente a ${institution.name} — apoiou ${relevantNeeds.length} necessidade(s) com impacto direto em ${totalBeneficiaries.toLocaleString()} beneficiários.`,
       highlights: institution.esgScore.highlights,
       risks: institution.esgScore.risks,
     },
-    rating,
-    ratingColor,
     coverageRatio: Math.round(coverageRatio),
     impactPerEuro: parseFloat(impactPerEuro.toFixed(3)),
     co2Impact,

@@ -67,7 +67,7 @@ function renderInternal(ctx: CanvasRenderingContext2D, w: number, h: number, con
   ctx.fillStyle = '#ffffff'
   ctx.font = 'bold 36px sans-serif'
   ctx.textBaseline = 'middle'
-  ctx.fillText(`🤝 ${brand.name.toUpperCase()}`, 80, 55)
+  ctx.fillText(` ${brand.name.toUpperCase()}`, 80, 55)
   ctx.font = '22px sans-serif'
   ctx.fillStyle = 'rgba(255,255,255,0.7)'
   ctx.fillText(`Comunicação Interna  •  ${brand.tagline}`, 80, 95)
@@ -119,7 +119,7 @@ function renderInternal(ctx: CanvasRenderingContext2D, w: number, h: number, con
     { label: 'Empresa', value: report.company },
     { label: 'Instituição', value: report.institution },
     { label: 'Donativo', value: `€${report.donationAmount.toLocaleString('pt-PT')}` },
-    { label: 'Impact Score', value: `${report.scores.total}/100  •  ${report.rating}` },
+    { label: 'métricas de impacto', value: `${report.scores.beneficiaries.toLocaleString()} beneficiários` },
     { label: 'Beneficiários', value: report.scores.beneficiaries.toLocaleString() },
     { label: 'Dedução IRC', value: `€${report.irsDeduction.toLocaleString('pt-PT')}` },
   ]

@@ -84,6 +84,48 @@ export default function MecenatoLawPage({ setCurrentView }: Props) {
                   ))}
                 </div>
               </div>
+
+              <div className="mt-8 rounded-2xl border border-blue-200 bg-blue-50 p-5">
+                <h3 className="mb-4 text-lg font-black text-blue-950">Exemplo fiscal simples</h3>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {[
+                    ['Donativo', '€10.000', 'Valor entregue diretamente à instituição.'],
+                    ['Majoração possível', '140%', 'Valor fiscalmente considerado: €14.000, se aplicável.'],
+                    ['Efeito estimado', '€2.940', 'Exemplo com taxa de IRC de 21%.'],
+                  ].map(([label, value, body]) => (
+                    <div key={label} className="rounded-xl bg-white p-4">
+                      <p className="text-xs font-black uppercase tracking-wide text-blue-600">{label}</p>
+                      <p className="mt-1 text-2xl font-black text-slate-900">{value}</p>
+                      <p className="mt-2 text-xs leading-relaxed text-slate-600">{body}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-4 text-xs leading-relaxed text-blue-900">
+                  Este exemplo é meramente ilustrativo. A taxa efetiva, limites, majoração aplicável e elegibilidade dependem da situação fiscal da empresa, da natureza da entidade beneficiária e da documentação emitida.
+                </p>
+              </div>
+
+              <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-5">
+                <h3 className="mb-4 text-lg font-black text-slate-900">Perguntas fiscais frequentes</h3>
+                <div className="space-y-4">
+                  <InfoBlock
+                    title="O recibo basta para garantir o benefício fiscal?"
+                    body="Não necessariamente. O recibo é essencial, mas a empresa deve confirmar a elegibilidade da entidade, a finalidade do donativo, a ausência de contrapartida e os limites aplicáveis."
+                  />
+                  <InfoBlock
+                    title="Pode existir comunicação pública do donativo?"
+                    body="A menção institucional ao apoio pode existir, mas não deve configurar uma contrapartida comercial equivalente a publicidade ou aquisição de serviços. A fronteira deve ser validada caso a caso."
+                  />
+                  <InfoBlock
+                    title="Como tratar donativos em produtos ou serviços?"
+                    body="Devem existir elementos que sustentem o valor atribuído, a descrição dos bens ou serviços, a data de entrega, a entidade beneficiária e a finalidade do apoio."
+                  />
+                  <InfoBlock
+                    title="Que documentos devem ser guardados?"
+                    body="Comprovativo de transferência ou entrega, recibo/declaração da instituição, identificação do mecenas, NIF das partes, valor, data, enquadramento legal e declaração de inexistência de contrapartida."
+                  />
+                </div>
+              </div>
             </div>
 
             <aside className="space-y-4">

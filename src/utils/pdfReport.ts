@@ -35,7 +35,7 @@ function forceDownload(pdfData: string, filename: string) {
     a.click()
     document.body.removeChild(a)
     setTimeout(() => URL.revokeObjectURL(url), 5000)
-    console.log('✅ PDF descarregado via Blob')
+    console.log(' PDF descarregado via Blob')
   } catch (err1) {
     console.error('Blob download falhou:', err1)
     try {
@@ -44,7 +44,7 @@ function forceDownload(pdfData: string, filename: string) {
       if (win) {
         win.document.write(`<html><head><title>${filename}</title></head><body><iframe src="data:application/pdf;base64,${pdfData}" style="width:100%;height:100%;border:none;"></iframe></body></html>`)
         win.document.close()
-        console.log('✅ PDF aberto em nova tab')
+        console.log(' PDF aberto em nova tab')
       }
     } catch (err2) {
       console.error('Fallback também falhou:', err2)
@@ -77,9 +77,9 @@ export function downloadReportPdf(report: GeneratedESGReport, template: ReportTe
     y += 6; const [sr, sg, sb] = hexToRgb(template.subAccent)
     doc.setDrawColor(sr, sg, sb); doc.setLineWidth(0.7); doc.line(M, y, W - M, y); y += 10
 
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.text('Impact Score', M, y); y += 8
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.text('métricas de impacto', M, y); y += 8
     doc.setFont('helvetica', 'normal'); doc.setFontSize(11)
-    y = wrap(doc, `Total: ${report.scores.total}/100  •  Rating: ${report.rating}`, M, y, contentW); y += 3
+    y = wrap(doc, `Beneficiários diretos: ${report.scores.beneficiaries.toLocaleString()}`, M, y, contentW); y += 3
     doc.setFontSize(10)
     y = wrap(doc, `Ambiental: ${report.scores.environmental}  |  Social: ${report.scores.social}  |  Governação: ${report.scores.governance}`, M, y, contentW)
     if (report.coveragePercent !== undefined) {
@@ -141,16 +141,16 @@ export function downloadReportPdf(report: GeneratedESGReport, template: ReportTe
       doc.setFont('helvetica', 'normal'); doc.setFontSize(10)
       wrap(doc, `${report.company} apoiou ${report.institution} com € ${report.donationAmount.toLocaleString('pt-PT')}. ${report.scores.beneficiaries.toLocaleString()} beneficiários.`, M, 48, contentW)
       doc.setFont('helvetica', 'bold'); doc.text('Sugestão LinkedIn', M, 68); doc.setFont('helvetica', 'normal')
-      wrap(doc, `Rating ${report.rating}. ${report.scores.beneficiaries.toLocaleString()} pessoas impactadas. #ESG #Mecenato`, M, 76, contentW)
+      wrap(doc, `${report.scores.beneficiaries.toLocaleString()} pessoas impactadas. #ESG #Mecenato`, M, 76, contentW)
       doc.setFont('helvetica', 'bold'); doc.text('Sugestão Instagram', M, 98); doc.setFont('helvetica', 'normal')
-      wrap(doc, `Impacto real. Rating ${report.rating}. 100% do donativo entregue. 🤝💚`, M, 106, contentW)
+      wrap(doc, `Impacto real. 100% do donativo entregue. `, M, 106, contentW)
     }
 
     // Forçar download manualmente em vez de usar doc.save()
     const pdfData = doc.output('datauristring').split(',')[1]
     forceDownload(pdfData, `relatorio-impacto-${report.reportId}.pdf`)
   } catch (err) {
-    console.error('🔴 Erro ao gerar PDF:', err)
+    console.error(' Erro ao gerar PDF:', err)
     alert('Erro ao gerar o PDF: ' + (err instanceof Error ? err.message : String(err)))
   }
 }

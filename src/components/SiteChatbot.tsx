@@ -43,7 +43,7 @@ function answerQuestion(question: string): string {
   }
 
   if (includesAny(text, ['projeto', 'ods', 'kpi', 'meta', 'galeria', 'foto', 'fotos'])) {
-    return 'Cada projeto tem uma página própria com apresentação da instituição, resumo executivo, ODS, metas, KPI, galeria de fotos, contactos e botão Apoiar. Os projetos concluídos passam para a página Impacto Real.'
+    return 'Cada projeto tem uma página própria com apresentação da instituição, resumo executivo, ODS, metas, KPI, galeria de fotos, contactos e botão Apoiar. Os projetos com donativos concluídos passam para a página Histórias de Impacto.'
   }
 
   if (includesAny(text, ['impacto', 'calculo', 'avaliacao', 'abrangencia', 'custo total'])) {

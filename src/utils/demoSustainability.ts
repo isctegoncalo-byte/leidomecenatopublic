@@ -114,8 +114,6 @@ export function downloadSustainabilityDemo(variant: DemoSdgVariant = 'educacao')
         'Necessidade de monitorização de longo prazo',
       ],
     },
-    rating: 'AA',
-    ratingColor: '#22c55e',
     coverageRatio: Math.round(coveragePercent),
     impactPerEuro: parseFloat((beneficiaries / 10000).toFixed(3)),
     co2Impact: variant === 'ambiente' ? 500 : 0,

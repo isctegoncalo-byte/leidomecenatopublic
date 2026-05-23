@@ -2,153 +2,17 @@ import { DonationProof } from '../types'
 import { listProjectInstitutions } from './projectCatalog'
 
 const PROOFS_KEY = 'leidomecenato_proofs'
+const PROOFS_CLEANUP_FLAG = 'leidomecenato_proofs_cleaned_v1'
 const ZAPIER_ESG_REPORT_WEBHOOK = 'https://hooks.zapier.com/hooks/catch/27566905/4ykwk2i/'
-const DEMO_FILE = 'data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCjEgMCBvYmoKPDwvVHlwZSAvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+CmVuZG9iagoyIDAgb2JqCjw8L1R5cGUgL1BhZ2VzL0NvdW50IDAvS2lkcyBbXT4+CmVuZG9iagp0cmFpbGVyCjw8L1Jvb3QgMSAwIFI+PgolJUVPRg=='
+const LEGACY_DEMO_PROOF_PREFIXES = ['demo-proof-', 'demo-contract-', 'demo-company-']
 
-const DEMO_PROOFS: DonationProof[] = [
-  {
-    id: 'demo-proof-crescer-confirmed',
-    contractId: 'demo-contract-crescer-confirmed',
-    companyAccountId: 'demo-company-techglobal',
-    companyName: 'TechGlobal Portugal, SA',
-    companyNif: '514789321',
-    companyEmail: 'mecenato@techglobal.pt',
-    institutionAccountId: '1',
-    institutionName: 'Associação Crescer Juntos',
-    donationType: 'dinheiro',
-    selectedNeedIds: ['cj-centro-estudo-familias'],
-    amount: 8000,
-    projectCost: 56000,
-    confirmedAmount: 8000,
-    companyConfirmedAmount: 8000,
-    institutionConfirmedAmount: 8000,
-    publicDonationAmountConsent: true,
-    date: '2026-05-05',
-    description: 'Apoio financeiro para reforço do centro de estudo e acompanhamento familiar.',
-    proofFileName: 'comprovativo-transferencia-techglobal.pdf',
-    proofFileDataUrl: DEMO_FILE,
-    proofFileSize: 248000,
-    companyInvoiceFileName: 'documento-interno-techglobal.pdf',
-    companyInvoiceFileDataUrl: DEMO_FILE,
-    companyInvoiceFileSize: 132000,
-    institutionReceiptFileName: 'recibo-donativo-crescer-juntos.pdf',
-    institutionReceiptFileDataUrl: DEMO_FILE,
-    institutionReceiptFileSize: 156000,
-    institutionThankYouMessage: 'Este apoio permite acompanhar mais crianças durante o ano letivo e reforçar a proximidade com as famílias.',
-    companyConfirmed: true,
-    institutionConfirmed: true,
-    status: 'confirmed',
-    confirmedAt: '2026-05-07T10:30:00.000Z',
-    certificateId: 'CERT-DEMO-001',
-    certificateIssuedAt: '2026-05-07T10:30:00.000Z',
-    timelineStatus: 'report_available',
-  },
-  {
-    id: 'demo-proof-crescer-pending-institution',
-    contractId: 'demo-contract-crescer-pending',
-    companyAccountId: 'demo-company-lusitano',
-    companyName: 'Grupo Lusitano Energia, SA',
-    companyNif: '509120884',
-    companyEmail: 'impacto@lusitanoenergia.pt',
-    institutionAccountId: '1',
-    institutionName: 'Associação Crescer Juntos',
-    donationType: 'dinheiro',
-    selectedNeedIds: ['cj-centro-estudo-familias'],
-    amount: 5000,
-    projectCost: 56000,
-    confirmedAmount: 5000,
-    companyConfirmedAmount: 5000,
-    publicDonationAmountConsent: true,
-    date: '2026-05-15',
-    description: 'Donativo submetido pela empresa, a aguardar confirmação da instituição.',
-    proofFileName: 'transferencia-lusitano-energia.pdf',
-    proofFileDataUrl: DEMO_FILE,
-    proofFileSize: 204000,
-    companyConfirmed: true,
-    institutionConfirmed: false,
-    status: 'pending-institution',
-    timelineStatus: 'docs_uploaded_by_company',
-  },
-  {
-    id: 'demo-proof-horizonte-pending-company',
-    contractId: 'demo-contract-horizonte-pending-company',
-    companyAccountId: 'demo-company-medtech',
-    companyName: 'MedTech Ibéria, Lda',
-    companyNif: '516334221',
-    companyEmail: 'parcerias@medtechiberia.pt',
-    institutionAccountId: '2',
-    institutionName: 'Centro de Reabilitação Horizonte',
-    donationType: 'produtos',
-    selectedNeedIds: ['horizonte-reabilitacao-neuromotora'],
-    amount: 18000,
-    projectCost: 118000,
-    publicDonationAmountConsent: true,
-    date: '2026-05-18',
-    description: 'Cedência proposta de sensores de equilíbrio e licenças de software clínico, ainda sem documento final da empresa.',
-    companyConfirmed: false,
-    institutionConfirmed: false,
-    status: 'pending-company',
-    timelineStatus: 'intent_created',
-  },
-  {
-    id: 'demo-proof-horizonte-confirmed',
-    contractId: 'demo-contract-horizonte-confirmed',
-    companyAccountId: 'demo-company-saudeprime',
-    companyName: 'SaúdePrime Serviços Clínicos, SA',
-    companyNif: '510883944',
-    companyEmail: 'responsabilidade@saudeprime.pt',
-    institutionAccountId: '2',
-    institutionName: 'Centro de Reabilitação Horizonte',
-    donationType: 'dinheiro',
-    selectedNeedIds: ['horizonte-reabilitacao-neuromotora'],
-    amount: 12000,
-    projectCost: 118000,
-    confirmedAmount: 12000,
-    companyConfirmedAmount: 12000,
-    institutionConfirmedAmount: 12000,
-    publicDonationAmountConsent: true,
-    date: '2026-05-11',
-    description: 'Apoio complementar para instalação e formação técnica da unidade de reabilitação.',
-    proofFileName: 'comprovativo-saudeprime.pdf',
-    proofFileDataUrl: DEMO_FILE,
-    proofFileSize: 226000,
-    institutionReceiptFileName: 'recibo-horizonte-saudeprime.pdf',
-    institutionReceiptFileDataUrl: DEMO_FILE,
-    institutionReceiptFileSize: 151000,
-    institutionThankYouMessage: 'O apoio acelera a instalação de tecnologia que melhora a autonomia de pessoas em reabilitação.',
-    companyConfirmed: true,
-    institutionConfirmed: true,
-    status: 'confirmed',
-    confirmedAt: '2026-05-13T15:00:00.000Z',
-    certificateId: 'CERT-DEMO-002',
-    certificateIssuedAt: '2026-05-13T15:00:00.000Z',
-    timelineStatus: 'report_available',
-  },
-  {
-    id: 'demo-proof-arte-rejected',
-    contractId: 'demo-contract-arte-rejected',
-    companyAccountId: 'demo-company-cultura-norte',
-    companyName: 'Cultura Norte Consultoria, Lda',
-    companyNif: '515224781',
-    companyEmail: 'geral@culturanorte.pt',
-    institutionAccountId: '3',
-    institutionName: 'Fundação Arte & Memória Cultura',
-    donationType: 'dinheiro',
-    selectedNeedIds: ['arte-memoria-arquivo-vivo'],
-    amount: 3000,
-    projectCost: 48000,
-    publicDonationAmountConsent: false,
-    date: '2026-05-09',
-    description: 'Registo rejeitado por divergência entre o valor indicado e o valor recebido.',
-    proofFileName: 'comprovativo-cultura-norte.pdf',
-    proofFileDataUrl: DEMO_FILE,
-    proofFileSize: 188000,
-    companyConfirmed: true,
-    institutionConfirmed: false,
-    status: 'rejected',
-    timelineStatus: 'docs_uploaded_by_company',
-  },
-]
+function isLegacyDemoProof(proof: DonationProof) {
+  return LEGACY_DEMO_PROOF_PREFIXES.some(prefix =>
+    proof.id?.startsWith(prefix) ||
+    proof.contractId?.startsWith(prefix) ||
+    proof.companyAccountId?.startsWith(prefix)
+  )
+}
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -164,9 +28,14 @@ function writeJson(key: string, value: unknown) {
 }
 
 export function listProofs(): DonationProof[] {
+  if (typeof window !== 'undefined' && !localStorage.getItem(PROOFS_CLEANUP_FLAG)) {
+    localStorage.removeItem(PROOFS_KEY)
+    localStorage.setItem(PROOFS_CLEANUP_FLAG, '1')
+  }
   const stored = readJson<DonationProof[]>(PROOFS_KEY, [])
-  const storedIds = new Set(stored.map(proof => proof.id))
-  return [...DEMO_PROOFS.filter(proof => !storedIds.has(proof.id)), ...stored]
+  const cleaned = stored.filter(proof => !isLegacyDemoProof(proof))
+  if (cleaned.length !== stored.length) writeJson(PROOFS_KEY, cleaned)
+  return cleaned
 }
 
 export function listProofsForCompany(accountId: string): DonationProof[] {
@@ -314,3 +183,4 @@ function recomputeStatus(proof: DonationProof) {
     proof.status = 'pending-company'
   }
 }
+

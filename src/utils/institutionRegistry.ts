@@ -1,6 +1,7 @@
 import { InstitutionRegistration } from '../types'
 
 const INSTITUTIONS_KEY = 'leidomecenato_institution_registrations'
+const REGISTRY_CLEANUP_FLAG = 'leidomecenato_institution_registry_cleaned_v1'
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -27,5 +28,9 @@ export function findInstitutionRegistration(name: string) {
 }
 
 export function listInstitutionRegistrations() {
+  if (typeof window !== 'undefined' && !localStorage.getItem(REGISTRY_CLEANUP_FLAG)) {
+    localStorage.removeItem(INSTITUTIONS_KEY)
+    localStorage.setItem(REGISTRY_CLEANUP_FLAG, '1')
+  }
   return readJson<InstitutionRegistration[]>(INSTITUTIONS_KEY, [])
 }

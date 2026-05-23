@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "postbuild": "node scripts/prerender-seo.mjs",
+    "emails:preview": "node scripts/preview-emails.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

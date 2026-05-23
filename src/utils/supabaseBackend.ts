@@ -79,6 +79,10 @@ export function realBackendEnabled() {
   return isSupabaseConfigured && Boolean(supabase)
 }
 
+function safePublicRole(value: unknown): AccountRole {
+  return value === 'instituicao' ? 'instituicao' : 'empresa'
+}
+
 type SupabaseAuthResult =
   | { ok: true; account: Account; needsEmailConfirmation?: false }
   | { ok: true; needsEmailConfirmation: true; message: string }
@@ -239,7 +243,7 @@ function profileFromUser(user: User, fallback?: SupabaseRegisterPayload) {
   const meta = user.user_metadata || {}
   return {
     id: user.id,
-    role: (meta.role || fallback?.role || 'empresa') as AccountRole,
+    role: safePublicRole(meta.role || fallback?.role),
     email: user.email || fallback?.email.trim().toLowerCase() || '',
     name: String(meta.name || fallback?.name || user.email?.split('@')[0] || 'Conta'),
     nif: String(meta.nif || fallback?.nif || user.id),

@@ -2,6 +2,7 @@ import { Account, AccountRole } from '../types'
 
 const ACCOUNTS_KEY = 'leidomecenato_accounts'
 const SESSION_KEY = 'leidomecenato_session'
+const ADMIN_EMAIL = 'geral@leidomecenato.pt'
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -150,12 +151,14 @@ function removeDemoAccounts() {
   const current = listAccounts()
   const cleaned = current.filter(account => {
     const email = account.email.trim().toLowerCase()
+    if (email === ADMIN_EMAIL && account.role === 'admin') return true
+
     const isDemoId =
       account.id === 'acc-demo-empresa' ||
       account.id === 'acc-demo-instituicao' ||
       /^acc-[ei]\d+$/.test(account.id)
 
-    return !isDemoId && !DEMO_ACCOUNT_EMAILS.has(email)
+    return !isDemoId && !DEMO_ACCOUNT_EMAILS.has(email) && email === ADMIN_EMAIL
   })
 
   if (cleaned.length !== current.length) {

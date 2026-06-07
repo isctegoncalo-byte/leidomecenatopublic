@@ -429,7 +429,7 @@ function HeroStat({ label, value }: { label: string; value: string }) {
 function TrustItem({ title, text }: { title: string; text: string }) {
   return (
     <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-black text-emerald-700"></div>
+      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-black text-emerald-700">OK</div>
       <h3 className="font-black text-slate-900">{title}</h3>
       <p className="mt-1 text-sm leading-relaxed text-slate-600">{text}</p>
     </div>

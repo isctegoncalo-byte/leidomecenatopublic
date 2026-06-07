@@ -1,7 +1,17 @@
-import { Account, AccountRole, DonationProof, ImpactContract, PlatformNotification, UploadedDoc } from '../types'
+import { Account, AccountRole, DocumentReviewEntry, DonationProof, ImpactContract, PlatformNotification, UploadedDoc } from '../types'
 import { isSupabaseConfigured, supabase } from './supabaseClient'
 import { User } from '@supabase/supabase-js'
 import { safeUploadName, validateDocumentUpload } from './uploadSecurity'
+import {
+  calculateIcsScore,
+  calculateImpactScore,
+  calculateIrodScore,
+  calculateIspScore,
+  calculateSroi,
+  getDonationImpactContext,
+  IspDonationItem,
+  IspMeasurement,
+} from './ispMeasurement'
 
 export interface AdminProfile {
   id: string
@@ -28,6 +38,10 @@ export interface AdminDocument {
   mime_type: string | null
   size: number
   accepted: boolean | null
+  review_status?: 'pending' | 'accepted' | 'rejected' | null
+  review_note?: string | null
+  reviewed_by?: string | null
+  review_history?: DocumentReviewEntry[] | null
   reviewed_at: string | null
   created_at: string
   profiles?: Pick<AdminProfile, 'name' | 'email' | 'role'> | null
@@ -72,11 +86,75 @@ const toDoc = (row: AdminDocument): UploadedDoc => ({
   dataUrl: row.public_url || '',
   size: row.size,
   accepted: Boolean(row.accepted),
+  reviewStatus: row.review_status || (row.accepted ? 'accepted' : 'pending'),
+  reviewNote: row.review_note,
+  reviewedBy: row.reviewed_by,
+  reviewHistory: row.review_history || [],
   reviewedAt: row.reviewed_at,
 })
 
 export function realBackendEnabled() {
   return isSupabaseConfigured && Boolean(supabase)
+}
+
+export interface AdminImpactMeasurementRow {
+  proof_id: string
+  measurement: IspMeasurement
+  donation_context: Record<string, unknown>
+  isp_score: number
+  irod_score: number
+  ics_score: number
+  impact_score: number
+  sroi_ratio: number | null
+  sroi_value: number | null
+  company_name: string | null
+  institution_name: string | null
+  project_name: string | null
+  donation_amount: number | null
+  project_cost: number | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ReportTransaction {
+  id: string
+  contract_id: string
+  company_profile_id: string | null
+  company_name: string
+  company_nif: string
+  company_email: string
+  institution_id: string | null
+  institution_name: string
+  donation_type: string | null
+  donation_amount: number
+  donation_date: string | null
+  project_cost: number | null
+  selected_need_ids: string[] | null
+  report_tier_id: string | null
+  report_tier_name: string
+  report_price: number
+  report_vat: number
+  report_total: number
+  payment_provider: string
+  payment_link_url: string | null
+  stripe_checkout_session_id: string | null
+  stripe_payment_intent_id: string | null
+  stripe_customer_id: string | null
+  stripe_receipt_url: string | null
+  status: 'pending' | 'paid' | 'failed' | 'refunded' | 'cancelled'
+  currency: string
+  amount_subtotal_cents: number | null
+  amount_tax_cents: number | null
+  amount_total_cents: number | null
+  invoice_receipt_status: 'pending' | 'issued' | 'not_required'
+  invoice_receipt_number: string | null
+  invoice_receipt_issued_at: string | null
+  invoice_receipt_file_url: string | null
+  invoice_receipt_note: string | null
+  invoice_receipt_updated_at: string | null
+  created_at: string
+  updated_at: string
 }
 
 function safePublicRole(value: unknown): AccountRole {
@@ -176,6 +254,8 @@ export async function notifyAdminAboutDonationIntent(
         donationDate: contract.donationDate,
         reportTier: contract.reportTier.name,
         reportPrice: contract.reportPrice,
+        reportVat: contract.reportVat,
+        reportTotal: contract.reportTotal,
         donationMode: contract.donationMode,
         notificationTitle: notification?.title || '',
         notificationBody: notification?.body || '',
@@ -222,6 +302,108 @@ export async function notifyAdminAboutCompanyDonationConfirmation(
     console.warn('Nao foi possivel enviar confirmacao de donativo por email.', error)
     return { ok: false, error: error instanceof Error ? error.message : 'Falha ao enviar confirmacao por email.' }
   }
+}
+
+export async function upsertReportTransactionPendingReal(
+  contract: ImpactContract,
+  account: Account,
+  paymentLink: string,
+): Promise<{ ok: true; transaction: ReportTransaction } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+
+  const payload = {
+    contract_id: contract.id,
+    company_profile_id: account.id,
+    company_name: contract.company,
+    company_nif: contract.nif,
+    company_email: contract.email.trim().toLowerCase(),
+    institution_id: contract.institutionId,
+    institution_name: contract.institutionName,
+    donation_type: contract.donationType,
+    donation_amount: contract.donationAmount,
+    donation_date: contract.donationDate,
+    project_cost: contract.projectCost || null,
+    selected_need_ids: contract.selectedNeedIds || [],
+    report_tier_id: contract.reportTier.id,
+    report_tier_name: contract.reportTier.name,
+    report_price: contract.reportPrice,
+    report_vat: contract.reportVat || 0,
+    report_total: contract.reportTotal || contract.reportPrice,
+    payment_provider: 'stripe',
+    payment_link_url: paymentLink,
+    status: contract.reportPaymentStatus === 'paid' ? 'paid' : 'pending',
+    currency: 'eur',
+    updated_at: new Date().toISOString(),
+  }
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .upsert(payload, { onConflict: 'contract_id' })
+    .select('*')
+    .single()
+
+  if (error || !data) return { ok: false, error: error?.message || 'Nao foi possivel guardar a transacao.' }
+  return { ok: true, transaction: data as ReportTransaction }
+}
+
+export async function listCompanyReportTransactionsReal(
+  account: Account,
+): Promise<{ ok: true; transactions: ReportTransaction[] } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .or(`company_profile_id.eq.${account.id},company_email.eq.${account.email.trim().toLowerCase()},company_nif.eq.${account.nif}`)
+    .order('created_at', { ascending: false })
+
+  if (error) return { ok: false, error: error.message }
+  return { ok: true, transactions: (data || []) as ReportTransaction[] }
+}
+
+export async function listAdminReportTransactionsReal(): Promise<{ ok: true; transactions: ReportTransaction[] } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) return { ok: false, error: error.message }
+  return { ok: true, transactions: (data || []) as ReportTransaction[] }
+}
+
+export async function updateReportTransactionInvoiceReal(
+  transactionId: string,
+  patch: {
+    invoiceReceiptStatus: 'pending' | 'issued' | 'not_required'
+    invoiceReceiptNumber?: string
+    invoiceReceiptIssuedAt?: string
+    invoiceReceiptFileUrl?: string
+    invoiceReceiptNote?: string
+  },
+): Promise<{ ok: true; transaction: ReportTransaction } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+  const { data: userData } = await supabase.auth.getUser()
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .update({
+      invoice_receipt_status: patch.invoiceReceiptStatus,
+      invoice_receipt_number: patch.invoiceReceiptNumber?.trim() || null,
+      invoice_receipt_issued_at: patch.invoiceReceiptIssuedAt || null,
+      invoice_receipt_file_url: patch.invoiceReceiptFileUrl?.trim() || null,
+      invoice_receipt_note: patch.invoiceReceiptNote?.trim() || null,
+      invoice_receipt_updated_at: new Date().toISOString(),
+      invoice_receipt_updated_by: userData.user?.id || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', transactionId)
+    .select('*')
+    .single()
+
+  if (error || !data) return { ok: false, error: error?.message || 'Nao foi possivel atualizar a fatura-recibo.' }
+  return { ok: true, transaction: data as ReportTransaction }
 }
 
 function profileFromPayload(userId: string, payload: SupabaseRegisterPayload) {
@@ -431,14 +613,35 @@ export async function listAdminDocumentsReal(): Promise<{ ok: true; documents: A
 export async function updateAdminDocumentAcceptedReal(
   documentId: string,
   accepted: boolean,
+  reviewNote = '',
+  reviewerLabel = 'Admin',
 ): Promise<{ ok: true; document: AdminDocument } | { ok: false; error: string }> {
   if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+  const reviewedAt = new Date().toISOString()
+  const nextStatus = accepted ? 'accepted' : 'rejected'
+  const historyEntry: DocumentReviewEntry = {
+    status: nextStatus,
+    note: reviewNote.trim(),
+    reviewedAt,
+    reviewedBy: reviewerLabel,
+  }
+
+  const { data: current } = await supabase
+    .from('documents')
+    .select('review_history')
+    .eq('id', documentId)
+    .maybeSingle()
+  const reviewHistory = Array.isArray(current?.review_history) ? current.review_history : []
 
   const { data, error } = await supabase
     .from('documents')
     .update({
       accepted,
-      reviewed_at: accepted ? new Date().toISOString() : null,
+      review_status: nextStatus,
+      review_note: reviewNote.trim() || null,
+      reviewed_by: reviewerLabel,
+      review_history: [...reviewHistory, historyEntry],
+      reviewed_at: reviewedAt,
     })
     .eq('id', documentId)
     .select('*, profiles:owner_id(name,email,role)')
@@ -449,4 +652,80 @@ export async function updateAdminDocumentAcceptedReal(
   }
 
   return { ok: true, document: data as AdminDocument }
+}
+
+function projectNameForImpactItem(item: IspDonationItem) {
+  return item.project?.projectName || item.project?.subcategory || item.project?.category || null
+}
+
+export async function listImpactMeasurementsReal(): Promise<{ ok: true; measurements: IspMeasurement[]; rows: AdminImpactMeasurementRow[] } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+
+  const { data, error } = await supabase
+    .from('impact_measurements')
+    .select('*')
+    .order('updated_at', { ascending: false })
+
+  if (error) return { ok: false, error: error.message }
+
+  const rows = (data || []) as AdminImpactMeasurementRow[]
+  return {
+    ok: true,
+    rows,
+    measurements: rows.map(row => row.measurement),
+  }
+}
+
+export async function getImpactMeasurementReal(proofId: string): Promise<{ ok: true; measurement: IspMeasurement | null } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+
+  const { data, error } = await supabase
+    .from('impact_measurements')
+    .select('measurement')
+    .eq('proof_id', proofId)
+    .maybeSingle()
+
+  if (error) return { ok: false, error: error.message }
+  return { ok: true, measurement: (data?.measurement as IspMeasurement | undefined) || null }
+}
+
+export async function saveImpactMeasurementReal(
+  item: IspDonationItem,
+  measurement: IspMeasurement,
+): Promise<{ ok: true; row: AdminImpactMeasurementRow } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+
+  const donationContext = getDonationImpactContext(item)
+  const sroi = calculateSroi(item, measurement)
+  const { data: userData } = await supabase.auth.getUser()
+  const payload = {
+    proof_id: measurement.proofId,
+    measurement: { ...measurement, updatedAt: new Date().toISOString() },
+    donation_context: donationContext,
+    isp_score: calculateIspScore(measurement),
+    irod_score: calculateIrodScore(item, measurement).score,
+    ics_score: calculateIcsScore(item, measurement).score,
+    impact_score: calculateImpactScore(item, measurement).score,
+    sroi_ratio: sroi.ratio,
+    sroi_value: sroi.adjustedSocialValue,
+    company_name: item.companyName,
+    institution_name: item.proof.institutionName,
+    project_name: projectNameForImpactItem(item),
+    donation_amount: donationContext.donationAmount,
+    project_cost: donationContext.projectCost,
+    updated_by: userData.user?.id || null,
+    updated_at: new Date().toISOString(),
+  }
+
+  const { data, error } = await supabase
+    .from('impact_measurements')
+    .upsert(payload, { onConflict: 'proof_id' })
+    .select('*')
+    .single()
+
+  if (error || !data) {
+    return { ok: false, error: error?.message || 'Nao foi possivel guardar a medicao de impacto.' }
+  }
+
+  return { ok: true, row: data as AdminImpactMeasurementRow }
 }

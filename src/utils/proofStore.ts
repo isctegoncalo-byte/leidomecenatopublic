@@ -1,4 +1,4 @@
-import { DonationProof } from '../types'
+import { Account, DonationProof } from '../types'
 import { listProjectInstitutions } from './projectCatalog'
 
 const PROOFS_KEY = 'leidomecenato_proofs'
@@ -38,8 +38,16 @@ export function listProofs(): DonationProof[] {
   return cleaned
 }
 
-export function listProofsForCompany(accountId: string): DonationProof[] {
-  return listProofs().filter(p => p.companyAccountId === accountId)
+export function listProofsForCompany(account: Account | string): DonationProof[] {
+  const accountId = typeof account === 'string' ? account : account.id
+  const email = typeof account === 'string' ? '' : account.email.trim().toLowerCase()
+  const nif = typeof account === 'string' ? '' : account.nif.trim()
+
+  return listProofs().filter(proof =>
+    proof.companyAccountId === accountId ||
+    Boolean(email && proof.companyEmail?.trim().toLowerCase() === email) ||
+    Boolean(nif && proof.companyNif?.trim() === nif)
+  )
 }
 
 export function listProofsForInstitution(accountId: string): DonationProof[] {

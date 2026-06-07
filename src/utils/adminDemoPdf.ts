@@ -25,7 +25,7 @@ export function buildDemoReportForInstitution(templateName: string, institutionI
     donationDate: new Date().toLocaleDateString('pt-PT'),
     donationAmount,
     reportPrice: 250,
-    reportTier: `Relatório de Impacto Premium — Template "${templateName}"`,
+    reportTier: `Relatório de Impacto Advanced — Template "${templateName}"`,
     donationMode: 'causa-com-projeto',
     projectCost: totalValue,
     coveragePercent: Math.round(coveragePercent * 10) / 10,

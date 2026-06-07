@@ -92,6 +92,7 @@ const resolveInstitutionAccountId = (institutionId: string): string | undefined 
 export default function App() {
   const [state, setState] = useState<AppState>(() => ({ screen: 'main', view: pathToView(window.location.pathname) }))
   const [session, setSession] = useState<Account | null>(null)
+  const [sessionReady, setSessionReady] = useState(false)
   const sessionRef = useRef<Account | null>(null)
 
   const setStableSession = (account: Account | null) => {
@@ -104,9 +105,13 @@ export default function App() {
     if (realBackendEnabled()) {
       getRealSessionAccount().then(account => {
         if (alive && !sessionRef.current) setStableSession(account)
+        if (alive) setSessionReady(true)
+      }).catch(() => {
+        if (alive) setSessionReady(true)
       })
     } else {
       setStableSession(getSession())
+      setSessionReady(true)
     }
     return () => { alive = false }
   }, [])
@@ -132,7 +137,8 @@ export default function App() {
 
   const handleContractComplete = (contract: ImpactContract) => {
     if (!getProofByContractId(contract.id)) {
-      const companyAccountId = session?.role === 'empresa' ? session.id : 'guest-' + contract.nif
+      const activeSession = sessionRef.current
+      const companyAccountId = activeSession?.role === 'empresa' ? activeSession.id : 'guest-' + contract.nif
       const institutionAccountId = resolveInstitutionAccountId(contract.institutionId)
       const proof = createProof({
         contractId: contract.id,
@@ -144,6 +150,11 @@ export default function App() {
         institutionName: contract.institutionName,
         donationType: contract.donationType,
         selectedNeedIds: contract.selectedNeedIds,
+        reportTierName: contract.reportTier.name,
+        reportPrice: contract.reportPrice,
+        reportVat: contract.reportVat,
+        reportTotal: contract.reportTotal,
+        reportPaymentStatus: contract.reportPaymentStatus || (contract.reportPrice > 0 ? 'pending' : 'none'),
         amount: contract.donationAmount,
         publicDonationAmountConsent: contract.publicDonationAmountConsent,
         projectCost: contract.projectCost,
@@ -153,13 +164,32 @@ export default function App() {
         proofFileDataUrl: contract.proofFileDataUrl,
         proofFileSize: contract.proofFileSize,
       })
-      createThread(contract, session?.role === 'empresa' ? session : null, institutionAccountId, proof.id)
+      createThread(contract, activeSession?.role === 'empresa' ? activeSession : null, institutionAccountId, proof.id)
       const donationNotification = createDonationIntentNotification(contract, institutionAccountId)
       if (realBackendEnabled()) void notifyAdminAboutDonationIntent(contract, donationNotification)
-      createCompanyDonationRegisteredNotification(contract, session?.role === 'empresa' ? session.id : undefined)
+      createCompanyDonationRegisteredNotification(contract, activeSession?.role === 'empresa' ? activeSession.id : undefined)
     }
     setState({ screen: 'contract-success', contract })
   }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('payment') !== 'success') return
+    if (!sessionReady) return
+
+    const raw = localStorage.getItem('leidomecenato_pending_report_payment')
+    if (!raw) return
+
+    try {
+      const pending = JSON.parse(raw) as { contract?: ImpactContract; paymentStatus?: 'pending' | 'paid' }
+      if (!pending.contract) return
+      localStorage.removeItem('leidomecenato_pending_report_payment')
+      window.history.replaceState({}, '', '/empresa/donativo')
+      handleContractComplete({ ...pending.contract, reportPaymentStatus: 'paid' })
+    } catch {
+      localStorage.removeItem('leidomecenato_pending_report_payment')
+    }
+  }, [sessionReady, session?.id])
 
   const handleGoToPrivate = () => {
     if (session) setView(session.role === 'admin' ? 'admin' : 'area-privada')

@@ -462,10 +462,10 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
                 Tudo num só sítio: dados de registo, documentos, donativos e comprovativos validados.
               </p>
               <ul className="space-y-2 text-sm text-blue-100">
-                <li className="flex items-start gap-2"><span></span>Gestão de documentos</li>
-                <li className="flex items-start gap-2"><span></span>Histórico de donativos</li>
-                <li className="flex items-start gap-2"><span></span>Comprovativos de donativo validados</li>
-                <li className="flex items-start gap-2"><span></span>Acesso aos relatórios de impacto</li>
+                <li>Gestão de documentos</li>
+                <li>Histórico de donativos</li>
+                <li>Comprovativos de donativo validados</li>
+                <li>Acesso aos relatórios de impacto</li>
               </ul>
             </div>
           </div>

@@ -102,7 +102,7 @@ export default function AdminBrandTab() {
           <button onClick={handleReset} className="bg-slate-200 text-slate-700 text-sm px-4 py-2 rounded-xl">Repor</button>
           <button onClick={handleSave}
             className={`text-white text-sm font-bold px-5 py-2 rounded-xl transition ${saved ? 'bg-green-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
-            {saved ? ' Guardado' : ' Guardar Identidade'}
+            {saved ? 'Guardado' : 'Guardar Identidade'}
           </button>
         </div>
       </div>
@@ -110,7 +110,6 @@ export default function AdminBrandTab() {
       {/* IMPORT/EXPORT */}
       <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200 rounded-3xl p-6">
         <div className="flex items-start gap-4 mb-4">
-          <div className="text-4xl"></div>
           <div className="flex-1">
             <h3 className="font-black text-slate-900 text-lg">Importar Pasta de Identidade</h3>
             <p className="text-sm text-slate-600 mt-1">
@@ -122,7 +121,6 @@ export default function AdminBrandTab() {
         <div className="grid md:grid-cols-3 gap-3 mb-4">
           {/* Upload de pasta inteira */}
           <label className={`bg-white border-2 border-dashed border-indigo-300 rounded-2xl p-4 text-center cursor-pointer hover:bg-indigo-50 transition ${importing ? 'opacity-50' : ''}`}>
-            <div className="text-3xl mb-2"></div>
             <p className="font-bold text-indigo-700 text-sm">Carregar Pasta</p>
             <p className="text-xs text-slate-500 mt-1">{importing ? 'A processar...' : 'Selecionar uma pasta inteira'}</p>
             <input
@@ -138,7 +136,6 @@ export default function AdminBrandTab() {
 
           {/* Upload de ficheiros individuais */}
           <label className="bg-white border-2 border-dashed border-blue-300 rounded-2xl p-4 text-center cursor-pointer hover:bg-blue-50 transition">
-            <div className="text-3xl mb-2"></div>
             <p className="font-bold text-blue-700 text-sm">Carregar Ficheiros</p>
             <p className="text-xs text-slate-500 mt-1">Selecionar vários ficheiros</p>
             <input
@@ -152,7 +149,6 @@ export default function AdminBrandTab() {
           {/* Download exemplo */}
           <button onClick={downloadFolderTemplate}
             className="bg-white border-2 border-slate-300 rounded-2xl p-4 text-center cursor-pointer hover:bg-slate-50 transition">
-            <div className="text-3xl mb-2"></div>
             <p className="font-bold text-slate-700 text-sm">Guia de Estrutura</p>
             <p className="text-xs text-slate-500 mt-1">Descarregar exemplo</p>
           </button>

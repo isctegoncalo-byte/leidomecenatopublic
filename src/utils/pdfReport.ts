@@ -68,11 +68,16 @@ export function downloadReportPdf(report: GeneratedESGReport, template: ReportTe
     doc.setFont('helvetica', 'bold'); doc.setFontSize(13)
     doc.text(report.company, M, y); y += 7
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10)
-    y = wrap(doc, `NIF: ${report.companyNif}`, M, y, contentW); y += 2
+    y = wrap(doc, `Adquirente fiscal do serviço: ${report.company}`, M, y, contentW); y += 2
+    y = wrap(doc, `NIF/NIPC do adquirente: ${report.companyNif}`, M, y, contentW); y += 2
+    if (report.companyEmail) {
+      y = wrap(doc, `Email do adquirente: ${report.companyEmail}`, M, y, contentW); y += 2
+    }
     y = wrap(doc, `Instituição: ${report.institution} (${report.institutionCategory})`, M, y, contentW); y += 2
     y = wrap(doc, `Data do donativo: ${report.donationDate}`, M, y, contentW); y += 2
     y = wrap(doc, `Donativo (100% p/ instituição): € ${report.donationAmount.toLocaleString('pt-PT')}`, M, y, contentW); y += 2
-    y = wrap(doc, `Serviço: € ${report.reportPrice.toLocaleString()}  |  Ref: ${report.reportId}`, M, y, contentW)
+    const serviceTotal = report.reportTotal || report.reportPrice
+    y = wrap(doc, `Serviço: € ${serviceTotal.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} IVA incluído  |  Ref: ${report.reportId}`, M, y, contentW)
 
     y += 6; const [sr, sg, sb] = hexToRgb(template.subAccent)
     doc.setDrawColor(sr, sg, sb); doc.setLineWidth(0.7); doc.line(M, y, W - M, y); y += 10
@@ -125,6 +130,15 @@ export function downloadReportPdf(report: GeneratedESGReport, template: ReportTe
     y += Math.ceil(4 / 2) * (bH + gap) + 4; y = ensurePage(doc, y, 50)
     doc.setTextColor(30, 41, 59); doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Dados Fiscais', M, y); y += 7
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10)
+    y = wrap(doc, `Adquirente do serviço de relatório: ${report.company}`, M, y, contentW); y += 1
+    y = wrap(doc, `NIF/NIPC do adquirente: ${report.companyNif}`, M, y, contentW); y += 1
+    if (report.companyEmail) {
+      y = wrap(doc, `Email do adquirente: ${report.companyEmail}`, M, y, contentW); y += 1
+    }
+    const reportBase = report.reportPrice || 0
+    const reportVat = report.reportVat || 0
+    const reportTotal = report.reportTotal || report.reportPrice || 0
+    y = wrap(doc, `Serviço de relatório: € ${reportBase.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + IVA € ${reportVat.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} = € ${reportTotal.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, M, y, contentW); y += 2
     y = wrap(doc, `Donativo: € ${report.donationAmount.toLocaleString('pt-PT')}`, M, y, contentW); y += 1
     y = wrap(doc, `Dedução IRC (140%): € ${report.irsDeduction.toLocaleString('pt-PT')}`, M, y, contentW); y += 1
     y = wrap(doc, `Poupança estimada: € ${report.ircSavings.toLocaleString('pt-PT')}`, M, y, contentW); y += 1
@@ -133,7 +147,8 @@ export function downloadReportPdf(report: GeneratedESGReport, template: ReportTe
     y += 8; y = ensurePage(doc, y, 30); doc.setFontSize(7); doc.setTextColor(100, 116, 139)
     y = wrap(doc, report.disclaimer, M, y, contentW, 4)
 
-    if (report.reportTier.toLowerCase().includes('premium') && report.reportTier.toLowerCase().includes('redes')) {
+    const tierName = report.reportTier.toLowerCase()
+    if (tierName.includes('360') || (tierName.includes('premium') && tierName.includes('redes'))) {
       doc.addPage()
       const [ar, ag, ab] = hexToRgb(template.subAccent); doc.setFillColor(ar, ag, ab); doc.rect(0, 0, W, 28, 'F')
       doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('Conteúdos para Redes', M, 18)

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Account, ImpactContract, DonationType, REPORT_TIERS } from '../types'
+import { Account, ImpactContract, DonationType, REPORT_TIERS, VAT_RATE, calculateTotalWithVat, calculateVat, formatCurrency } from '../types'
 import { esgPillarInfo } from '../utils/esgEngine'
 import { COMPANY_SECTORS } from '../data/companySectors'
 import { listProjectInstitutions } from '../utils/projectCatalog'
 import SdgIcon from './SdgIcon'
 import { buildPaymentUrl, getReportPaymentLink, isPaymentLinkConfigured } from '../utils/paymentLinks'
 import { ACCEPTED_DOCUMENT_INPUT, validateDocumentUpload } from '../utils/uploadSecurity'
+import { realBackendEnabled, upsertReportTransactionPendingReal } from '../utils/supabaseBackend'
 
 
 interface Props {
@@ -72,12 +73,18 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
   const [noImpactReport, setNoImpactReport] = useState(false)
   const [proofFile, setProofFile] = useState<{ name: string; dataUrl: string; size: number } | null>(null)
   const [publicDonationAmountConsent, setPublicDonationAmountConsent] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'card' | 'mbway' | 'transfer'>('stripe')
-  const [cardName, setCardName] = useState('')
-  const [cardNumber, setCardNumber] = useState('')
-  const [expiry, setExpiry] = useState('')
-  const [cvc, setCvc] = useState('')
-  const [mbwayPhone, setMbwayPhone] = useState('')
+  const paymentMethod = 'stripe' as 'stripe' | 'card' | 'mbway' | 'transfer'
+  const setPaymentMethod = (_method: 'stripe' | 'card' | 'mbway' | 'transfer') => {}
+  const cardName = ''
+  const cardNumber = ''
+  const expiry = ''
+  const cvc = ''
+  const mbwayPhone = ''
+  const setCardName = (_value: string) => {}
+  const setCardNumber = (_value: string) => {}
+  const setExpiry = (_value: string) => {}
+  const setCvc = (_value: string) => {}
+  const setMbwayPhone = (_value: string) => {}
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })
@@ -114,6 +121,8 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
 
   const wantsImpactReport = !noImpactReport
   const tier = wantsImpactReport ? REPORT_TIERS.find(t => t.id === selectedTierId)! : NO_REPORT_TIER
+  const reportVat = wantsImpactReport ? calculateVat(tier.price) : 0
+  const reportTotal = wantsImpactReport ? calculateTotalWithVat(tier.price) : 0
   const paymentLink = getReportPaymentLink(selectedTierId)
   const paymentReady = wantsImpactReport && isPaymentLinkConfigured(selectedTierId)
   const irsDeduction = amount * 1.4
@@ -189,6 +198,9 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
     donationDate: new Date().toLocaleDateString('pt-PT'),
     reportTier: tier,
     reportPrice: tier.price,
+    reportVat,
+    reportTotal,
+    reportPaymentStatus: wantsImpactReport ? 'pending' : 'none',
     selectedNeedIds: selectedNeeds,
     donationMode: donationType === 'dinheiro' ? 'causa-com-projeto' : 'necessidade-exata',
     projectCost: donationType === 'dinheiro' ? projectCost : undefined,
@@ -197,7 +209,7 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
     proofFileSize: proofFile?.size,
   })
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!/^\d{9}$/.test(company.nif.trim())) {
       alert('O NIF da empresa deve ter exatamente 9 dígitos numéricos.')
       return
@@ -206,15 +218,15 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
       alert('Selecione o setor de atividade da empresa.')
       return
     }
-    if (wantsImpactReport && paymentMethod === 'stripe' && !paymentReady) {
+    if (wantsImpactReport && !paymentReady) {
       alert('Configure primeiro o link de pagamento Stripe para este pacote no ficheiro .env.local.')
       return
     }
-    if (wantsImpactReport && paymentMethod === 'stripe' && !paymentReady) {
+    if (false) {
       alert('Preencha os dados do cartão para pagar o serviço de relatório.')
       return
     }
-    if (wantsImpactReport && paymentMethod === 'mbway' && !mbwayPhone) {
+    if (false) {
       alert('Indique o número MB WAY para pagar o serviço de relatório.')
       return
     }
@@ -222,16 +234,30 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
       alert('Carregue o comprovativo do donativo antes de confirmar. Este documento é obrigatório para a instituição validar o donativo.')
       return
     }
-    if (wantsImpactReport && paymentMethod === 'stripe') {
+    if (wantsImpactReport) {
       const contract = buildContract()
+      setProcessing(true)
+      if (realBackendEnabled() && account) {
+        const saved = await upsertReportTransactionPendingReal(contract, account, paymentLink)
+        if (!saved.ok) {
+          setProcessing(false)
+          alert(`Nao foi possivel guardar a transacao antes do pagamento: ${saved.error}`)
+          return
+        }
+      }
       const paymentUrl = buildPaymentUrl(paymentLink, {
         client_reference_id: contract.id,
         prefilled_email: company.email,
+        company_name: company.name,
+        company_nif: company.nif,
+        institution_name: contract.institutionName,
+        report_tier: contract.reportTier.name,
       })
       localStorage.setItem('leidomecenato_pending_report_payment', JSON.stringify({
         contract,
         paymentProvider: 'stripe',
         paymentLink,
+        paymentStatus: 'pending',
         createdAt: new Date().toISOString(),
       }))
       window.location.href = paymentUrl
@@ -254,6 +280,9 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
         donationDate: new Date().toLocaleDateString('pt-PT'),
         reportTier: tier,
         reportPrice: tier.price,
+        reportVat,
+        reportTotal,
+        reportPaymentStatus: wantsImpactReport ? 'pending' : 'none',
         selectedNeedIds: selectedNeeds,
         donationMode: donationType === 'dinheiro' ? 'causa-com-projeto' : 'necessidade-exata',
         projectCost: donationType === 'dinheiro' ? projectCost : undefined,
@@ -347,12 +376,14 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
             <p className="text-slate-500 text-sm mb-8">A empresa faz o donativo diretamente à instituição. Esta informação é apenas para o relatório de impacto.</p>
             <div className="grid md:grid-cols-2 gap-6">
               {([
-                { type: 'dinheiro' as const, icon: '', title: 'Donativo financeiro', desc: 'Transferência bancária feita diretamente à instituição beneficiária.' },
-                { type: 'produtos' as const, icon: '', title: 'Produtos ou Serviços', desc: 'Doação de bens ou prestação de serviços à instituição.' },
+                { type: 'dinheiro' as const, label: '€', title: 'Donativo financeiro', desc: 'Transferência bancária feita diretamente à instituição beneficiária.' },
+                { type: 'produtos' as const, label: 'B/S', title: 'Produtos ou Serviços', desc: 'Doação de bens ou prestação de serviços à instituição.' },
               ] as const).map(opt => (
                 <button key={opt.type} onClick={() => { setDonationType(opt.type); setStep(1) }}
                   className="p-8 border-2 border-slate-200 rounded-2xl hover:border-blue-400 hover:bg-blue-50 transition text-left group">
-                  <div className="text-5xl mb-4">{opt.icon}</div>
+                  <div className="w-14 h-14 mb-4 rounded-2xl bg-blue-50 border border-blue-100 text-blue-700 flex items-center justify-center text-lg font-black">
+                    {opt.label}
+                  </div>
                   <h3 className="text-xl font-bold text-slate-800 mb-3 group-hover:text-blue-700">{opt.title}</h3>
                   <p className="text-slate-500 text-sm">{opt.desc}</p>
                 </button>
@@ -387,7 +418,7 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
                       <p className="text-slate-400 text-xs">{inst.municipality} • {inst.category}</p>
                     </div>
                     {inst.utilidadePublica && <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full font-bold">UP</span>}
-                    {inst.verified && <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full font-bold"></span>}
+                    {inst.verified && <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full font-bold">Verificado</span>}
                   </div>
                   <div className="p-5">
                     <p className="text-xs font-black uppercase tracking-wide text-blue-600 mb-2">Projeto</p>
@@ -447,7 +478,7 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
             )}
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
-              <h2 className="text-xl font-bold text-slate-800 mb-6"> Dados da Empresa</h2>
+              <h2 className="text-xl font-bold text-slate-800 mb-6">Dados da Empresa</h2>
               <div className="grid md:grid-cols-2 gap-5">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-slate-600 mb-2">Nome da Empresa *</label>
@@ -477,7 +508,7 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
-              <h2 className="text-xl font-bold text-slate-800 mb-6"> Valor do Donativo</h2>
+              <h2 className="text-xl font-bold text-slate-800 mb-6">Valor do Donativo</h2>
               <p className="text-slate-500 text-sm mb-4">Valor total do donativo que a empresa fez (ou vai fazer) diretamente à instituição.</p>
               {donationType === 'produtos' && (
                 <div className="mb-5">
@@ -520,7 +551,7 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
               )}
 
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-center">
-                <p className="text-green-800 font-bold"> Este valor irá <strong>100%</strong> para a instituição. A plataforma não retém qualquer percentagem do donativo.</p>
+                <p className="text-green-800 font-bold">Este valor irá <strong>100%</strong> para a instituição. A plataforma não retém qualquer percentagem do donativo.</p>
               </div>
 
             </div>
@@ -531,24 +562,24 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
         {step === 3 && (
           <div className="space-y-6">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
-              <h2 className="text-xl font-bold text-slate-800 mb-6"> Confirmar</h2>
+              <h2 className="text-xl font-bold text-slate-800 mb-6">Confirmar</h2>
 
               <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4 mb-6">
                 <p className="text-green-800 text-sm">
-                  <strong> O donativo de € {amount.toLocaleString('pt-PT')} irá 100% para a instituição.</strong>
+                  <strong>O donativo de € {amount.toLocaleString('pt-PT')} irá 100% para a instituição.</strong>
                   {wantsImpactReport
-                    ? <> Paga apenas € {tier.price.toLocaleString()} pelo serviço de relatório de impacto do donativo.</>
+                    ? <> O serviço de relatório é faturado à parte, com IVA à taxa legal em vigor.</>
                     : <> Não será contratado Relatório de Impacto.</>}
                 </p>
               </div>
 
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-                <p className="text-amber-700 text-sm"><strong> Aviso importante:</strong> A Lei do Mecenato é uma iniciativa privada independente. Não somos um organismo público nem uma entidade certificadora oficial. Não processamos donativos — a empresa faz o donativo diretamente à instituição.</p>
+                <p className="text-amber-700 text-sm"><strong>Aviso importante:</strong> A Lei do Mecenato é uma iniciativa privada independente. Não somos um organismo público nem uma entidade certificadora oficial. Não processamos donativos: a empresa faz o donativo diretamente à instituição.</p>
               </div>
 
               <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
-                <h3 className="font-bold text-slate-800 mb-4"> Escolha do Serviço de Relatório de Impacto do Donativo</h3>
-                <div className="grid md:grid-cols-3 gap-3">
+                <h3 className="font-bold text-slate-800 mb-4">Escolha do Serviço de Relatório de Impacto do Donativo</h3>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {REPORT_TIERS.map(t => {
                     const colors: Record<string, string> = { slate: 'border-slate-300', blue: 'border-blue-500 ring-2 ring-blue-100', purple: 'border-purple-300' }
                     return (
@@ -556,11 +587,11 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
                         className={`rounded-2xl border-2 cursor-pointer p-4 transition relative ${!noImpactReport && selectedTierId === t.id ? colors[t.color] : 'border-slate-200 hover:border-slate-300'}`}>
                         {t.highlighted && <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-3 py-0.5 rounded-full text-xs font-bold">Popular</div>}
                         <h4 className="font-bold text-sm">{t.name}</h4>
-                        <p className="text-xl font-black mt-1">€ {t.price.toLocaleString()}</p>
-                        <p className="text-xs text-slate-400">preço fixo</p>
+                        <p className="text-xl font-black mt-1">{formatCurrency(t.price)}</p>
+                        <p className="text-xs text-slate-400">+ IVA {Math.round(VAT_RATE * 100)}%</p>
                         <ul className="mt-3 space-y-1">
                           {t.features.slice(0, 4).map(f => (
-                            <li key={f} className="text-xs text-slate-600 flex items-start gap-1"><span className="text-green-500"></span>{f}</li>
+                            <li key={f} className="text-xs text-slate-600">{f}</li>
                           ))}
                         </ul>
                       </div>
@@ -584,12 +615,12 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
               </div>
 
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-6">
-                <h3 className="font-bold text-blue-800 mb-2"> Comprovativo do donativo *</h3>
+                <h3 className="font-bold text-blue-800 mb-2">Comprovativo do donativo *</h3>
                 <p className="text-blue-700 text-sm mb-4">
                   Carregue o comprovativo de transferência, fatura ou documento equivalente. Este documento é obrigatório, ficará disponível na área privada da instituição beneficiária e será usado para validar o donativo.
                 </p>
                 <label className="flex items-center gap-3 bg-white border-2 border-dashed border-blue-300 rounded-xl p-4 cursor-pointer hover:bg-blue-50 transition">
-                  <span className="text-2xl"></span>
+                  <span className="flex h-10 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-xs font-black text-blue-700">PDF</span>
                   <div className="flex-1">
                     <p className="font-bold text-slate-800 text-sm">
                       {proofFile ? proofFile.name : 'Carregar comprovativo obrigatório'}
@@ -657,7 +688,13 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
                 <h3 className="font-bold text-slate-800 mb-4">Resumo</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm"><span className="text-slate-600">Donativo (100% para a instituição):</span><span className="font-bold">€ {amount.toLocaleString('pt-PT')}</span></div>
-                  <div className="flex justify-between text-sm pt-2 border-t"><span className="text-slate-600">Serviço de Relatório de Impacto do Donativo — {tier.name}:</span><span className="font-bold text-purple-600">€ {tier.price.toLocaleString()}</span></div>
+                  <div className="flex justify-between text-sm pt-2 border-t"><span className="text-slate-600">Serviço de Relatório de Impacto do Donativo — {tier.name}:</span><span className="font-bold text-purple-600">{formatCurrency(tier.price)}</span></div>
+                  {wantsImpactReport && (
+                    <>
+                      <div className="flex justify-between text-sm"><span className="text-slate-600">IVA ({Math.round(VAT_RATE * 100)}%):</span><span className="font-bold text-purple-600">{formatCurrency(reportVat)}</span></div>
+                      <div className="flex justify-between text-sm"><span className="text-slate-600">Total a pagar pelo relatório:</span><span className="font-black text-purple-800">{formatCurrency(reportTotal)}</span></div>
+                    </>
+                  )}
                   {donationType === 'dinheiro' && projectCost > 0 && (
                     <>
                       <div className="flex justify-between text-sm pt-2 border-t"><span className="text-slate-600">Custo total do projeto:</span><span className="font-bold">€ {projectCost.toLocaleString()}</span></div>
@@ -679,12 +716,24 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
                     <p className="text-xs text-slate-500">Serviço de Relatório de Impacto do Donativo</p>
                   </div>
                   <div className="text-left md:text-right">
-                    <p className="text-xs text-slate-500">Valor a pagar</p>
-                    <p className="text-3xl font-black text-purple-700">€ {tier.price.toLocaleString('pt-PT')}</p>
+                    <p className="text-xs text-slate-500">Total a pagar</p>
+                    <p className="text-3xl font-black text-purple-700">{formatCurrency(reportTotal)}</p>
+                    <p className="text-xs text-slate-500">{formatCurrency(tier.price)} + {formatCurrency(reportVat)} IVA</p>
                   </div>
                 </div>
-                <p className="text-sm text-purple-700 mb-3">Escolha o método de pagamento:</p>
-                <div className="grid grid-cols-2 gap-2 mb-4">
+                <p className="mb-4 rounded-xl border border-purple-200 bg-white p-3 text-xs text-purple-700">
+                  O IVA aplica-se exclusivamente ao serviço de Relatório de Impacto contratado à plataforma. O donativo é realizado diretamente entre a empresa mecenas e a instituição beneficiária.
+                </p>
+                <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                  <p className="font-black text-slate-800">Dados fiscais do adquirente do relatório</p>
+                  <p>{company.name || 'Empresa'} · NIF/NIPC {company.nif || 'por preencher'} · {company.email || 'email por preencher'}</p>
+                </div>
+                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-800">
+                  <p className="font-black">Nota fiscal</p>
+                  <p>O recibo Stripe confirma apenas o pagamento processado pela Stripe. A fatura-recibo fiscal do serviço será emitida separadamente pelo prestador através do Portal das Finanças, com os dados fiscais da empresa adquirente.</p>
+                </div>
+                <p className="text-sm text-purple-700 mb-3">Pagamento do relatório:</p>
+                <div className="hidden">
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('stripe')}
@@ -719,11 +768,11 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
 
                 {paymentMethod === 'stripe' && (
                   <div className={`rounded-xl border p-4 text-sm ${paymentReady ? 'border-green-200 bg-green-50 text-green-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
-                    <p className="font-black mb-1">Pagamento seguro do relatório</p>
+                    <p className="font-black mb-1">Checkout seguro Stripe</p>
                     <p>
                       {paymentReady
-                        ? 'Ao confirmar, a empresa sera encaminhada para o checkout seguro configurado para este pacote.'
-                        : 'Falta configurar o Payment Link deste pacote no .env.local. Depois de configurado, este botão abre pagamento real.'}
+                        ? 'Ao confirmar, a empresa sera encaminhada para o Checkout Stripe. Os metodos disponiveis, como cartao, MB WAY ou outros, aparecem diretamente na pagina segura da Stripe.'
+                        : 'Falta configurar o Payment Link deste pacote no .env.local/Netlify. Depois de configurado, este botao abre o pagamento real no Checkout Stripe.'}
                     </p>
                   </div>
                 )}

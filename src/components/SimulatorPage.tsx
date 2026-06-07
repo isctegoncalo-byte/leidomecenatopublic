@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { REPORT_TIERS, ViewType } from '../types'
+import { REPORT_TIERS, ViewType, VAT_RATE, calculateTotalWithVat, calculateVat, formatCurrency } from '../types'
 
 type SimMode = 'dinheiro' | 'produtos'
 
@@ -14,6 +14,8 @@ export default function SimulatorPage({ setCurrentView }: Props) {
   const [tierId, setTierId] = useState('premium')
 
   const tier = REPORT_TIERS.find(t => t.id === tierId)!
+  const tierVat = calculateVat(tier.price)
+  const tierTotal = calculateTotalWithVat(tier.price)
   const deduction = amount * 1.4
   const ircSavings = deduction * (irc / 100)
   const realCost = amount - ircSavings
@@ -40,7 +42,6 @@ export default function SimulatorPage({ setCurrentView }: Props) {
                 : 'border-slate-200 hover:border-slate-300'
             }`}
           >
-            <span className="text-3xl block mb-2"></span>
             <span className={`font-bold text-sm ${mode === 'dinheiro' ? 'text-blue-700' : 'text-slate-600'}`}>Donativo financeiro</span>
           </button>
           <button
@@ -51,7 +52,6 @@ export default function SimulatorPage({ setCurrentView }: Props) {
                 : 'border-slate-200 hover:border-slate-300'
             }`}
           >
-            <span className="text-3xl block mb-2"></span>
             <span className={`font-bold text-sm ${mode === 'produtos' ? 'text-green-700' : 'text-slate-600'}`}>Produtos ou Serviços</span>
           </button>
         </div>
@@ -87,16 +87,16 @@ export default function SimulatorPage({ setCurrentView }: Props) {
                 </div>
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                   <h3 className="font-bold text-slate-800 mb-4">Serviço de Relatório de Impacto</h3>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                     {REPORT_TIERS.map(t => {
                       const colors: Record<string, string> = { slate: 'border-slate-300', blue: 'border-blue-500 ring-1 ring-blue-200', purple: 'border-purple-300' }
                       return (
                         <button key={t.id} onClick={() => setTierId(t.id)}
                           className={`rounded-xl border-2 p-3 text-left transition relative ${tierId === t.id ? colors[t.color] : 'border-slate-200 hover:border-slate-300'}`}>
-                          {t.highlighted && <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-2 py-0.5 rounded-full text-xs font-bold"></div>}
+                          {t.highlighted && <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">Popular</div>}
                           <p className="font-bold text-xs leading-tight">{t.name}</p>
-                          <p className="text-lg font-black mt-1">€ {t.price.toLocaleString()}</p>
-                          <p className="text-xs text-slate-400">preço fixo</p>
+                          <p className="text-lg font-black mt-1">{formatCurrency(t.price)}</p>
+                          <p className="text-xs text-slate-400">+ IVA {Math.round(VAT_RATE * 100)}%</p>
                         </button>
                       )
                     })}
@@ -134,15 +134,16 @@ export default function SimulatorPage({ setCurrentView }: Props) {
                     <p className="text-xs text-purple-600 font-bold uppercase tracking-wide mb-1">Relatório de Impacto ESG</p>
                     <div className="flex justify-between items-center">
                       <p className="text-sm text-slate-600">{tier.name}</p>
-                      <p className="text-xl font-black text-purple-700">€ {tier.price.toLocaleString()}</p>
+                      <p className="text-xl font-black text-purple-700">{formatCurrency(tierTotal)}</p>
                     </div>
+                    <p className="mt-2 text-xs text-purple-700">Base {formatCurrency(tier.price)} + IVA {formatCurrency(tierVat)}</p>
                   </div>
                 </div>
                 <div className="bg-purple-50 rounded-2xl border border-purple-200 p-5">
-                  <h3 className="font-bold text-purple-800 mb-3"> O que inclui — {tier.name}</h3>
+                  <h3 className="font-bold text-purple-800 mb-3">O que inclui — {tier.name}</h3>
                   <ul className="space-y-1.5">
                     {tier.features.map(f => (
-                      <li key={f} className="text-sm text-purple-700 flex items-start gap-2"><span className="text-purple-500"></span>{f}</li>
+                      <li key={f} className="text-sm text-purple-700">{f}</li>
                     ))}
                   </ul>
                 </div>
@@ -176,8 +177,8 @@ export default function SimulatorPage({ setCurrentView }: Props) {
                           <td className="px-6 py-4 text-green-700 font-bold">€ {sav.toFixed(0)}</td>
                           <td className="px-6 py-4 text-blue-700 font-black">€ {rc.toFixed(0)}</td>
                           <td className="px-6 py-4 text-green-600 font-bold">€ {amount.toLocaleString()}</td>
-                          <td className="px-6 py-4 text-purple-600">€ {tier.price.toLocaleString()}</td>
-                          <td className="px-6 py-4 font-black text-slate-800">€ {(rc + tier.price).toFixed(0)}</td>
+                          <td className="px-6 py-4 text-purple-600">{formatCurrency(tierTotal)}</td>
+                          <td className="px-6 py-4 font-black text-slate-800">€ {(rc + tierTotal).toFixed(0)}</td>
                         </tr>
                       )
                     })}
@@ -327,18 +328,18 @@ export default function SimulatorPage({ setCurrentView }: Props) {
                     <div>
                       <h3 className="font-bold text-slate-800 mb-2">O Relatório de Impacto</h3>
                       <p className="text-slate-600 text-sm leading-relaxed mb-3">
-                        A MobiliPro contratou o Relatório de Impacto Premium (€{REPORT_TIERS.find(t => t.id === 'premium')?.price})
+                        A MobiliPro contratou o Relatório de Impacto (€{REPORT_TIERS.find(t => t.id === 'premium')?.price})
                         e recebeu um PDF de 9 páginas documentando todo o impacto, com métricas de impacto,
-                        alinhamento ODS e dados fiscais — pronto para o relatório de sustentabilidade da empresa.
+                        alinhamento ODS e dados fiscais prontos para o relatório de sustentabilidade da empresa.
                       </p>
                       <div className="bg-purple-50 rounded-xl p-4">
                         <p className="text-xs text-purple-600 font-bold uppercase tracking-wide mb-2">O que a empresa ganhou:</p>
                         <ul className="space-y-1.5 text-sm text-purple-700">
-                          <li className="flex items-start gap-2"><span className="text-purple-500"></span>Poupança fiscal de €1.411</li>
-                          <li className="flex items-start gap-2"><span className="text-purple-500"></span>Relatório ESG com métricas de impacto e métricas</li>
-                          <li className="flex items-start gap-2"><span className="text-purple-500"></span>Conteúdo para comunicação (site, relatório anual)</li>
-                          <li className="flex items-start gap-2"><span className="text-purple-500"></span>Responsabilidade social demonstrável e verificável</li>
-                          <li className="flex items-start gap-2"><span className="text-purple-500"></span>Escoamento de stock com impacto social positivo</li>
+                          <li>Poupança fiscal de €1.411</li>
+                          <li>Relatório ESG com métricas de impacto</li>
+                          <li>Conteúdo para comunicação (site, relatório anual)</li>
+                          <li>Responsabilidade social demonstrável e verificável</li>
+                          <li>Escoamento de stock com impacto social positivo</li>
                         </ul>
                       </div>
                     </div>
@@ -352,19 +353,16 @@ export default function SimulatorPage({ setCurrentView }: Props) {
               <h2 className="text-2xl font-black text-slate-900 mb-6">Porquê doar em produtos ou serviços?</h2>
               <div className="grid md:grid-cols-2 gap-5">
                 {[
-                  { icon: '', title: 'Escoamento inteligente de stock', desc: 'Transforma inventário parado em impacto social e benefício fiscal.' },
-                  { icon: '', title: 'Match exato com a necessidade', desc: 'O donativo corresponde diretamente ao que a instituição precisa — o relatório fica mais simples e preciso.' },
-                  { icon: '', title: 'Relatório ESG mais forte', desc: 'Um donativo em géneros com match exato gera um indicador de compatibilidade mais elevado no relatório.' },
-                  { icon: '', title: 'Mesmo benefício fiscal', desc: 'A dedução de 140% no IRC aplica-se ao valor de mercado do bem ou serviço doado.' },
-                  { icon: '', title: 'Relação direta com a instituição', desc: 'A entrega física cria uma ligação real entre a empresa e quem beneficia.' },
-                  { icon: '', title: 'Conteúdo visual autêntico', desc: 'Fotografias reais da entrega e do impacto — ideal para redes sociais e comunicação interna.' },
+                  { title: 'Escoamento inteligente de stock', desc: 'Transforma inventário parado em impacto social e benefício fiscal.' },
+                  { title: 'Match exato com a necessidade', desc: 'O donativo corresponde diretamente ao que a instituição precisa, e o relatório fica mais simples e preciso.' },
+                  { title: 'Relatório ESG mais forte', desc: 'Um donativo em géneros com match exato gera um indicador de compatibilidade mais elevado no relatório.' },
+                  { title: 'Mesmo benefício fiscal', desc: 'A dedução de 140% no IRC aplica-se ao valor de mercado do bem ou serviço doado.' },
+                  { title: 'Relação direta com a instituição', desc: 'A entrega física cria uma ligação real entre a empresa e quem beneficia.' },
+                  { title: 'Conteúdo visual autêntico', desc: 'Fotografias reais da entrega e do impacto, ideais para redes sociais e comunicação interna.' },
                 ].map(item => (
-                  <div key={item.title} className="flex gap-4 p-4 bg-slate-50 rounded-xl">
-                    <span className="text-2xl flex-shrink-0">{item.icon}</span>
-                    <div>
-                      <h3 className="font-bold text-slate-800 text-sm mb-1">{item.title}</h3>
-                      <p className="text-slate-500 text-xs">{item.desc}</p>
-                    </div>
+                  <div key={item.title} className="p-4 bg-slate-50 rounded-xl">
+                    <h3 className="font-bold text-slate-800 text-sm mb-1">{item.title}</h3>
+                    <p className="text-slate-500 text-xs">{item.desc}</p>
                   </div>
                 ))}
               </div>

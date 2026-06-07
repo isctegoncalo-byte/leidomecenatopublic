@@ -408,7 +408,10 @@ function drawCompanyInstitution(doc: jsPDF, report: GeneratedESGReport, palette:
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
   doc.setTextColor(60, 60, 60)
-  doc.text(`NIF: ${report.companyNif}`, M, y); y += 5
+  doc.text(`NIF/NIPC adquirente: ${report.companyNif}`, M, y); y += 5
+  if (report.companyEmail) {
+    doc.text(`Email: ${report.companyEmail}`, M, y); y += 5
+  }
   doc.text(`Data: ${report.donationDate}`, M, y); y += 5
 
   let y2 = 112
@@ -822,8 +825,9 @@ export async function downloadSustainabilityReport(report: GeneratedESGReport, t
     const doc = new jsPDF({ unit: 'mm', format: 'a4' })
     console.log(' jsPDF instanciado')
 
-    const isPremium = report.reportTier.toLowerCase().includes('premium')
-    const hasSocialPack = report.reportTier.toLowerCase().includes('redes') || report.reportTier.toLowerCase().includes('sociais') || report.reportTier.toLowerCase().includes('pack')
+    const tierName = report.reportTier.toLowerCase()
+    const isPremium = tierName.includes('advanced') || tierName.includes('360') || tierName.includes('premium')
+    const hasSocialPack = tierName.includes('360') || tierName.includes('redes') || tierName.includes('sociais') || tierName.includes('pack')
 
     drawCover(doc, report, palette, logoDataUrl, template)
     console.log(' Capa OK')

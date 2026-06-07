@@ -38,6 +38,17 @@ export interface UploadedDoc {
   size: number                 // bytes
   accepted?: boolean
   reviewedAt?: string | null
+  reviewStatus?: 'pending' | 'accepted' | 'rejected'
+  reviewNote?: string | null
+  reviewedBy?: string | null
+  reviewHistory?: DocumentReviewEntry[]
+}
+
+export interface DocumentReviewEntry {
+  status: 'pending' | 'accepted' | 'rejected'
+  note?: string
+  reviewedAt: string
+  reviewedBy?: string
 }
 
 export type DonationProofStatus = 'pending-institution' | 'pending-company' | 'confirmed' | 'rejected'
@@ -64,6 +75,11 @@ export interface DonationProof {
   institutionName: string
   donationType?: DonationType
   selectedNeedIds?: string[]
+  reportTierName?: string
+  reportPrice?: number
+  reportVat?: number
+  reportTotal?: number
+  reportPaymentStatus?: 'none' | 'pending' | 'paid'
   amount: number
   projectCost?: number
   confirmedAmount?: number
@@ -265,6 +281,10 @@ export interface InstitutionRegistration {
   statutes: boolean
   utilidadePublica: boolean
   lastAccountsApproved: boolean
+  termsAccepted?: boolean
+  termsAcceptedAt?: string
+  termsVersion?: string
+  termsDocumentUrl?: string
 }
 
 export interface ESGScore {
@@ -316,7 +336,10 @@ export interface ImpactContract {
   publicDonationAmountConsent?: boolean
   donationDate: string
   reportTier: ReportTier
-  reportPrice: number      // preço do serviço de relatório de impacto
+  reportPrice: number      // preço base do serviço de relatório de impacto, sem IVA
+  reportVat?: number
+  reportTotal?: number
+  reportPaymentStatus?: 'none' | 'pending' | 'paid'
   selectedNeedIds: string[]
   donationMode: 'necessidade-exata' | 'causa-com-projeto'
   projectCost?: number
@@ -339,11 +362,14 @@ export interface GeneratedESGReport {
   generatedAt: string
   company: string
   companyNif: string
+  companyEmail?: string
   institution: string
   institutionCategory: string
   donationDate: string
   donationAmount: number
   reportPrice: number
+  reportVat?: number
+  reportTotal?: number
   reportTier: string
   donationMode: 'necessidade-exata' | 'causa-com-projeto'
   projectCost?: number
@@ -364,50 +390,58 @@ export interface GeneratedESGReport {
   disclaimer: string
 }
 
+export const VAT_RATE = 0.06
+
+export function calculateVat(baseAmount: number) {
+  return Number((Math.max(0, baseAmount) * VAT_RATE).toFixed(2))
+}
+
+export function calculateTotalWithVat(baseAmount: number) {
+  return Number((Math.max(0, baseAmount) + calculateVat(baseAmount)).toFixed(2))
+}
+
+export function formatCurrency(value: number) {
+  return `€ ${value.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
 export const REPORT_TIERS: ReportTier[] = [
   {
     id: 'standard',
-    name: 'Relatório de Impacto',
+    name: 'Relatório de Impacto Basic',
     price: 150,
     color: 'slate',
     highlighted: false,
     features: [
-      'Relatório PDF com 6 páginas, incluindo capa',
-      'Sumário do impacto gerado',
-      'métricas de impacto e métricas do apoio',
+      'Relatório PDF com 6 páginas (incluindo capa)',
       'Principais necessidades apoiadas',
-      'Dados fiscais e dedução de 140% no IRC',
+      'Sumário do impacto gerado',
+      'Métricas de impacto do apoio (ODS e ESG)',
     ],
   },
   {
     id: 'premium',
-    name: 'Relatório de Impacto Premium',
+    name: 'Relatório de Impacto Advanced',
     price: 250,
     color: 'blue',
     highlighted: true,
     features: [
-      'Relatório PDF com 15 páginas, incluindo capa',
-      'Tudo do Relatório de Impacto',
-      'métricas de impacto detalhado com métricas',
+      'Relatório PDF com 13 páginas',
+      'Tudo do Relatório de Impacto Basic',
+      'Impact Score (ISP™, ICS™, IROD™)',
       'Narrativa de impacto personalizada',
-      'Análise de riscos ESG',
       'Galeria e evidências visuais',
-      'Dados prontos para relatório de sustentabilidade',
     ],
   },
   {
     id: 'social',
-    name: 'Relatório de Impacto Premium + Pack Redes Sociais',
+    name: 'Relatório de Impacto 360º',
     price: 400,
     color: 'purple',
     highlighted: false,
     features: [
-      'Tudo do Relatório de Impacto Premium',
-      'Posts para Facebook, Instagram e LinkedIn',
+      'Tudo do Relatório de Impacto Advanced',
+      'Posts para comunicação nas Redes Sociais',
       'Ficheiro TXT com o copy de cada rede social',
-      'Imagem JPG para cada publicação',
-      'Resumo executivo para comunicação interna',
-      'Briefing de comunicação institucional',
     ],
   },
 ]

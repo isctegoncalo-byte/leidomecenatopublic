@@ -12,11 +12,11 @@ import {
 import { sampleInstitutions } from '../data/institutions'
 import { generateESGReport } from '../utils/esgEngine'
 import { downloadSustainabilityReport } from '../utils/sustainabilityPdf'
-import { REPORT_TIERS } from '../types'
+import { REPORT_TIERS, calculateTotalWithVat, calculateVat, formatCurrency } from '../types'
 import { createNotification, listNotificationsForAccount, markAllNotificationsRead, markNotificationRead } from '../utils/notificationStore'
 import { addMessage, listThreadsForAccount } from '../utils/chatStore'
 import { findInstitutionRegistration, saveInstitutionRegistration } from '../utils/institutionRegistry'
-import { deleteDocReal, listDocsReal, logoutReal, notifyAdminAboutCompanyDonationConfirmation, realBackendEnabled, uploadDocReal } from '../utils/supabaseBackend'
+import { ReportTransaction, deleteDocReal, listCompanyReportTransactionsReal, listDocsReal, logoutReal, notifyAdminAboutCompanyDonationConfirmation, realBackendEnabled, uploadDocReal } from '../utils/supabaseBackend'
 import { isProjectComplete, projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
 import { PROJECT_TYPE_LIMIT_MESSAGE, ProjectSupportType, hasActiveProjectOfType, nextAvailableProjectType } from '../utils/projectLimits'
 import SdgGrid from './SdgGrid'
@@ -44,14 +44,15 @@ export default function PrivateAreaPage({ account, onLogout, setCurrentView }: P
   const [tab, setTab] = useState<Tab>('perfil')
   const [refreshTick, force] = useState(0)
   const [realDocs, setRealDocs] = useState<UploadedDoc[]>([])
+  const [realTransactions, setRealTransactions] = useState<ReportTransaction[]>([])
   const refresh = () => force(x => x + 1)
 
   const localDocs = useMemo(() => listDocs(account.id), [account.id, tab])
   const docs = realBackendEnabled() ? realDocs : localDocs
   const proofs = useMemo(() => account.role === 'empresa'
-    ? listProofsForCompany(account.id)
+    ? listProofsForCompany(account)
     : listProofsForInstitution(account.id),
-  [account.id, account.role, tab])
+  [account, account.id, account.role, tab])
   const notifications = useMemo(() =>
     listNotificationsForAccount(account.id, account.role === 'admin' ? undefined : account.role, account.name),
   [account.id, account.name, account.role, tab])
@@ -65,6 +66,11 @@ export default function PrivateAreaPage({ account, onLogout, setCurrentView }: P
     listDocsReal(account.id).then(items => {
       if (alive) setRealDocs(items)
     })
+    if (account.role === 'empresa') {
+      listCompanyReportTransactionsReal(account).then(result => {
+        if (alive && result.ok) setRealTransactions(result.transactions)
+      })
+    }
     return () => { alive = false }
   }, [account.id, tab, refreshTick])
 
@@ -152,7 +158,7 @@ export default function PrivateAreaPage({ account, onLogout, setCurrentView }: P
           </div>
         )}
         {tab === 'relatorios-esg' && account.role === 'empresa' && (
-          <ESGReportsTab account={account} proofs={proofs} />
+          <ESGReportsTab account={account} proofs={proofs} realTransactions={realTransactions} />
         )}
         {tab === 'notificacoes' && (
           <NotificationsTab account={account} notifications={notifications} onChange={refresh} />
@@ -618,6 +624,10 @@ function InstitutionProjectsTab({ account, docs }: { account: Account; docs: Upl
       statutes: existing?.statutes || false,
       utilidadePublica: existing?.utilidadePublica || false,
       lastAccountsApproved: existing?.lastAccountsApproved || false,
+      termsAccepted: existing?.termsAccepted || false,
+      termsAcceptedAt: existing?.termsAcceptedAt,
+      termsVersion: existing?.termsVersion,
+      termsDocumentUrl: existing?.termsDocumentUrl,
     }
     saveInstitutionRegistration(registration)
   }
@@ -1480,7 +1490,7 @@ function DocumentsTab({
           <label className="block">
             <span className="block text-sm font-semibold text-slate-600 mb-2">Ficheiro</span>
             <div className="border-2 border-dashed border-slate-300 rounded-xl px-4 py-3 bg-slate-50 hover:bg-slate-100 cursor-pointer flex items-center gap-3">
-              <span className="text-2xl"></span>
+              <span className="flex h-9 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-200 text-xs font-black text-slate-700">PDF</span>
               <span className="text-sm text-slate-600 flex-1">{uploading ? 'A carregar...' : 'Selecionar ficheiro (PDF, imagem, doc...)'}</span>
               <input type="file" accept={ACCEPTED_DOCUMENT_INPUT} className="hidden" disabled={uploading}
                 onChange={e => handleUpload(e.target.files?.[0])} />
@@ -1506,7 +1516,7 @@ function DocumentsTab({
           <ul className="divide-y divide-slate-100">
             {docs.map(d => (
               <li key={d.id} className="flex items-center gap-3 py-3">
-                <span className="text-2xl"></span>
+                <span className="flex h-9 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-black text-slate-600">DOC</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-bold text-slate-800 truncate">{d.name}</p>
@@ -1663,7 +1673,7 @@ function DonationsTab({
                         <div className="rounded-xl border border-green-200 bg-green-50 p-4">
                           <label className="block text-sm font-black text-green-900">Recibo ao abrigo da Lei do Mecenato *</label>
                           <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-green-300 bg-white p-3 hover:bg-green-50">
-                            <span className="text-2xl"></span>
+                            <span className="flex h-9 w-12 shrink-0 items-center justify-center rounded-lg bg-green-100 text-xs font-black text-green-700">PDF</span>
                             <span className="flex-1 text-sm font-bold text-slate-800">
                               {institutionReceipts[p.id]?.name || p.institutionReceiptFileName || 'Submeter recibo obrigatório'}
                             </span>
@@ -1869,7 +1879,7 @@ function ProofsTab({
                       Para confirmar a submissão do donativo, carregue a fatura ou documento comprovativo associado ao donativo.
                     </p>
                     <label className="flex items-center gap-3 bg-white border-2 border-dashed border-amber-300 rounded-xl p-3 cursor-pointer hover:bg-amber-50 transition">
-                      <span className="text-2xl"></span>
+                      <span className="flex h-9 w-12 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-xs font-black text-amber-700">DOC</span>
                       <div className="flex-1">
                         <p className="font-bold text-slate-800 text-sm">
                           {companyInvoices[p.id]?.name || p.companyInvoiceFileName || 'Carregar fatura/documento'}
@@ -1933,7 +1943,7 @@ function ProofsTab({
                         Para confirmar a receção do donativo, carregue o recibo/declaração de donativo emitido ao abrigo da Lei do Mecenato, indicando que não existe contrapartida.
                       </p>
                       <label className="flex items-center gap-3 bg-white border-2 border-dashed border-green-300 rounded-xl p-3 cursor-pointer hover:bg-green-50 transition">
-                        <span className="text-2xl"></span>
+                        <span className="flex h-9 w-12 shrink-0 items-center justify-center rounded-lg bg-green-100 text-xs font-black text-green-700">PDF</span>
                         <div className="flex-1">
                           <p className="font-bold text-slate-800 text-sm">
                             {institutionReceipts[p.id]?.name || p.institutionReceiptFileName || 'Carregar recibo'}
@@ -2087,11 +2097,18 @@ function ProofsTab({
 
 // ─── ESG REPORTS TAB (apenas para empresas) ─────
 function ESGReportsTab({
-  account, proofs,
-}: { account: Account; proofs: DonationProof[] }) {
+  account, proofs, realTransactions,
+}: { account: Account; proofs: DonationProof[]; realTransactions: ReportTransaction[] }) {
   // Apenas relatórios de donativos validados por ambas as partes
   const confirmed = proofs.filter(p => p.status === 'confirmed')
   const pending = proofs.filter(p => p.status !== 'confirmed' && p.status !== 'rejected')
+  const transactions = proofs
+    .filter(proof => proof.reportTierName || proof.reportPrice || proof.reportTotal || proof.reportPaymentStatus)
+    .sort((a, b) => String(b.confirmedAt || b.date).localeCompare(String(a.confirmedAt || a.date)))
+  const proofContractIds = new Set(transactions.map(proof => proof.contractId))
+  const remoteTransactions = realTransactions.filter(transaction => !proofContractIds.has(transaction.contract_id))
+  const paidCount = transactions.filter(t => t.reportPaymentStatus === 'paid').length + remoteTransactions.filter(t => t.status === 'paid').length
+  const pendingCount = transactions.filter(t => t.reportPaymentStatus === 'pending').length + remoteTransactions.filter(t => t.status === 'pending').length
 
   const buildAndDownload = async (proof: DonationProof) => {
     // Tenta encontrar a instituição correspondente
@@ -2117,6 +2134,8 @@ function ESGReportsTab({
       donationDate: proof.date,
       reportTier: tier,
       reportPrice: tier.price,
+      reportVat: proof.reportVat ?? calculateVat(tier.price),
+      reportTotal: proof.reportTotal ?? calculateTotalWithVat(tier.price),
       selectedNeedIds: inst.needs.map(n => n.id),
       donationMode: 'causa-com-projeto' as const,
       projectCost: inst.needs.reduce((acc, n) => acc + (n.estimatedValue || 0), 0),
@@ -2134,13 +2153,106 @@ function ESGReportsTab({
         <strong> Como funciona:</strong> O Relatório ESG só fica disponível depois de <strong>ambas as partes</strong> (empresa e instituição) confirmarem que o donativo aconteceu. Esta área é exclusiva da empresa doadora.
       </div>
 
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-xl font-black text-slate-900">Histórico de transações</h2>
+            <p className="text-xs text-slate-500">Pagamentos de serviços de relatório associados aos seus donativos.</p>
+          </div>
+          <div className="flex gap-2 text-xs font-black">
+            <span className="rounded-full bg-green-100 px-3 py-1 text-green-700">{paidCount} pagos</span>
+            <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-700">{pendingCount} pendentes</span>
+          </div>
+        </div>
+
+        {transactions.length === 0 && remoteTransactions.length === 0 ? (
+          <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Ainda não existem transações de relatório associadas a esta conta.</p>
+        ) : (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-800">
+              <p className="font-black">Nota fiscal</p>
+              <p>O recibo Stripe confirma apenas o pagamento processado pela Stripe. A fatura-recibo fiscal do serviço será emitida separadamente pelo prestador através do Portal das Finanças, com os dados fiscais da empresa adquirente.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400">
+                <tr>
+                  <th className="py-3 pr-4">Data</th>
+                  <th className="py-3 pr-4">Serviço</th>
+                  <th className="py-3 pr-4">Instituição</th>
+                  <th className="py-3 pr-4">Adquirente fiscal</th>
+                  <th className="py-3 pr-4">Referência</th>
+                  <th className="py-3 pr-4">Estado</th>
+                  <th className="py-3 text-right">Valor</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {transactions.map(transaction => {
+                  const status = transaction.reportPaymentStatus || (transaction.reportTotal || transaction.reportPrice ? 'pending' : 'none')
+                  const statusLabel = status === 'paid' ? 'Pago' : status === 'pending' ? 'Pendente' : 'Sem pagamento'
+                  const statusClass = status === 'paid' ? 'bg-green-100 text-green-700' : status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
+                  const base = transaction.reportPrice || 0
+                  const vat = transaction.reportVat ?? (base ? calculateVat(base) : 0)
+                  const total = transaction.reportTotal ?? (base ? calculateTotalWithVat(base) : 0)
+                  return (
+                    <tr key={transaction.id}>
+                      <td className="py-3 pr-4 text-slate-600">{transaction.date}</td>
+                      <td className="py-3 pr-4">
+                        <p className="font-bold text-slate-800">{transaction.reportTierName || 'Relatório de Impacto'}</p>
+                        <p className="text-xs text-slate-400">Base {formatCurrency(base)} + IVA {formatCurrency(vat)}</p>
+                      </td>
+                      <td className="py-3 pr-4 text-slate-600">{transaction.institutionName}</td>
+                      <td className="py-3 pr-4">
+                        <p className="font-semibold text-slate-700">{transaction.companyName || account.name}</p>
+                        <p className="text-xs text-slate-400">NIF/NIPC {transaction.companyNif || account.nif}</p>
+                      </td>
+                      <td className="py-3 pr-4 font-mono text-xs text-slate-500">{transaction.contractId}</td>
+                      <td className="py-3 pr-4">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-black ${statusClass}`}>{statusLabel}</span>
+                      </td>
+                      <td className="py-3 text-right font-black text-slate-900">{formatCurrency(total)}</td>
+                    </tr>
+                  )
+                  })}
+                  {remoteTransactions.map(transaction => {
+                    const statusLabel = transaction.status === 'paid' ? 'Pago' : transaction.status === 'pending' ? 'Pendente' : transaction.status
+                    const statusClass = transaction.status === 'paid' ? 'bg-green-100 text-green-700' : transaction.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
+                    const base = Number(transaction.report_price || 0)
+                    const vat = Number(transaction.report_vat || 0)
+                    const total = Number(transaction.report_total || 0)
+                    return (
+                      <tr key={transaction.id}>
+                        <td className="py-3 pr-4 text-slate-600">{new Date(transaction.created_at).toLocaleDateString('pt-PT')}</td>
+                        <td className="py-3 pr-4">
+                          <p className="font-bold text-slate-800">{transaction.report_tier_name || 'Relatório de Impacto'}</p>
+                          <p className="text-xs text-slate-400">Base {formatCurrency(base)} + IVA {formatCurrency(vat)}</p>
+                        </td>
+                        <td className="py-3 pr-4 text-slate-600">{transaction.institution_name || 'A associar ao donativo'}</td>
+                        <td className="py-3 pr-4">
+                          <p className="font-semibold text-slate-700">{transaction.company_name || account.name}</p>
+                          <p className="text-xs text-slate-400">NIF/NIPC {transaction.company_nif || account.nif}</p>
+                        </td>
+                        <td className="py-3 pr-4 font-mono text-xs text-slate-500">{transaction.contract_id}</td>
+                        <td className="py-3 pr-4">
+                          <span className={`rounded-full px-2.5 py-1 text-xs font-black ${statusClass}`}>{statusLabel}</span>
+                        </td>
+                        <td className="py-3 text-right font-black text-slate-900">{formatCurrency(total)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Relatórios disponíveis */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
         <h2 className="text-xl font-black text-slate-900 mb-4">Relatórios ESG Disponíveis ({confirmed.length})</h2>
 
         {confirmed.length === 0 ? (
           <div className="text-center py-10">
-            <div className="text-5xl mb-3 opacity-40"></div>
             <p className="text-slate-500 text-sm">Ainda não tem relatórios ESG disponíveis.</p>
             <p className="text-slate-400 text-xs mt-1">Os relatórios aparecem aqui automaticamente quando o donativo é confirmado por ambas as partes.</p>
           </div>
@@ -2150,7 +2262,7 @@ function ESGReportsTab({
               <div key={p.id} className="border border-green-200 bg-green-50 rounded-xl p-4 flex items-center justify-between gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-bold bg-green-600 text-white px-2 py-0.5 rounded-full"> VALIDADO</span>
+                    <span className="text-xs font-bold bg-green-600 text-white px-2 py-0.5 rounded-full">VALIDADO</span>
                     <p className="font-bold text-slate-800">{p.institutionName}</p>
                   </div>
                   <p className="text-xs text-slate-500">
@@ -2159,7 +2271,7 @@ function ESGReportsTab({
                 </div>
                 <button onClick={() => buildAndDownload(p)}
                   className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold py-2 px-4 rounded-xl whitespace-nowrap">
-                   Descarregar Relatório ESG
+                  Descarregar Relatório ESG
                 </button>
               </div>
             ))}
@@ -2172,7 +2284,7 @@ function ESGReportsTab({
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
           <h2 className="text-xl font-black text-slate-900 mb-4">A aguardar validação ({pending.length})</h2>
           <p className="text-xs text-slate-500 mb-4">
-            Estes relatórios ficam disponíveis assim que ambas as partes confirmarem o donativo na tab " Comprovativos".
+            Estes relatórios ficam disponíveis assim que ambas as partes confirmarem o donativo na tab "Comprovativos".
           </p>
           <div className="space-y-3">
             {pending.map(p => {
@@ -2182,16 +2294,15 @@ function ESGReportsTab({
               return (
                 <div key={p.id} className="border border-slate-200 bg-slate-50 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg opacity-50"></span>
                     <p className="font-bold text-slate-700">{p.institutionName}</p>
                   </div>
                   <p className="text-xs text-slate-500 mb-2">€ {p.amount.toLocaleString('pt-PT')} • {p.date}</p>
                   <div className="flex gap-2 text-xs">
                     <span className={`px-2 py-1 rounded ${myConfirmed ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                      Empresa: {myConfirmed ? '' : 'Aguarda'}
+                      Empresa: {myConfirmed ? 'Confirmado' : 'Aguarda'}
                     </span>
                     <span className={`px-2 py-1 rounded ${otherConfirmed ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                      Instituição: {otherConfirmed ? '' : 'Aguarda'}
+                      Instituição: {otherConfirmed ? 'Confirmado' : 'Aguarda'}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 mt-2 italic">A aguardar {waitingFor}.</p>

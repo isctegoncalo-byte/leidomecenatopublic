@@ -16,7 +16,7 @@ export function downloadDemoPdf() {
     donationDate: '15/01/2025',
     donationAmount: 10000,
     reportPrice: 750,
-    reportTier: 'Relatório de Impacto Premium',
+    reportTier: 'Relatório de Impacto Advanced',
     donationMode: 'causa-com-projeto',
     projectCost: 25000,
     coveragePercent: 40,

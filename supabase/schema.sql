@@ -52,13 +52,147 @@ create table if not exists public.documents (
   mime_type text,
   size bigint not null default 0,
   accepted boolean not null default false,
+  review_status text not null default 'pending' check (review_status in ('pending', 'accepted', 'rejected')),
+  review_note text,
+  reviewed_by text,
+  review_history jsonb not null default '[]'::jsonb,
   reviewed_at timestamptz,
   created_at timestamptz not null default now()
 );
 
 alter table public.documents add column if not exists accepted boolean not null default false;
+alter table public.documents add column if not exists review_status text not null default 'pending';
+alter table public.documents add column if not exists review_note text;
+alter table public.documents add column if not exists reviewed_by text;
+alter table public.documents add column if not exists review_history jsonb not null default '[]'::jsonb;
 alter table public.documents add column if not exists reviewed_at timestamptz;
 create index if not exists documents_owner_id_idx on public.documents (owner_id);
+create index if not exists documents_review_status_idx on public.documents (review_status);
+
+create table if not exists public.impact_measurements (
+  proof_id text primary key,
+  measurement jsonb not null,
+  donation_context jsonb not null default '{}'::jsonb,
+  isp_score integer not null default 0,
+  irod_score integer not null default 0,
+  ics_score integer not null default 0,
+  impact_score integer not null default 0,
+  company_name text,
+  institution_name text,
+  project_name text,
+  donation_amount numeric,
+  project_cost numeric,
+  updated_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.impact_measurements add column if not exists measurement jsonb not null default '{}'::jsonb;
+alter table public.impact_measurements add column if not exists donation_context jsonb not null default '{}'::jsonb;
+alter table public.impact_measurements add column if not exists isp_score integer not null default 0;
+alter table public.impact_measurements add column if not exists irod_score integer not null default 0;
+alter table public.impact_measurements add column if not exists ics_score integer not null default 0;
+alter table public.impact_measurements add column if not exists impact_score integer not null default 0;
+alter table public.impact_measurements add column if not exists sroi_ratio numeric;
+alter table public.impact_measurements add column if not exists sroi_value numeric;
+alter table public.impact_measurements add column if not exists company_name text;
+alter table public.impact_measurements add column if not exists institution_name text;
+alter table public.impact_measurements add column if not exists project_name text;
+alter table public.impact_measurements add column if not exists donation_amount numeric;
+alter table public.impact_measurements add column if not exists project_cost numeric;
+alter table public.impact_measurements add column if not exists updated_by uuid references public.profiles(id) on delete set null;
+alter table public.impact_measurements add column if not exists created_at timestamptz not null default now();
+alter table public.impact_measurements add column if not exists updated_at timestamptz not null default now();
+create index if not exists impact_measurements_updated_at_idx on public.impact_measurements (updated_at desc);
+create index if not exists impact_measurements_impact_score_idx on public.impact_measurements (impact_score desc);
+create index if not exists impact_measurements_sroi_ratio_idx on public.impact_measurements (sroi_ratio desc);
+
+create table if not exists public.transactions (
+  id uuid primary key default gen_random_uuid(),
+  contract_id text not null unique,
+  company_profile_id uuid references public.profiles(id) on delete set null,
+  company_name text not null default '',
+  company_nif text not null default '',
+  company_email text not null default '',
+  institution_id text,
+  institution_name text not null default '',
+  donation_type text,
+  donation_amount numeric not null default 0,
+  donation_date text,
+  project_cost numeric,
+  selected_need_ids text[] not null default '{}'::text[],
+  report_tier_id text,
+  report_tier_name text not null default '',
+  report_price numeric not null default 0,
+  report_vat numeric not null default 0,
+  report_total numeric not null default 0,
+  payment_provider text not null default 'stripe',
+  payment_link_url text,
+  stripe_checkout_session_id text unique,
+  stripe_payment_intent_id text,
+  stripe_customer_id text,
+  stripe_receipt_url text,
+  status text not null default 'pending' check (status in ('pending', 'paid', 'failed', 'refunded', 'cancelled')),
+  currency text not null default 'eur',
+  amount_subtotal_cents integer,
+  amount_tax_cents integer,
+  amount_total_cents integer,
+  raw_event jsonb not null default '{}'::jsonb,
+  invoice_receipt_status text not null default 'pending' check (invoice_receipt_status in ('pending', 'issued', 'not_required')),
+  invoice_receipt_number text,
+  invoice_receipt_issued_at date,
+  invoice_receipt_file_url text,
+  invoice_receipt_note text,
+  invoice_receipt_updated_at timestamptz,
+  invoice_receipt_updated_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.transactions add column if not exists contract_id text not null default '';
+alter table public.transactions add column if not exists company_profile_id uuid references public.profiles(id) on delete set null;
+alter table public.transactions add column if not exists company_name text not null default '';
+alter table public.transactions add column if not exists company_nif text not null default '';
+alter table public.transactions add column if not exists company_email text not null default '';
+alter table public.transactions add column if not exists institution_id text;
+alter table public.transactions add column if not exists institution_name text not null default '';
+alter table public.transactions add column if not exists donation_type text;
+alter table public.transactions add column if not exists donation_amount numeric not null default 0;
+alter table public.transactions add column if not exists donation_date text;
+alter table public.transactions add column if not exists project_cost numeric;
+alter table public.transactions add column if not exists selected_need_ids text[] not null default '{}'::text[];
+alter table public.transactions add column if not exists report_tier_id text;
+alter table public.transactions add column if not exists report_tier_name text not null default '';
+alter table public.transactions add column if not exists report_price numeric not null default 0;
+alter table public.transactions add column if not exists report_vat numeric not null default 0;
+alter table public.transactions add column if not exists report_total numeric not null default 0;
+alter table public.transactions add column if not exists payment_provider text not null default 'stripe';
+alter table public.transactions add column if not exists payment_link_url text;
+alter table public.transactions add column if not exists stripe_checkout_session_id text;
+alter table public.transactions add column if not exists stripe_payment_intent_id text;
+alter table public.transactions add column if not exists stripe_customer_id text;
+alter table public.transactions add column if not exists stripe_receipt_url text;
+alter table public.transactions add column if not exists status text not null default 'pending';
+alter table public.transactions add column if not exists currency text not null default 'eur';
+alter table public.transactions add column if not exists amount_subtotal_cents integer;
+alter table public.transactions add column if not exists amount_tax_cents integer;
+alter table public.transactions add column if not exists amount_total_cents integer;
+alter table public.transactions add column if not exists raw_event jsonb not null default '{}'::jsonb;
+alter table public.transactions add column if not exists invoice_receipt_status text not null default 'pending';
+alter table public.transactions add column if not exists invoice_receipt_number text;
+alter table public.transactions add column if not exists invoice_receipt_issued_at date;
+alter table public.transactions add column if not exists invoice_receipt_file_url text;
+alter table public.transactions add column if not exists invoice_receipt_note text;
+alter table public.transactions add column if not exists invoice_receipt_updated_at timestamptz;
+alter table public.transactions add column if not exists invoice_receipt_updated_by uuid references public.profiles(id) on delete set null;
+alter table public.transactions add column if not exists created_at timestamptz not null default now();
+alter table public.transactions add column if not exists updated_at timestamptz not null default now();
+create unique index if not exists transactions_contract_id_key on public.transactions (contract_id);
+create unique index if not exists transactions_stripe_checkout_session_id_key on public.transactions (stripe_checkout_session_id) where stripe_checkout_session_id is not null;
+create index if not exists transactions_company_profile_id_idx on public.transactions (company_profile_id);
+create index if not exists transactions_company_email_idx on public.transactions (lower(company_email));
+create index if not exists transactions_status_idx on public.transactions (status);
+create index if not exists transactions_created_at_idx on public.transactions (created_at desc);
 
 create or replace function public.is_admin()
 returns boolean
@@ -189,6 +323,8 @@ where not exists (
 
 alter table public.profiles enable row level security;
 alter table public.documents enable row level security;
+alter table public.impact_measurements enable row level security;
+alter table public.transactions enable row level security;
 
 drop policy if exists "profiles_select_own_or_admin" on public.profiles;
 create policy "profiles_select_own_or_admin"
@@ -227,6 +363,50 @@ using (owner_id = auth.uid() or public.is_admin());
 drop policy if exists "documents_update_admin" on public.documents;
 create policy "documents_update_admin"
 on public.documents for update
+using (public.is_admin())
+with check (public.is_admin());
+
+drop policy if exists "impact_measurements_admin_select" on public.impact_measurements;
+create policy "impact_measurements_admin_select"
+on public.impact_measurements for select
+using (public.is_admin());
+
+drop policy if exists "impact_measurements_admin_insert" on public.impact_measurements;
+create policy "impact_measurements_admin_insert"
+on public.impact_measurements for insert
+with check (public.is_admin());
+
+drop policy if exists "impact_measurements_admin_update" on public.impact_measurements;
+create policy "impact_measurements_admin_update"
+on public.impact_measurements for update
+using (public.is_admin())
+with check (public.is_admin());
+
+drop policy if exists "impact_measurements_admin_delete" on public.impact_measurements;
+create policy "impact_measurements_admin_delete"
+on public.impact_measurements for delete
+using (public.is_admin());
+
+drop policy if exists "transactions_select_own_or_admin" on public.transactions;
+create policy "transactions_select_own_or_admin"
+on public.transactions for select
+using (
+  public.is_admin()
+  or company_profile_id = auth.uid()
+  or lower(company_email) = lower(coalesce(auth.jwt()->>'email', ''))
+);
+
+drop policy if exists "transactions_insert_own" on public.transactions;
+create policy "transactions_insert_own"
+on public.transactions for insert
+with check (
+  company_profile_id = auth.uid()
+  or lower(company_email) = lower(coalesce(auth.jwt()->>'email', ''))
+);
+
+drop policy if exists "transactions_update_admin" on public.transactions;
+create policy "transactions_update_admin"
+on public.transactions for update
 using (public.is_admin())
 with check (public.is_admin());
 
@@ -350,3 +530,5 @@ using (
 
 comment on table public.profiles is 'Perfis aplicacionais. O role e protegido por trigger; cliente comum nao pode promover contas para admin.';
 comment on table public.documents is 'Documentos privados de contas. A leitura e limitada ao dono ou administrador; o estado accepted e revisto por admin.';
+comment on table public.impact_measurements is 'Avaliacoes privadas ISP/IROD/ICS/SROI por donativo. Apenas administradores podem ler ou alterar.';
+comment on table public.transactions is 'Transacoes Stripe persistentes associadas a donativos/relatorios, com reconciliacao e estado de fatura-recibo.';

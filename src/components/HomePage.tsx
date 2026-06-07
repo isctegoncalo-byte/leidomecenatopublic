@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ViewType, REPORT_TIERS, Institution, NeedItem } from '../types'
+import { ViewType, REPORT_TIERS, Institution, NeedItem, VAT_RATE, calculateTotalWithVat, calculateVat, formatCurrency } from '../types'
 import PartnersBar from './PartnersBar'
 import SdgIcon from './SdgIcon'
 import { SDG_DATA } from '../data/sdgs'
@@ -25,6 +25,8 @@ export default function HomePage({ setCurrentView }: Props) {
   const pageSize = 6
 
   const tier = REPORT_TIERS.find(t => t.id === selectedTier)!
+  const tierVat = calculateVat(tier.price)
+  const tierTotal = calculateTotalWithVat(tier.price)
   const irsDeduction = simAmount * 1.4
   const ircSavings = irsDeduction * 0.21
 
@@ -614,15 +616,15 @@ export default function HomePage({ setCurrentView }: Props) {
               </h3>
               <div className="space-y-4">
                 {[
-                  { step: '1', icon: '', title: 'Faz o donativo diretamente', desc: 'A empresa transfere 100% do valor diretamente para a instituição que escolher. O valor do donativo nunca passa pela plataforma.' },
-                  { step: '2', icon: '', title: 'Regista o donativo connosco', desc: 'Indica-nos o valor, a instituição e as necessidades apoiadas. 2 minutos.' },
-                  { step: '3', icon: '', title: 'Escolhe o tipo de relatório', desc: 'Relatório de Impacto, Premium ou Premium com conteúdos para redes sociais.' },
-                  { step: '4', icon: '', title: 'Recebe o Relatório de Impacto', desc: 'métricas de impacto, alinhamento ODS, métricas — pronto para demonstrar o impacto do donativo.' },
+                  { step: '1', title: 'Faz o donativo diretamente', desc: 'A empresa transfere 100% do valor diretamente para a instituição que escolher. O valor do donativo nunca passa pela plataforma.' },
+                  { step: '2', title: 'Regista o donativo connosco', desc: 'Indica-nos o valor, a instituição e as necessidades apoiadas. 2 minutos.' },
+                  { step: '3', title: 'Escolhe o tipo de relatório', desc: 'Relatório de Impacto Basic, Advanced ou 360º.' },
+                  { step: '4', title: 'Recebe o Relatório de Impacto', desc: 'Métricas de impacto, alinhamento ODS e dados fiscais prontos para demonstrar o impacto do donativo.' },
                 ].map(item => (
                   <div key={item.step} className="flex gap-4">
                     <div className="flex-shrink-0 w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center font-black text-yellow-700">{item.step}</div>
                     <div>
-                      <div className="flex items-center gap-2 mb-1"><span>{item.icon}</span><h4 className="font-bold text-slate-800">{item.title}</h4></div>
+                      <h4 className="font-bold text-slate-800 mb-1">{item.title}</h4>
                       <p className="text-slate-500 text-sm">{item.desc}</p>
                     </div>
                   </div>
@@ -635,15 +637,15 @@ export default function HomePage({ setCurrentView }: Props) {
               </h3>
               <div className="space-y-4">
                 {[
-                  { step: '1', icon: '', title: 'Regista o perfil detalhado', desc: 'Completa o perfil com necessidades categorizadas por pilar ESG e ODS. Quanto mais detalhe, melhor o relatório de impacto.' },
-                  { step: '2', icon: '', title: 'Torna-se visível para empresas', desc: 'As empresas encontram a sua instituição pelo match entre necessidades e prioridades de responsabilidade social.' },
-                  { step: '3', icon: '', title: 'A empresa contacta diretamente', desc: 'O donativo acontece fora da plataforma, diretamente entre a empresa e a instituição. A plataforma nunca retém qualquer valor do donativo.' },
-                  { step: '4', icon: '', title: 'O impacto é medido e reportado', desc: 'Se a empresa contratar o nosso serviço, produzimos o relatório de impacto com base no perfil ESG que registou.' },
+                  { step: '1', title: 'Regista o perfil detalhado', desc: 'Completa o perfil com necessidades categorizadas por pilar ESG e ODS. Quanto mais detalhe, melhor o relatório de impacto.' },
+                  { step: '2', title: 'Torna-se visível para empresas', desc: 'As empresas encontram a sua instituição pelo match entre necessidades e prioridades de responsabilidade social.' },
+                  { step: '3', title: 'A empresa contacta diretamente', desc: 'O donativo acontece fora da plataforma, diretamente entre a empresa e a instituição. A plataforma nunca retém qualquer valor do donativo.' },
+                  { step: '4', title: 'O impacto é medido e reportado', desc: 'Se a empresa contratar o nosso serviço, produzimos o relatório de impacto com base no perfil ESG que registou.' },
                 ].map(item => (
                   <div key={item.step} className="flex gap-4">
                     <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-full flex items-center justify-center font-black text-green-700">{item.step}</div>
                     <div>
-                      <div className="flex items-center gap-2 mb-1"><span>{item.icon}</span><h4 className="font-bold text-slate-800">{item.title}</h4></div>
+                      <h4 className="font-bold text-slate-800 mb-1">{item.title}</h4>
                       <p className="text-slate-500 text-sm">{item.desc}</p>
                     </div>
                   </div>
@@ -694,8 +696,8 @@ export default function HomePage({ setCurrentView }: Props) {
             <h2 className="text-4xl font-black text-slate-900 mb-4">Serviços de Relatório de Impacto</h2>
             <p className="text-slate-500 text-lg">O donativo vai 100% para a instituição. Paga apenas o serviço de relatório que escolher.</p>
           </div>
-          <div className="max-w-4xl mx-auto">
-            <div className="grid md:grid-cols-3 gap-4 mb-10">
+          <div className="mx-auto max-w-5xl">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 justify-center mb-10">
               {REPORT_TIERS.map(t => {
                 const colors: Record<string, string> = {
                   slate: 'border-slate-300 hover:border-slate-400',
@@ -709,13 +711,11 @@ export default function HomePage({ setCurrentView }: Props) {
                       <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-0.5 rounded-full text-xs font-bold">Mais Popular</div>
                     )}
                     <h3 className="text-lg font-bold text-slate-800 mb-2">{t.name}</h3>
-                    <p className="text-3xl font-black text-slate-900 mb-1">€ {t.price.toLocaleString()}</p>
-                    <p className="text-sm text-slate-500 mb-4">preço fixo</p>
+                    <p className="text-3xl font-black text-slate-900 mb-1">{formatCurrency(t.price)}</p>
+                    <p className="text-sm text-slate-500 mb-4">+ IVA {Math.round(VAT_RATE * 100)}%</p>
                     <ul className="space-y-2">
                       {t.features.map(f => (
-                        <li key={f} className="text-xs text-slate-600 flex items-start gap-1.5">
-                          <span className="text-green-500 mt-0.5 flex-shrink-0"></span> {f}
-                        </li>
+                        <li key={f} className="text-xs text-slate-600">{f}</li>
                       ))}
                     </ul>
                   </div>
@@ -749,9 +749,9 @@ export default function HomePage({ setCurrentView }: Props) {
                   <p className="text-xs text-green-500 mt-1 font-bold">100% do donativo</p>
                 </div>
                 <div className="bg-white rounded-xl p-4">
-                  <p className="text-sm text-slate-500 mb-1">Relatório de Impacto</p>
-                  <p className="text-3xl font-black text-purple-600">€ {tier.price.toLocaleString()}</p>
-                  <p className="text-xs text-slate-400 mt-1">{tier.name}</p>
+                  <p className="text-sm text-slate-500 mb-1">Relatório de Impacto Advanced</p>
+                  <p className="text-3xl font-black text-purple-600">{formatCurrency(tierTotal)}</p>
+                  <p className="text-xs text-slate-400 mt-1">{tier.name}: {formatCurrency(tier.price)} + {formatCurrency(tierVat)} IVA</p>
                 </div>
                 <div className="bg-white rounded-xl p-4">
                   <p className="text-sm text-slate-500 mb-1">Dedução IRC (140%)</p>
@@ -760,12 +760,12 @@ export default function HomePage({ setCurrentView }: Props) {
                 </div>
               </div>
               <div className="mt-6 text-center p-4 bg-green-100 rounded-xl">
-                <p className="text-green-800 font-bold text-sm"> O donativo vai 100% para a instituição. Paga apenas € {tier.price.toLocaleString()} pelo relatório de impacto.</p>
+                <p className="text-green-800 font-bold text-sm">O donativo vai 100% para a instituição. O IVA aplica-se apenas ao serviço de relatório: total {formatCurrency(tierTotal)}.</p>
               </div>
             </div>
             <div className="text-center mt-8">
               <button onClick={() => setCurrentView('simulador')} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl transition">
-                Ver Simulador Completo →
+                Ver Simulador Completo
               </button>
             </div>
           </div>
@@ -783,20 +783,20 @@ export default function HomePage({ setCurrentView }: Props) {
               <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-4">Todos ganham.<br />Sem exceção.</h2>
               <p className="text-slate-500 text-lg max-w-3xl mx-auto">
                 A Lei do Mecenato cria um ciclo virtuoso: a empresa reduz impostos, a instituição recebe apoio real
-                e a sociedade beneficia de impacto mensurável. Não é caridade — é estratégia com propósito.
+                e a sociedade beneficia de impacto mensurável. Não é caridade, é estratégia com propósito.
               </p>
             </div>
             <div className="grid md:grid-cols-3 gap-6 mb-12">
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl border border-blue-200 p-6">
-                <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white text-2xl mb-4"></div>
+                <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white text-sm font-black mb-4">IRC</div>
                 <h3 className="text-xl font-black text-blue-800 mb-3">A Empresa ganha</h3>
                 <ul className="space-y-2.5">
                   {[
-                    { bold: 'Poupança fiscal real', text: '— dedução de 140% no IRC. Cada 100€ doados custam apenas ~70€.' },
-                    { bold: 'Relatório ESG pronto', text: '— com métricas de impacto, ODS e métricas para o relatório de sustentabilidade.' },
-                    { bold: 'Reputação verificável', text: '— impacto documentado com dados, não com promessas.' },
-                    { bold: 'Conteúdo para comunicação', text: '— infografias e textos prontos para comunicação interna e institucional.' },
-                    { bold: 'Escoamento de stock', text: '— transforma inventário parado em impacto social (donativos em produtos).' },
+                    { bold: 'Poupança fiscal real', text: ': dedução de 140% no IRC. Cada 100€ doados custam apenas ~70€.' },
+                    { bold: 'Relatório ESG pronto', text: ': métricas de impacto e ODS para o relatório de sustentabilidade.' },
+                    { bold: 'Reputação verificável', text: ': impacto documentado com dados, não com promessas.' },
+                    { bold: 'Conteúdo para comunicação', text: ': infografias e textos prontos para comunicação interna e institucional.' },
+                    { bold: 'Escoamento de stock', text: ': transforma inventário parado em impacto social (donativos em produtos).' },
                   ].map(item => (
                     <li key={item.bold} className="text-sm text-slate-600 leading-relaxed">
                       <strong className="text-blue-800">{item.bold}</strong>{item.text}
@@ -805,15 +805,15 @@ export default function HomePage({ setCurrentView }: Props) {
                 </ul>
               </div>
               <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl border border-green-200 p-6">
-                <div className="w-14 h-14 rounded-2xl bg-green-600 flex items-center justify-center text-white text-2xl mb-4"></div>
+                <div className="w-14 h-14 rounded-2xl bg-green-600 flex items-center justify-center text-white text-sm font-black mb-4">100%</div>
                 <h3 className="text-xl font-black text-green-800 mb-3">A Instituição ganha</h3>
                 <ul className="space-y-2.5">
                   {[
-                    { bold: '100% do donativo', text: '— zero intermediação. O valor ou os produtos vão diretamente para a instituição.' },
-                    { bold: 'Visibilidade para empresas', text: '— perfil público com necessidades, ODS e impacto, acessível a quem quer doar.' },
-                    { bold: 'Necessidades atendidas', text: '— as empresas podem responder exatamente ao que a instituição precisa.' },
-                    { bold: 'Comprovativo validado', text: '— confirmação do donativo por ambas as partes, com certificado PDF.' },
-                    { bold: 'Sem custos', text: '— o registo e a presença na plataforma são gratuitos para a instituição.' },
+                    { bold: '100% do donativo', text: ': zero intermediação. O valor ou os produtos vão diretamente para a instituição.' },
+                    { bold: 'Visibilidade para empresas', text: ': perfil público com necessidades, ODS e impacto, acessível a quem quer doar.' },
+                    { bold: 'Necessidades atendidas', text: ': as empresas podem responder exatamente ao que a instituição precisa.' },
+                    { bold: 'Comprovativo validado', text: ': confirmação do donativo por ambas as partes, com certificado PDF.' },
+                    { bold: 'Sem custos', text: ': o registo e a presença na plataforma são gratuitos para a instituição.' },
                   ].map(item => (
                     <li key={item.bold} className="text-sm text-slate-600 leading-relaxed">
                       <strong className="text-green-800">{item.bold}</strong>{item.text}
@@ -822,15 +822,15 @@ export default function HomePage({ setCurrentView }: Props) {
                 </ul>
               </div>
               <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-3xl border border-amber-200 p-6">
-                <div className="w-14 h-14 rounded-2xl bg-amber-500 flex items-center justify-center text-white text-2xl mb-4"></div>
+                <div className="w-14 h-14 rounded-2xl bg-amber-500 flex items-center justify-center text-white text-sm font-black mb-4">ODS</div>
                 <h3 className="text-xl font-black text-amber-800 mb-3">A Sociedade ganha</h3>
                 <ul className="space-y-2.5">
                   {[
-                    { bold: 'Impacto mensurável', text: '— cada donativo é medido, reportado e alinhado com os ODS da ONU.' },
-                    { bold: 'Transparência total', text: '— relatórios públicos, dados verificáveis, validação de ambas as partes.' },
-                    { bold: 'Mais donativos', text: '— o incentivo fiscal e a facilidade do processo motivam mais empresas a doar.' },
-                    { bold: 'Causas reais financiadas', text: '— educação, saúde, ambiente, cultura — com necessidades concretas atendidas.' },
-                    { bold: 'Ciclo virtuoso', text: '— quanto mais empresas doam, mais instituições são apoiadas, mais impacto é gerado.' },
+                    { bold: 'Impacto mensurável', text: ': cada donativo é medido, reportado e alinhado com os ODS da ONU.' },
+                    { bold: 'Transparência total', text: ': relatórios públicos, dados verificáveis, validação de ambas as partes.' },
+                    { bold: 'Mais donativos', text: ': o incentivo fiscal e a facilidade do processo motivam mais empresas a doar.' },
+                    { bold: 'Causas reais financiadas', text: ': educação, saúde, ambiente e cultura com necessidades concretas atendidas.' },
+                    { bold: 'Ciclo virtuoso', text: ': quanto mais empresas doam, mais instituições são apoiadas, mais impacto é gerado.' },
                   ].map(item => (
                     <li key={item.bold} className="text-sm text-slate-600 leading-relaxed">
                       <strong className="text-amber-800">{item.bold}</strong>{item.text}
@@ -843,28 +843,24 @@ export default function HomePage({ setCurrentView }: Props) {
               <h3 className="text-2xl font-black mb-4">O Ciclo Win-Win-Win</h3>
               <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6">
                 <div className="bg-blue-600 rounded-2xl px-6 py-4 text-center">
-                  <p className="text-2xl mb-1"></p>
                   <p className="font-bold text-sm">Empresa doa</p>
                   <p className="text-xs text-blue-200">e poupa no IRC</p>
                 </div>
                 <span className="text-2xl hidden md:block">→</span>
                 <span className="text-2xl md:hidden rotate-90">→</span>
                 <div className="bg-green-600 rounded-2xl px-6 py-4 text-center">
-                  <p className="text-2xl mb-1"></p>
                   <p className="font-bold text-sm">Instituição recebe</p>
                   <p className="text-xs text-green-200">100% do donativo</p>
                 </div>
                 <span className="text-2xl hidden md:block">→</span>
                 <span className="text-2xl md:hidden rotate-90">→</span>
                 <div className="bg-amber-500 rounded-2xl px-6 py-4 text-center">
-                  <p className="text-2xl mb-1"></p>
                   <p className="font-bold text-sm">Sociedade beneficia</p>
                   <p className="text-xs text-amber-200">impacto real e medido</p>
                 </div>
                 <span className="text-2xl hidden md:block">→</span>
                 <span className="text-2xl md:hidden rotate-90">→</span>
                 <div className="bg-purple-600 rounded-2xl px-6 py-4 text-center">
-                  <p className="text-2xl mb-1"></p>
                   <p className="font-bold text-sm">Relatório comprova</p>
                   <p className="text-xs text-purple-200">e o ciclo recomeça</p>
                 </div>

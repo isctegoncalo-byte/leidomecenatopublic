@@ -8,6 +8,8 @@
     "build": "vite build",
     "postbuild": "node scripts/prerender-seo.mjs",
     "emails:preview": "node scripts/preview-emails.mjs",
+    "stripe:setup": "node scripts/setup-stripe.mjs",
+    "stripe:ensure-products": "node scripts/ensure-stripe-products.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

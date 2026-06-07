@@ -1,5 +1,6 @@
 import { Institution, NeedItem } from '../types'
 import { sampleInstitutions } from '../data/institutions'
+import { simulatedInstitutions } from '../data/simulatedProjects'
 import { listInstitutionRegistrations } from './institutionRegistry'
 
 export interface ProjectEntry {
@@ -57,7 +58,7 @@ export function listProjectEntries(): ProjectEntry[] {
 
 export function listProjectInstitutions(): Institution[] {
   const registered = listInstitutionRegistrations().map(registrationToInstitution)
-  return [...sampleInstitutions, ...registered]
+  return [...sampleInstitutions, ...simulatedInstitutions, ...registered]
 }
 
 export function projectSlug(institution: Institution, project: NeedItem) {

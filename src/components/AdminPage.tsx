@@ -9,14 +9,18 @@ import AdminBrandTab from './AdminBrandTab'
 import {
   AdminDocument,
   AdminProfile,
+  ReportTransaction,
   listAdminDocumentsReal,
   listAdminProfilesReal,
+  listAdminReportTransactionsReal,
   realBackendEnabled,
   updateAdminDocumentAcceptedReal,
+  updateReportTransactionInvoiceReal,
 } from '../utils/supabaseBackend'
 import { validateImageUpload } from '../utils/uploadSecurity'
 import { listProofs } from '../utils/proofStore'
 import { listProjectInstitutions } from '../utils/projectCatalog'
+import AdminImpactMeasurementTab from './AdminImpactMeasurementTab'
 
 interface Props {
   setCurrentView: (v: ViewType) => void
@@ -30,7 +34,7 @@ const mockReport: GeneratedESGReport = {
   company: 'Empresa Exemplo, SA', companyNif: '514000000',
   institution: 'Associação Crescer Juntos', institutionCategory: 'Infância e Juventude',
   donationDate: '15/01/2025', donationAmount: 10000, reportPrice: 250,
-  reportTier: 'Relatório de Impacto Premium', donationMode: 'causa-com-projeto',
+  reportTier: 'Relatório de Impacto Advanced', donationMode: 'causa-com-projeto',
   projectCost: 25000, coveragePercent: 40, exactMatch: false, fitScore: 40,
   scores: { environmental: 52, social: 91, governance: 78, total: 78, sdgAlignment: [2, 3, 4, 10],
     beneficiaries: 1200, impactNarrative: 'Donativo de €10.000 com impacto em 1.200 beneficiários.',
@@ -67,7 +71,7 @@ function buildPlaceholderVars(report: GeneratedESGReport): Record<string, string
   }
 }
 
-type AdminTab = 'users-docs' | 'donation-history' | 'brand' | 'report-templates' | 'preview'
+type AdminTab = 'users-docs' | 'donation-history' | 'impact-measurement' | 'brand' | 'report-templates' | 'preview'
 
 const REQUIRED_ADMIN_INSTITUTION_DOCS = [
   'Comprovativo NIF',
@@ -97,7 +101,6 @@ export default function AdminPage({ setCurrentView, session, onLogout }: Props) 
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
         <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-sm w-full text-center">
-          <div className="text-5xl mb-4"></div>
           <h1 className="text-2xl font-black text-slate-900 mb-2">Administração</h1>
           {session ? (
             <>
@@ -129,7 +132,6 @@ where email = '${session.email}';`}</pre>
       {/* Header */}
       <div className="bg-slate-900 text-white py-4 px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-2xl"></span>
           <div><h1 className="font-black text-lg">Administração</h1><p className="text-xs text-slate-400">Templates & Configuração</p></div>
         </div>
         <div className="flex gap-2">
@@ -143,6 +145,7 @@ where email = '${session.email}';`}</pre>
         {([
           { id: 'users-docs' as const, label: 'Utilizadores e Documentos' },
           { id: 'donation-history' as const, label: 'Historico de Donativos' },
+          { id: 'impact-measurement' as const, label: 'Medição ESG e Impacto' },
           { id: 'brand' as const, label: 'Identidade da Marca' },
           { id: 'report-templates' as const, label: 'Templates de Relatório' },
           { id: 'preview' as const, label: 'Pré-visualização' },
@@ -155,8 +158,9 @@ where email = '${session.email}';`}</pre>
       </div>
 
       <div className="p-6 max-w-6xl mx-auto">
-        {tab === 'users-docs' && <AdminUsersDocumentsTab />}
+        {tab === 'users-docs' && <AdminUsersDocumentsTab session={session} />}
         {tab === 'donation-history' && <AdminDonationHistoryTab />}
+        {tab === 'impact-measurement' && <AdminImpactMeasurementTab />}
         {tab === 'brand' && <AdminBrandTab />}
 
         {/* ─── REPORT TEMPLATES ─── */}
@@ -236,7 +240,26 @@ where email = '${session.email}';`}</pre>
   )
 }
 
-function AdminUsersDocumentsTab() {
+function documentReviewStatus(document: AdminDocument): 'pending' | 'accepted' | 'rejected' {
+  if (document.review_status === 'accepted' || document.review_status === 'rejected' || document.review_status === 'pending') {
+    return document.review_status
+  }
+  return document.accepted ? 'accepted' : 'pending'
+}
+
+function documentStatusLabel(status: 'pending' | 'accepted' | 'rejected') {
+  if (status === 'accepted') return 'Aceite'
+  if (status === 'rejected') return 'Rejeitado'
+  return 'Por validar'
+}
+
+function documentStatusClass(status: 'pending' | 'accepted' | 'rejected') {
+  if (status === 'accepted') return 'bg-green-100 text-green-700'
+  if (status === 'rejected') return 'bg-red-100 text-red-700'
+  return 'bg-amber-100 text-amber-700'
+}
+
+function AdminUsersDocumentsTab({ session }: { session: Account | null }) {
   const [profiles, setProfiles] = useState<AdminProfile[]>([])
   const [documents, setDocuments] = useState<AdminDocument[]>([])
   const [selectedRole, setSelectedRole] = useState<'empresa' | 'instituicao'>('empresa')
@@ -245,6 +268,7 @@ function AdminUsersDocumentsTab() {
   const [error, setError] = useState('')
   const [documentsError, setDocumentsError] = useState('')
   const [savingDocumentId, setSavingDocumentId] = useState('')
+  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({})
 
   const load = async () => {
     setLoading(true)
@@ -280,15 +304,34 @@ function AdminUsersDocumentsTab() {
     void load()
   }, [])
 
-  const updateDocumentAccepted = async (documentId: string, accepted: boolean) => {
+  const updateDocumentReview = async (documentId: string, accepted: boolean) => {
+    const note = (reviewNotes[documentId] || '').trim()
+    if (!accepted && !note) {
+      setDocumentsError('Indique o motivo de rejeição antes de rejeitar o documento.')
+      return
+    }
+    const reviewedAt = new Date().toISOString()
+    const reviewerLabel = session?.email || session?.name || 'Admin'
+    const nextStatus = accepted ? 'accepted' : 'rejected'
     setSavingDocumentId(documentId)
     setDocuments(current => current.map(document =>
       document.id === documentId
-        ? { ...document, accepted, reviewed_at: accepted ? new Date().toISOString() : null }
+        ? {
+            ...document,
+            accepted,
+            review_status: nextStatus,
+            review_note: note || null,
+            reviewed_by: reviewerLabel,
+            reviewed_at: reviewedAt,
+            review_history: [
+              ...(Array.isArray(document.review_history) ? document.review_history : []),
+              { status: nextStatus, note, reviewedAt, reviewedBy: reviewerLabel },
+            ],
+          }
         : document
     ))
 
-    const result = await updateAdminDocumentAcceptedReal(documentId, accepted)
+    const result = await updateAdminDocumentAcceptedReal(documentId, accepted, note, reviewerLabel)
     setSavingDocumentId('')
 
     if (!result.ok) {
@@ -309,8 +352,9 @@ function AdminUsersDocumentsTab() {
   const selectedDocuments = selectedProfile ? documents.filter(d => d.owner_id === selectedProfile.id) : []
   const companyCount = companyProfiles.length
   const institutionCount = institutionProfiles.length
-  const pendingDocuments = documents.filter(d => !d.accepted)
-  const acceptedDocuments = documents.filter(d => d.accepted)
+  const pendingDocuments = documents.filter(d => documentReviewStatus(d) === 'pending')
+  const acceptedDocuments = documents.filter(d => documentReviewStatus(d) === 'accepted')
+  const rejectedDocuments = documents.filter(d => documentReviewStatus(d) === 'rejected')
   const profilesWithoutDocs = profiles.filter(p => !documents.some(d => d.owner_id === p.id))
   const institutionsMissingRequiredDocs = institutionProfiles.filter(profile => {
     const profileDocs = documents.filter(d => d.owner_id === profile.id)
@@ -424,7 +468,8 @@ where email = 'o-teu-email@exemplo.pt';`}</pre>
                   {visibleProfiles.map(p => {
                     const profileDocs = documents.filter(d => d.owner_id === p.id)
                     const docCount = profileDocs.length
-                    const pendingCount = profileDocs.filter(d => !d.accepted).length
+                    const pendingCount = profileDocs.filter(d => documentReviewStatus(d) === 'pending').length
+                    const rejectedCount = profileDocs.filter(d => documentReviewStatus(d) === 'rejected').length
                     const isSelected = selectedProfile?.id === p.id
                     return (
                       <button
@@ -445,6 +490,7 @@ where email = 'o-teu-email@exemplo.pt';`}</pre>
                               {docCount} doc.
                             </span>
                             {pendingCount > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-700">{pendingCount} por validar</span>}
+                            {rejectedCount > 0 && <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-black text-red-700">{rejectedCount} rejeitado(s)</span>}
                           </div>
                         </div>
                       </button>
@@ -468,8 +514,9 @@ where email = 'o-teu-email@exemplo.pt';`}</pre>
                       {selectedProfile.institution_category && <span><strong>Área:</strong> {selectedProfile.institution_category}</span>}
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
-                      <span className="rounded-full bg-green-100 px-2.5 py-1 text-green-700">{selectedDocuments.filter(d => d.accepted).length} aceites</span>
-                      <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-700">{selectedDocuments.filter(d => !d.accepted).length} por validar</span>
+                      <span className="rounded-full bg-green-100 px-2.5 py-1 text-green-700">{selectedDocuments.filter(d => documentReviewStatus(d) === 'accepted').length} aceites</span>
+                      <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-700">{selectedDocuments.filter(d => documentReviewStatus(d) === 'pending').length} por validar</span>
+                      <span className="rounded-full bg-red-100 px-2.5 py-1 text-red-700">{selectedDocuments.filter(d => documentReviewStatus(d) === 'rejected').length} rejeitados</span>
                     </div>
                   </div>
                 ) : (
@@ -483,35 +530,61 @@ where email = 'o-teu-email@exemplo.pt';`}</pre>
                 <p className="p-5 text-sm text-slate-500">Este utilizador ainda não submeteu documentos.</p>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {selectedDocuments.map(d => (
-                    <div key={d.id} className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between">
+                  {selectedDocuments.map(d => {
+                    const status = documentReviewStatus(d)
+                    const history = Array.isArray(d.review_history) ? d.review_history : []
+                    return (
+                    <div key={d.id} className="flex flex-col gap-4 p-5">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="truncate font-bold text-slate-800">{d.name}</p>
-                          <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${d.accepted ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                            {d.accepted ? 'Aceite' : 'Por validar'}
+                          <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${documentStatusClass(status)}`}>
+                            {documentStatusLabel(status)}
                           </span>
                         </div>
                         <p className="text-xs text-slate-500">
                           {d.category} - {(d.size / 1024).toFixed(1)} KB - {new Date(d.created_at).toLocaleString('pt-PT')}
                         </p>
                         {d.reviewed_at && (
-                          <p className="mt-1 text-xs text-green-700">
-                            Validado em {new Date(d.reviewed_at).toLocaleString('pt-PT')}
+                          <p className="mt-1 text-xs text-slate-500">
+                            Revisto em {new Date(d.reviewed_at).toLocaleString('pt-PT')}{d.reviewed_by ? ` por ${d.reviewed_by}` : ''}
                           </p>
                         )}
+                        {d.review_note && <p className="mt-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600"><strong>Motivo/nota:</strong> {d.review_note}</p>}
                       </div>
-                      <div className="flex flex-col items-start gap-3 md:items-end">
-                        <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-700">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(d.accepted)}
-                            disabled={savingDocumentId === d.id}
-                            onChange={event => void updateDocumentAccepted(d.id, event.target.checked)}
-                            className="h-4 w-4 accent-green-600"
+
+                      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                        <div>
+                          <label className="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">Motivo de rejeição ou nota interna</label>
+                          <textarea
+                            rows={2}
+                            value={reviewNotes[d.id] ?? d.review_note ?? ''}
+                            onChange={event => setReviewNotes(current => ({ ...current, [d.id]: event.target.value }))}
+                            placeholder="Ex.: Documento ilegível, NIF não corresponde, falta assinatura..."
+                            className="w-full resize-none rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
                           />
-                          Documento aceite
-                        </label>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            disabled={savingDocumentId === d.id}
+                            onClick={() => void updateDocumentReview(d.id, true)}
+                            className="rounded-xl bg-green-600 px-4 py-2 text-sm font-black text-white hover:bg-green-700 disabled:opacity-50"
+                          >
+                            Aceitar
+                          </button>
+                          <button
+                            type="button"
+                            disabled={savingDocumentId === d.id}
+                            onClick={() => void updateDocumentReview(d.id, false)}
+                            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-black text-white hover:bg-red-700 disabled:opacity-50"
+                          >
+                            Rejeitar
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-3">
                         {d.public_url ? (
                           <a href={d.public_url} download={d.name} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">
                             Descarregar
@@ -519,9 +592,26 @@ where email = 'o-teu-email@exemplo.pt';`}</pre>
                         ) : (
                           <span className="text-xs text-slate-400">Sem link disponivel</span>
                         )}
+                        <details className="text-xs text-slate-500">
+                          <summary className="cursor-pointer font-bold text-slate-600">Histórico de validação ({history.length})</summary>
+                          {history.length === 0 ? (
+                            <p className="mt-2">Ainda sem histórico.</p>
+                          ) : (
+                            <div className="mt-2 space-y-2">
+                              {history.slice().reverse().map((entry, index) => (
+                                <div key={`${entry.reviewedAt}-${index}`} className="rounded-lg bg-slate-50 p-2">
+                                  <p className="font-bold text-slate-700">{documentStatusLabel(entry.status)} - {new Date(entry.reviewedAt).toLocaleString('pt-PT')}</p>
+                                  <p>{entry.reviewedBy || 'Admin'}</p>
+                                  {entry.note && <p className="mt-1 text-slate-600">{entry.note}</p>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </details>
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -545,12 +635,17 @@ function buildDonationHistoryItems() {
     .map(proof => {
       const institution = institutions.find(inst => inst.name === proof.institutionName || inst.id === proof.institutionAccountId)
       const project = institution?.needs.find(n => proof.selectedNeedIds?.includes(n.id)) || institution?.needs[0]
+      const reportPrice = proof.reportPrice ?? 0
+      const reportPaid = proof.reportPaymentStatus === 'paid' || reportPrice > 0
       return {
         proof,
         institution,
         project,
         year: parseDonationYear(proof.confirmedAt || proof.date),
         companyName: proof.companyName || proof.companyEmail || proof.companyAccountId || 'Empresa não identificada',
+        supportType: proof.donationType || project?.supportType || null,
+        sdgGoals: project?.sdgGoals || [],
+        reportPaid,
       }
     })
     .sort((a, b) => String(b.proof.confirmedAt || b.proof.date).localeCompare(String(a.proof.confirmedAt || a.proof.date)))
@@ -560,15 +655,25 @@ function AdminDonationHistoryTab() {
   const [year, setYear] = useState('')
   const [institutionFilter, setInstitutionFilter] = useState('')
   const [companyFilter, setCompanyFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [supportTypeFilter, setSupportTypeFilter] = useState('')
+  const [sdgFilter, setSdgFilter] = useState('')
+  const [reportFilter, setReportFilter] = useState('')
   const [selectedId, setSelectedId] = useState('')
   const items = buildDonationHistoryItems()
   const years = [...new Set(items.map(i => i.year).filter(Boolean))].sort((a, b) => b.localeCompare(a))
   const institutions = [...new Set(items.map(i => i.proof.institutionName).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-PT'))
   const companies = [...new Set(items.map(i => i.companyName).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-PT'))
+  const statuses = [...new Set(items.map(i => i.proof.status).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-PT'))
+  const sdgs = [...new Set(items.flatMap(i => i.sdgGoals))].sort((a, b) => a - b)
   const filtered = items.filter(item =>
     (!year || item.year === year) &&
     (!institutionFilter || item.proof.institutionName === institutionFilter) &&
-    (!companyFilter || item.companyName === companyFilter)
+    (!companyFilter || item.companyName === companyFilter) &&
+    (!statusFilter || item.proof.status === statusFilter) &&
+    (!supportTypeFilter || item.supportType === supportTypeFilter) &&
+    (!sdgFilter || item.sdgGoals.includes(Number(sdgFilter))) &&
+    (!reportFilter || (reportFilter === 'paid' ? item.reportPaid : !item.reportPaid))
   )
   const selected = filtered.find(i => i.proof.id === selectedId) || filtered[0] || null
 
@@ -591,7 +696,31 @@ function AdminDonationHistoryTab() {
         </div>
       </div>
 
-      <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-3">
+      <AdminBillingTransactions />
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-wide text-slate-500">Filtros avançados</p>
+            <p className="text-xs text-slate-400">Estado, instituição, empresa, ODS, tipo de apoio e relatório.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setYear('')
+              setInstitutionFilter('')
+              setCompanyFilter('')
+              setStatusFilter('')
+              setSupportTypeFilter('')
+              setSdgFilter('')
+              setReportFilter('')
+            }}
+            className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50"
+          >
+            Limpar filtros
+          </button>
+        </div>
+        <div className="grid gap-3 md:grid-cols-4">
         <select value={year} onChange={e => setYear(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
           <option value="">Todos os anos</option>
           {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -604,6 +733,25 @@ function AdminDonationHistoryTab() {
           <option value="">Todas as empresas</option>
           {companies.map(name => <option key={name} value={name}>{name}</option>)}
         </select>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+          <option value="">Todos os estados</option>
+          {statuses.map(status => <option key={status} value={status}>{status}</option>)}
+        </select>
+        <select value={supportTypeFilter} onChange={e => setSupportTypeFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+          <option value="">Todos os tipos de apoio</option>
+          <option value="dinheiro">Apoio financeiro</option>
+          <option value="produtos">Produtos/serviços</option>
+        </select>
+        <select value={sdgFilter} onChange={e => setSdgFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+          <option value="">Todos os ODS</option>
+          {sdgs.map(sdg => <option key={sdg} value={sdg}>ODS {sdg}</option>)}
+        </select>
+        <select value={reportFilter} onChange={e => setReportFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+          <option value="">Relatório: todos</option>
+          <option value="paid">Relatório pago/contratado</option>
+          <option value="unpaid">Sem relatório pago</option>
+        </select>
+        </div>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
@@ -628,7 +776,12 @@ function AdminDonationHistoryTab() {
                       <p className="truncate text-sm text-slate-600">{item.proof.institutionName}</p>
                       <p className="mt-1 text-xs text-slate-500">{item.proof.date} - EUR {(item.proof.confirmedAmount || item.proof.amount).toLocaleString('pt-PT')}</p>
                     </div>
-                    <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{item.proof.status}</span>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{item.proof.status}</span>
+                      <span className={`rounded-full px-3 py-1 text-[10px] font-black ${item.reportPaid ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                        {item.reportPaid ? 'Relatório pago' : 'Sem relatório'}
+                      </span>
+                    </div>
                   </div>
                 </button>
               ))}
@@ -668,6 +821,9 @@ function AdminDonationHistoryTab() {
                 <InfoPill label="Contribuicao solicitada" value={`EUR ${selected.project ? (selected.project.requestedAmount || selected.project.totalProjectCost || selected.project.estimatedValue || selected.proof.projectCost || 0).toLocaleString('pt-PT') : '0'}`} />
                 <InfoPill label="Data" value={selected.proof.date} />
                 <InfoPill label="Estado" value={selected.proof.status} />
+                <InfoPill label="Tipo de apoio" value={selected.supportType === 'produtos' ? 'Produtos/serviços' : 'Apoio financeiro'} />
+                <InfoPill label="Relatório" value={selected.reportPaid ? 'Pago/contratado' : 'Não pago'} />
+                {selected.proof.reportTotal && <InfoPill label="Total relatório" value={`EUR ${selected.proof.reportTotal.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} IVA incluído`} />}
               </div>
 
               <div className="rounded-2xl border border-slate-200 p-4">
@@ -688,6 +844,201 @@ function AdminDonationHistoryTab() {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function AdminBillingTransactions() {
+  const [transactions, setTransactions] = useState<ReportTransaction[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [paymentStatus, setPaymentStatus] = useState('')
+  const [invoiceStatus, setInvoiceStatus] = useState('')
+  const [savingId, setSavingId] = useState('')
+  const [drafts, setDrafts] = useState<Record<string, {
+    invoiceReceiptStatus: 'pending' | 'issued' | 'not_required'
+    invoiceReceiptNumber: string
+    invoiceReceiptIssuedAt: string
+    invoiceReceiptFileUrl: string
+    invoiceReceiptNote: string
+  }>>({})
+
+  const load = async () => {
+    if (!realBackendEnabled()) return
+    setLoading(true)
+    setError('')
+    const result = await listAdminReportTransactionsReal()
+    if (result.ok) {
+      setTransactions(result.transactions)
+      setDrafts(Object.fromEntries(result.transactions.map(transaction => [transaction.id, {
+        invoiceReceiptStatus: transaction.invoice_receipt_status || 'pending',
+        invoiceReceiptNumber: transaction.invoice_receipt_number || '',
+        invoiceReceiptIssuedAt: transaction.invoice_receipt_issued_at || '',
+        invoiceReceiptFileUrl: transaction.invoice_receipt_file_url || '',
+        invoiceReceiptNote: transaction.invoice_receipt_note || '',
+      }])))
+    } else {
+      setError(result.error)
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    void load()
+  }, [])
+
+  const filtered = transactions.filter(transaction =>
+    (!paymentStatus || transaction.status === paymentStatus) &&
+    (!invoiceStatus || transaction.invoice_receipt_status === invoiceStatus)
+  )
+
+  const saveInvoice = async (transaction: ReportTransaction) => {
+    const draft = drafts[transaction.id]
+    if (!draft) return
+    setSavingId(transaction.id)
+    const result = await updateReportTransactionInvoiceReal(transaction.id, draft)
+    if (result.ok) {
+      setTransactions(current => current.map(item => item.id === transaction.id ? result.transaction : item))
+    } else {
+      alert(result.error)
+    }
+    setSavingId('')
+  }
+
+  const paid = transactions.filter(transaction => transaction.status === 'paid')
+  const pendingInvoices = transactions.filter(transaction => transaction.status === 'paid' && transaction.invoice_receipt_status === 'pending')
+
+  if (!realBackendEnabled()) {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
+        O Supabase nao esta configurado neste ambiente. A faturacao real aparece quando o backend estiver ativo.
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-wide text-purple-600">Faturacao de relatorios</p>
+          <h3 className="text-xl font-black text-slate-900">Pagamentos Stripe e fatura-recibo</h3>
+          <p className="text-xs text-slate-500">Transacoes persistidas no Supabase e reconciliadas pelo webhook Stripe.</p>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <AdminMetric label="Transacoes" value={transactions.length} />
+          <AdminMetric label="Pagas" value={paid.length} tone="green" />
+          <AdminMetric label="Faturas pend." value={pendingInvoices.length} tone="amber" />
+        </div>
+      </div>
+
+      <div className="mb-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+        <select value={paymentStatus} onChange={e => setPaymentStatus(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+          <option value="">Todos os estados de pagamento</option>
+          <option value="pending">Pagamento pendente</option>
+          <option value="paid">Pagamento pago</option>
+          <option value="failed">Pagamento falhado</option>
+          <option value="refunded">Reembolsado</option>
+        </select>
+        <select value={invoiceStatus} onChange={e => setInvoiceStatus(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+          <option value="">Todos os estados de fatura-recibo</option>
+          <option value="pending">Fatura-recibo pendente</option>
+          <option value="issued">Fatura-recibo emitida</option>
+          <option value="not_required">Nao aplicavel</option>
+        </select>
+        <button type="button" onClick={() => void load()} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-black text-slate-600 hover:bg-slate-50">
+          Atualizar
+        </button>
+      </div>
+
+      {loading ? (
+        <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">A carregar transacoes...</p>
+      ) : error ? (
+        <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>
+      ) : filtered.length === 0 ? (
+        <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Ainda nao existem transacoes Stripe persistidas para estes filtros.</p>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map(transaction => {
+            const draft = drafts[transaction.id] || {
+              invoiceReceiptStatus: transaction.invoice_receipt_status,
+              invoiceReceiptNumber: '',
+              invoiceReceiptIssuedAt: '',
+              invoiceReceiptFileUrl: '',
+              invoiceReceiptNote: '',
+            }
+            return (
+              <div key={transaction.id} className="rounded-2xl border border-slate-200 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-black text-slate-900">{transaction.company_name || transaction.company_email || 'Empresa'}</p>
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${transaction.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {transaction.status}
+                      </span>
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${transaction.invoice_receipt_status === 'issued' ? 'bg-green-100 text-green-700' : transaction.invoice_receipt_status === 'not_required' ? 'bg-slate-100 text-slate-600' : 'bg-amber-100 text-amber-700'}`}>
+                        Fatura-recibo: {transaction.invoice_receipt_status}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">NIF/NIPC {transaction.company_nif || 'nao indicado'} - {transaction.company_email || 'sem email'}</p>
+                    <p className="mt-1 text-sm text-slate-600">{transaction.report_tier_name || 'Relatorio'} - EUR {Number(transaction.report_total || 0).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <p className="mt-1 text-xs text-slate-400">Contrato {transaction.contract_id} - Stripe {transaction.stripe_checkout_session_id || 'a aguardar'}</p>
+                    {transaction.stripe_receipt_url && (
+                      <a href={transaction.stripe_receipt_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-black text-blue-600 hover:text-blue-800">
+                        Ver recibo Stripe
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="grid w-full gap-2 lg:max-w-xl lg:grid-cols-2">
+                    <select
+                      value={draft.invoiceReceiptStatus}
+                      onChange={e => setDrafts(current => ({ ...current, [transaction.id]: { ...draft, invoiceReceiptStatus: e.target.value as 'pending' | 'issued' | 'not_required' } }))}
+                      className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                    >
+                      <option value="pending">Fatura-recibo pendente</option>
+                      <option value="issued">Fatura-recibo emitida</option>
+                      <option value="not_required">Nao aplicavel</option>
+                    </select>
+                    <input
+                      value={draft.invoiceReceiptNumber}
+                      onChange={e => setDrafts(current => ({ ...current, [transaction.id]: { ...draft, invoiceReceiptNumber: e.target.value } }))}
+                      placeholder="Numero da fatura-recibo"
+                      className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      type="date"
+                      value={draft.invoiceReceiptIssuedAt}
+                      onChange={e => setDrafts(current => ({ ...current, [transaction.id]: { ...draft, invoiceReceiptIssuedAt: e.target.value } }))}
+                      className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      value={draft.invoiceReceiptFileUrl}
+                      onChange={e => setDrafts(current => ({ ...current, [transaction.id]: { ...draft, invoiceReceiptFileUrl: e.target.value } }))}
+                      placeholder="Link PDF da fatura-recibo"
+                      className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                    />
+                    <textarea
+                      rows={2}
+                      value={draft.invoiceReceiptNote}
+                      onChange={e => setDrafts(current => ({ ...current, [transaction.id]: { ...draft, invoiceReceiptNote: e.target.value } }))}
+                      placeholder="Nota interna"
+                      className="rounded-xl border border-slate-300 px-3 py-2 text-sm lg:col-span-2"
+                    />
+                    <button
+                      type="button"
+                      disabled={savingId === transaction.id}
+                      onClick={() => void saveInvoice(transaction)}
+                      className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-black text-white hover:bg-slate-800 disabled:opacity-50 lg:col-span-2"
+                    >
+                      {savingId === transaction.id ? 'A guardar...' : 'Guardar estado da fatura-recibo'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

@@ -89,7 +89,7 @@ export function downloadSustainabilityDemo(variant: DemoSdgVariant = 'educacao')
     donationDate: new Date().toLocaleDateString('pt-PT'),
     donationAmount: 10000,
     reportPrice: 750,
-    reportTier: 'Relatório de Impacto Premium',
+    reportTier: 'Relatório de Impacto Advanced',
     donationMode: 'causa-com-projeto',
     projectCost,
     coveragePercent,

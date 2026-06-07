@@ -125,9 +125,9 @@ O comprovativo está disponível na aba "Donativos" da área privada. Para valid
 
 function reportPurchasePreview(pack = 'premium') {
   const packs = {
-    standard: ['Relatorio de Impacto', 'Confirmamos a compra do Relatorio de Impacto. A nossa equipa vai validar os dados do donativo e preparar o relatorio base com resumo de impacto, ODS, dados fiscais e principais metricas.'],
-    premium: ['Relatorio de Impacto Premium', 'Confirmamos a compra do Relatorio de Impacto Premium. Este pack inclui analise detalhada, narrativa de impacto, evidencias visuais, ODS e dados prontos para relatorio de sustentabilidade.'],
-    social: ['Relatorio de Impacto Premium + Pack Redes Sociais', 'Confirmamos a compra do Relatorio de Impacto Premium com Pack Redes Sociais. Alem do relatorio premium, vamos preparar textos e imagens para comunicacao institucional.'],
+    standard: ['Relatorio de Impacto Basic', 'Confirmamos a compra do Relatorio de Impacto Basic. A nossa equipa vai validar os dados do donativo e preparar o relatorio base com resumo de impacto, ODS, dados fiscais e principais metricas.'],
+    premium: ['Relatorio de Impacto Advanced', 'Confirmamos a compra do Relatorio de Impacto Advanced. Este pack inclui tudo do Basic, Impact Score, narrativa personalizada, galeria e evidencias visuais.'],
+    social: ['Relatorio de Impacto 360º', 'Confirmamos a compra do Relatorio de Impacto 360º. Alem do Relatorio de Impacto Advanced, vamos preparar posts para comunicacao nas Redes Sociais e um ficheiro TXT com o copy de cada rede social.'],
   }
   const [title, text] = packs[pack]
   return shell(`Confirmacao de compra - ${title}`, `

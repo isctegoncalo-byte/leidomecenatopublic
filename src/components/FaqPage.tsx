@@ -13,7 +13,6 @@ interface FaqItem {
 interface FaqCategory {
   id: string
   title: string
-  icon: string
   items: FaqItem[]
 }
 
@@ -21,7 +20,6 @@ const FAQS: FaqCategory[] = [
   {
     id: 'geral',
     title: 'Sobre a Plataforma',
-    icon: '',
     items: [
       {
         q: 'O que é a Lei do Mecenato?',
@@ -40,7 +38,6 @@ const FAQS: FaqCategory[] = [
   {
     id: 'empresas',
     title: 'Para Empresas',
-    icon: '',
     items: [
       {
         q: 'Como faço um donativo?',
@@ -63,7 +60,6 @@ const FAQS: FaqCategory[] = [
   {
     id: 'instituicoes',
     title: 'Para Instituições',
-    icon: '',
     items: [
       {
         q: 'Como me registo como instituição?',
@@ -86,7 +82,6 @@ const FAQS: FaqCategory[] = [
   {
     id: 'relatorio',
     title: 'Sobre o Relatório de Impacto',
-    icon: '',
     items: [
       {
         q: 'Como acedo ao relatório?',
@@ -94,7 +89,7 @@ const FAQS: FaqCategory[] = [
       },
       {
         q: 'O que tem o Relatório de Impacto?',
-        a: '9 páginas: capa, índice, sumário executivo, ficha da empresa e instituição, decomposição do métricas de impacto (E+S+G), alinhamento com ODS, necessidades apoiadas, galeria de fotografias e dados fiscais para o IRC.',
+        a: '9 páginas: capa, índice, sumário executivo, ficha da empresa e instituição, decomposição das métricas de impacto (E+S+G), alinhamento com ODS, necessidades apoiadas, galeria de fotografias e dados fiscais para o IRC.',
       },
       {
         q: 'Porque é que as cores do relatório mudam?',
@@ -102,14 +97,13 @@ const FAQS: FaqCategory[] = [
       },
       {
         q: 'Quanto custa o relatório?',
-        a: 'Há três níveis de serviço com preços fixos: Relatório de Impacto (€150, 6 páginas incluindo capa), Relatório de Impacto Premium (€250, 15 páginas incluindo capa) e Relatório de Impacto Premium + Pack Redes Sociais (€400), que inclui posts para Facebook, Instagram e LinkedIn, mais um ficheiro TXT com o copy de cada rede social.',
+        a: 'Há três níveis de serviço com preços base sem IVA: Relatório de Impacto Basic (€150 + IVA 6%, 6 páginas incluindo capa), Relatório de Impacto Advanced (€250 + IVA 6%, 13 páginas) e Relatório de Impacto 360º (€400 + IVA 6%), que inclui posts para comunicação nas Redes Sociais e um ficheiro TXT com o copy de cada rede social.',
       },
     ],
   },
   {
     id: 'fiscal',
     title: 'Aspetos Fiscais e Legais',
-    icon: '',
     items: [
       {
         q: 'O que é o Estatuto do Mecenato?',
@@ -155,7 +149,6 @@ export default function FaqPage({ setCurrentView }: Props) {
                 href={`#${cat.id}`}
                 className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 hover:bg-blue-100 text-sm font-semibold text-slate-700 transition whitespace-nowrap"
               >
-                <span>{cat.icon}</span>
                 <span>{cat.title}</span>
               </a>
             ))}
@@ -168,10 +161,7 @@ export default function FaqPage({ setCurrentView }: Props) {
         <div className="container mx-auto px-4 max-w-4xl space-y-12">
           {FAQS.map(cat => (
             <div key={cat.id} id={cat.id} className="scroll-mt-32">
-              <h2 className="text-2xl font-black text-slate-900 mb-5 flex items-center gap-3">
-                <span className="text-3xl">{cat.icon}</span>
-                {cat.title}
-              </h2>
+              <h2 className="text-2xl font-black text-slate-900 mb-5">{cat.title}</h2>
               <div className="space-y-3">
                 {cat.items.map((item, i) => {
                   const id = `${cat.id}-${i}`
@@ -215,7 +205,7 @@ export default function FaqPage({ setCurrentView }: Props) {
               href="mailto:info@leidomecenato.pt"
               className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-black py-4 px-8 rounded-2xl transition no-underline"
             >
-               Contactar a Equipa
+              Contactar a Equipa
             </a>
             <button
               onClick={() => setCurrentView('home')}

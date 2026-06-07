@@ -56,6 +56,8 @@ const emptyNeed = (): NeedItem => ({
 })
 
 const STEPS = ['Identidade', 'Missão & Impacto', 'Equipa & Recursos', 'Necessidades ESG', 'Revisão']
+const TERMS_VERSION = '2026-06-02'
+const TERMS_DOCUMENT_URL = '/docs/termos-condicoes-instituicoes.html'
 
 export default function InstitutionRegisterPage({ onComplete }: Props) {
   const [step, setStep] = useState(0)
@@ -66,6 +68,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
   const [photoUrls, setPhotoUrls] = useState<string[]>(['', '', '', ''])
   const [consentLogo, setConsentLogo] = useState(false)
   const [consentRGPD, setConsentRGPD] = useState(false)
+  const [consentTerms, setConsentTerms] = useState(false)
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })
@@ -275,6 +278,11 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
+    if (!consentTerms) {
+      setFormError('Deve ler e aceitar os Termos e Condições para instituições antes de submeter o registo.')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
 
     setFormError('')
     setSubmitting(true)
@@ -330,6 +338,10 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
         statutes: team.statutes,
         utilidadePublica: team.utilidadePublica,
         lastAccountsApproved: team.lastAccountsApproved,
+        termsAccepted: true,
+        termsAcceptedAt: new Date().toISOString(),
+        termsVersion: TERMS_VERSION,
+        termsDocumentUrl: TERMS_DOCUMENT_URL,
       })
       setSubmitting(false)
       setSubmitted(true)
@@ -340,7 +352,6 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
         <div className="bg-white rounded-3xl shadow-xl p-12 max-w-lg text-center">
-          <div className="text-7xl mb-6"></div>
           <h2 className="text-3xl font-black text-slate-900 mb-4">Registo Submetido!</h2>
           <p className="text-slate-500 mb-4">
             O perfil de <strong>{identity.name}</strong> foi submetido para verificação. 
@@ -349,10 +360,10 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-left">
             <p className="text-green-800 text-sm font-semibold mb-2">Próximos passos:</p>
             <ul className="text-green-700 text-sm space-y-1">
-              <li> Análise do perfil ESG (1–2 dias úteis)</li>
-              <li> Verificação dos documentos submetidos</li>
-              <li> Ativação e publicação na plataforma</li>
-              <li> Notificação por email: <strong>{identity.email}</strong></li>
+              <li>Análise do perfil ESG (1–2 dias úteis)</li>
+              <li>Verificação dos documentos submetidos</li>
+              <li>Ativação e publicação na plataforma</li>
+              <li>Notificação por email: <strong>{identity.email}</strong></li>
             </ul>
           </div>
           <button onClick={onComplete} className="bg-blue-600 text-white font-bold py-3 px-8 rounded-xl hover:bg-blue-700 transition">
@@ -692,7 +703,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
 
               <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200">
                 <p className="text-xs text-amber-700">
-                  <strong> Nota:</strong> Após a submissão, a nossa equipa entrará em contacto para recolha dos documentos em formato digital. 
+                  <strong>Nota:</strong> Após a submissão, a nossa equipa entrará em contacto para recolha dos documentos em formato digital. 
                   As instituições com Estatuto de Utilidade Pública recebem um <strong>badge de verificação</strong> e têm prioridade no matching com empresas.
                 </p>
               </div>
@@ -933,7 +944,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
 
               <div className="bg-green-50 border border-green-200 rounded-xl p-4">
                 <p className="text-sm text-green-700">
-                  <strong> Dica:</strong> As instituições com 3 ou mais necessidades detalhadas, com métricas de impacto claras
+                  <strong>Dica:</strong> As instituições com 3 ou mais necessidades detalhadas, com métricas de impacto claras
                   e alinhamento ODS definido, recebem em média <strong>3x mais donativos</strong> do que as que têm perfis incompletos.
                 </p>
               </div>
@@ -1012,6 +1023,31 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
                 </div>
 
                 <div className="space-y-3">
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <h3 className="font-bold text-emerald-900">Termos e Condições para instituições</h3>
+                        <p className="mt-1 text-sm text-emerald-800">
+                          Leia o documento antes de submeter. A aceitação fica associada ao registo da instituição.
+                        </p>
+                      </div>
+                      <a
+                        href={TERMS_DOCUMENT_URL}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-bold text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition"
+                      >
+                        Abrir documento
+                      </a>
+                    </div>
+                  </div>
+                  <label className="flex items-start gap-3 p-4 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
+                    <input type="checkbox" checked={consentTerms} onChange={e => setConsentTerms(e.target.checked)}
+                      className="w-5 h-5 accent-blue-600 mt-0.5 flex-shrink-0" />
+                    <span className="text-slate-700 text-sm">
+                      <strong>Declaro, sob compromisso de honra,</strong> que a instituição que represento reúne os requisitos legais para receber donativos e beneficiar do regime do mecenato, quando aplicável, e que emitirá todos os comprovativos legalmente exigidos relativamente aos donativos recebidos através da plataforma, assumindo inteira responsabilidade pelo cumprimento das respetivas obrigações legais e fiscais. <span className="text-red-500">*</span>
+                    </span>
+                  </label>
                   <label className="flex items-start gap-3 p-4 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
                     <input type="checkbox" checked={consentRGPD} onChange={e => setConsentRGPD(e.target.checked)}
                       className="w-5 h-5 accent-blue-600 mt-0.5 flex-shrink-0" />

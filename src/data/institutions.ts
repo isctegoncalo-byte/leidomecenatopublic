@@ -1,13 +1,13 @@
 import { Institution } from '../types'
 
-export const sampleInstitutions: Institution[] = [
+export const internalDemoInstitution: Institution =
   {
-    id: 'teste-stripe-instituicao',
-    name: 'Instituicao Teste Stripe',
-    legalName: 'Instituicao Teste Stripe, Associacao Sem Fins Lucrativos',
-    category: 'Educacao',
-    description: 'Instituicao criada apenas para testar o fluxo de donativo, pagamento Stripe e relatorio de impacto na plataforma.',
-    mission: 'Validar o circuito completo de apoio empresarial, comprovativo, pagamento do relatorio e notificacoes associadas.',
+    id: 'internal-demo-institution',
+    name: 'Instituição de Demonstração Interna',
+    legalName: 'Instituição de Demonstração Interna',
+    category: 'Educação',
+    description: 'Exemplo interno usado apenas para gerar pré-visualizações de relatórios na área de administração.',
+    mission: 'Apoiar a demonstração de templates e relatórios sem publicar projetos simulados no site.',
     logo: 'LM',
     municipality: 'Lisboa',
     district: 'Lisboa',
@@ -19,15 +19,15 @@ export const sampleInstitutions: Institution[] = [
     verified: true,
     needs: [
       {
-        id: 'teste-stripe-projeto',
+        id: 'internal-demo-project',
         supportType: 'dinheiro',
         status: 'ativo',
         implementationPhase: 'candidatura',
-        projectName: 'Projeto de Teste Stripe',
-        category: 'Educacao',
-        subcategory: 'Validacao de pagamentos',
-        description: 'Projeto criado exclusivamente para testar o fluxo de donativo e pagamento do servico de Relatorio de Impacto.',
-        executiveSummary: 'Este projeto de teste permite validar a experiencia completa de uma empresa mecenas na plataforma leidomecenato.pt, desde a selecao de um projeto ate ao pagamento do servico de Relatorio de Impacto em Stripe. Nao representa uma candidatura real, nao solicita apoio efetivo e deve ser usado apenas para confirmar navegacao, comprovativos, consentimento de divulgacao do valor do donativo, escolha do pacote de relatorio, redirecionamento para checkout e retorno apos pagamento.',
+        projectName: 'Projeto de Demonstração Interna',
+        category: 'Educação',
+        subcategory: 'Pré-visualização de relatório',
+        description: 'Projeto fictício usado apenas para pré-visualizar templates de relatório.',
+        executiveSummary: 'Este projeto é usado exclusivamente dentro da área de administração para testar a geração de relatórios, sem aparecer na página pública de projetos.',
         projectPhotoUrls: ['/images/logo-leidomecenato-official.svg'],
         keyPopulations: ['Equipa de teste', 'Administracao da plataforma'],
         objectives: '- Confirmar que o projeto aparece na pagina publica.\n- Testar o fluxo de donativo empresarial.\n- Validar o redirecionamento para Stripe em modo teste.\n- Confirmar o retorno a plataforma apos pagamento.',
@@ -37,7 +37,7 @@ export const sampleInstitutions: Institution[] = [
         urgency: 'media',
         sdgGoals: [4, 9, 17],
         esgPillar: 'S',
-        impactMetric: 'Fluxo de pagamento Stripe validado em ambiente de teste',
+        impactMetric: 'Template de relatório validado internamente',
         beneficiaries: 1,
         projectStartDate: '2026-06-01',
         projectEndDate: '2026-06-30',
@@ -83,9 +83,10 @@ export const sampleInstitutions: Institution[] = [
       total: 70,
       sdgAlignment: [4, 9, 17],
       beneficiaries: 1,
-      impactNarrative: 'Projeto tecnico de teste para validar o fluxo de pagamento Stripe e relatorio de impacto.',
-      highlights: ['Checkout Stripe em modo teste', 'Retorno apos pagamento', 'Webhook preparado'],
-      risks: ['Projeto apenas para validacao; nao representa donativo real'],
+      impactNarrative: 'Projeto interno para validar templates de relatório.',
+      highlights: ['Pré-visualização de template', 'Dados fictícios', 'Uso restrito à administração'],
+      risks: ['Dados simulados apenas para demonstração interna'],
     },
-  },
-]
+  }
+
+export const sampleInstitutions: Institution[] = []

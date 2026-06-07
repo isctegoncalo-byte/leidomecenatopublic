@@ -1,13 +1,14 @@
 import { GeneratedESGReport } from '../types'
 import { ReportTemplate } from '../templates/reportTemplates'
-import { sampleInstitutions } from '../data/institutions'
+import { internalDemoInstitution, sampleInstitutions } from '../data/institutions'
 import { getDemoPhotos } from './demoPhotos'
 import { downloadSustainabilityReport } from './sustainabilityPdf'
 
 // Constrói o objeto GeneratedESGReport para uma instituição (sem fazer download)
 export function buildDemoReportForInstitution(templateName: string, institutionIndex: number): GeneratedESGReport {
-  const idx = institutionIndex % sampleInstitutions.length
-  const inst = sampleInstitutions[idx]
+  const institutions = sampleInstitutions.length ? sampleInstitutions : [internalDemoInstitution]
+  const idx = institutionIndex % institutions.length
+  const inst = institutions[idx]
   const photos = getDemoPhotos()
 
   const totalBeneficiaries = inst.needs.reduce((acc, n) => acc + (n.beneficiaries || 0), 0)
@@ -62,7 +63,8 @@ export function buildDemoReportForInstitution(templateName: string, institutionI
 }
 
 export function downloadAdminDemoReport(templateName: string, institutionIndex?: number, template?: ReportTemplate) {
-  const idx = institutionIndex ?? Math.floor(Math.random() * sampleInstitutions.length)
+  const institutions = sampleInstitutions.length ? sampleInstitutions : [internalDemoInstitution]
+  const idx = institutionIndex ?? Math.floor(Math.random() * institutions.length)
   const report = buildDemoReportForInstitution(templateName, idx)
   downloadSustainabilityReport(report, template)
 }

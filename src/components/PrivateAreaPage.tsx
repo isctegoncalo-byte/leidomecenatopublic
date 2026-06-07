@@ -9,7 +9,7 @@ import {
   setInstitutionConfirmation,
   rejectProof,
 } from '../utils/proofStore'
-import { sampleInstitutions } from '../data/institutions'
+import { internalDemoInstitution, sampleInstitutions } from '../data/institutions'
 import { generateESGReport } from '../utils/esgEngine'
 import { downloadSustainabilityReport } from '../utils/sustainabilityPdf'
 import { REPORT_TIERS, calculateTotalWithVat, calculateVat, formatCurrency } from '../types'
@@ -2115,7 +2115,7 @@ function ESGReportsTab({
     const inst = sampleInstitutions.find(i =>
       i.name.toLowerCase().trim() === proof.institutionName.toLowerCase().trim() ||
       i.legalName.toLowerCase().trim() === proof.institutionName.toLowerCase().trim()
-    ) || sampleInstitutions[0]
+    ) || internalDemoInstitution
 
     const tier = REPORT_TIERS.find(t => t.id === 'premium') || REPORT_TIERS[0]
 

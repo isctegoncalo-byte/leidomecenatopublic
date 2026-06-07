@@ -1,6 +1,5 @@
 import { ImpactContract } from '../types'
 import { calculateTotalWithVat, calculateVat, formatCurrency } from '../types'
-import { sampleInstitutions } from '../data/institutions'
 
 interface Props {
   contract: ImpactContract
@@ -9,7 +8,6 @@ interface Props {
 }
 
 export default function ImpactContractSuccessPage({ contract, onGoToPrivate, onHome }: Props) {
-  const institution = sampleInstitutions.find(i => i.id === contract.institutionId)
   const reportVat = contract.reportVat ?? calculateVat(contract.reportPrice)
   const reportTotal = contract.reportTotal ?? calculateTotalWithVat(contract.reportPrice)
 
@@ -24,11 +22,11 @@ export default function ImpactContractSuccessPage({ contract, onGoToPrivate, onH
         <div className="p-8">
           {/* Institution */}
           <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl mb-6">
-            <span className="text-4xl">{institution?.logo}</span>
+            <span className="text-4xl">LM</span>
             <div>
               <p className="text-xs text-slate-500">Instituição apoiada</p>
-              <h3 className="font-bold text-slate-800">{institution?.name}</h3>
-              <p className="text-sm text-slate-500">{institution?.municipality} • {institution?.category}</p>
+              <h3 className="font-bold text-slate-800">{contract.institutionName}</h3>
+              <p className="text-sm text-slate-500">Donativo registado na plataforma</p>
             </div>
           </div>
 

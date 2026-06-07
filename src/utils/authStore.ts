@@ -108,41 +108,10 @@ export function listAccountsWithLogoConsent(): Account[] {
   return listAccounts().filter(a => a.consentLogoDisplay === true)
 }
 
-const DEMO_ACCOUNTS_CLEANUP_FLAG = 'leidomecenato_demo_accounts_removed_v1'
-const DEMO_ACCOUNT_EMAILS = new Set([
-  'empresa@demo.pt',
-  'instituicao@demo.pt',
-  'geral@techglobal.pt',
-  'geral@mobilipro.pt',
-  'info@solverde.pt',
-  'geral@construtora-atlas.pt',
-  'admin@farmacia-central.pt',
-  'geral@autorepara.pt',
-  'geral@padariasol.pt',
-  'info@designlx.pt',
-  'geral@logisticapro.pt',
-  'info@consultmais.pt',
-  'geral@vinhosdouro.pt',
-  'info@turismorural.pt',
-  'geral@agroalentejo.pt',
-  'geral@clinicasaude.pt',
-  'info@smartbuilding.pt',
-  'geral@crescerjuntos.pt',
-  'geral@horizontereab.pt',
-  'geral@artememoria.pt',
-  'geral@raizverde.pt',
-  'geral@academiainclusiva.pt',
-  'geral@oceaninvest.pt',
-  'geral@bancalimentar.pt',
-  'geral@casadacrianca.pt',
-  'geral@musicasemfronteiras.pt',
-  'geral@refloresta.pt',
-  'geral@apoiomaior.pt',
-  'geral@codekids.pt',
-  'geral@teatrosocial.pt',
-  'geral@animaisemrisco.pt',
-  'geral@habitacaosolidaria.pt',
-])
+const DEMO_COMPANY_EMAIL = 'empresa@demo.pt'
+const DEMO_ADMIN_ID = 'acc-admin-geral'
+const DEMO_COMPANY_ID = 'acc-demo-empresa'
+const DEMO_ACCOUNTS_CLEANUP_FLAG = 'leidomecenato_demo_accounts_removed_v2'
 
 function removeDemoAccounts() {
   if (typeof window === 'undefined') return
@@ -151,19 +120,42 @@ function removeDemoAccounts() {
   const current = listAccounts()
   const cleaned = current.filter(account => {
     const email = account.email.trim().toLowerCase()
-    if (email === ADMIN_EMAIL && account.role === 'admin') return true
-
-    const isDemoId =
-      account.id === 'acc-demo-empresa' ||
-      account.id === 'acc-demo-instituicao' ||
-      /^acc-[ei]\d+$/.test(account.id)
-
-    return !isDemoId && !DEMO_ACCOUNT_EMAILS.has(email) && email === ADMIN_EMAIL
+    return (
+      (email === ADMIN_EMAIL && account.role === 'admin') ||
+      (email === DEMO_COMPANY_EMAIL && account.role === 'empresa')
+    )
   })
 
-  if (cleaned.length !== current.length) {
-    writeJson(ACCOUNTS_KEY, cleaned)
+  if (!cleaned.some(account => account.email.trim().toLowerCase() === DEMO_COMPANY_EMAIL)) {
+    cleaned.push({
+      id: DEMO_COMPANY_ID,
+      role: 'empresa',
+      email: DEMO_COMPANY_EMAIL,
+      password: 'demo123',
+      name: 'Empresa Demonstração, Lda.',
+      nif: '500000000',
+      createdAt: new Date().toISOString(),
+      companyActivity: 'Serviços profissionais',
+      consentLogoDisplay: false,
+      consentRGPD: true,
+    })
   }
+
+  if (!cleaned.some(account => account.email.trim().toLowerCase() === ADMIN_EMAIL && account.role === 'admin')) {
+    cleaned.push({
+      id: DEMO_ADMIN_ID,
+      role: 'admin',
+      email: ADMIN_EMAIL,
+      password: 'admin123',
+      name: 'Administrador Lei do Mecenato',
+      nif: '000000000',
+      createdAt: new Date().toISOString(),
+      consentLogoDisplay: false,
+      consentRGPD: true,
+    })
+  }
+
+  writeJson(ACCOUNTS_KEY, cleaned)
 
   if (!cleaned.some(account => account.id === localStorage.getItem(SESSION_KEY))) {
     localStorage.removeItem(SESSION_KEY)

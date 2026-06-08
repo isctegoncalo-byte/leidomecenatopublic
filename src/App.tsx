@@ -23,6 +23,7 @@ import { getRealSessionAccount, notifyAdminAboutDonationIntent, realBackendEnabl
 import { createProof, getProofByContractId } from './utils/proofStore'
 import { createCompanyDonationRegisteredNotification, createDonationIntentNotification } from './utils/notificationStore'
 import { createThread } from './utils/chatStore'
+import { captureCampaignParams, initAnalytics, trackEvent, trackPageView } from './utils/analytics'
 
 type AppState =
   | { screen: 'main'; view: ViewType }
@@ -126,8 +127,25 @@ export default function App() {
     window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })
   }, [state])
 
+  useEffect(() => {
+    captureCampaignParams()
+    initAnalytics()
+    const onConsent = () => {
+      initAnalytics()
+      if (state.screen === 'main') trackPageView(state.view)
+    }
+    window.addEventListener('leidomecenato:cookie-consent', onConsent)
+    return () => window.removeEventListener('leidomecenato:cookie-consent', onConsent)
+  }, [])
+
+  useEffect(() => {
+    if (state.screen === 'main') trackPageView(state.view)
+  }, [state])
+
   const setView = (view: ViewType) => {
     const resolvedView = view === 'area-privada' && session?.role === 'admin' ? 'admin' : view
+    if (resolvedView === 'empresa') trackEvent('start_company_registration', { source: 'navigation' })
+    if (resolvedView === 'instituicao') trackEvent('start_institution_registration', { source: 'navigation' })
     const path = viewToPath(resolvedView)
     if (window.location.pathname !== path) {
       window.history.pushState({}, '', path)
@@ -168,6 +186,12 @@ export default function App() {
       const donationNotification = createDonationIntentNotification(contract, institutionAccountId)
       if (realBackendEnabled()) void notifyAdminAboutDonationIntent(contract, donationNotification)
       createCompanyDonationRegisteredNotification(contract, activeSession?.role === 'empresa' ? activeSession.id : undefined)
+      trackEvent('donation_intent_created', {
+        donation_type: contract.donationType || 'unknown',
+        report_tier: contract.reportTier.id,
+        report_payment_status: contract.reportPaymentStatus || 'none',
+        has_public_amount_consent: Boolean(contract.publicDonationAmountConsent),
+      })
     }
     setState({ screen: 'contract-success', contract })
   }
@@ -185,6 +209,7 @@ export default function App() {
       if (!pending.contract) return
       localStorage.removeItem('leidomecenato_pending_report_payment')
       window.history.replaceState({}, '', '/empresa/donativo')
+      trackEvent('donation_confirmation_success', { payment_provider: 'stripe' })
       handleContractComplete({ ...pending.contract, reportPaymentStatus: 'paid' })
     } catch {
       localStorage.removeItem('leidomecenato_pending_report_payment')
@@ -200,6 +225,7 @@ export default function App() {
 
   const handleLogin = (account: Account) => {
     setStableSession(account)
+    trackEvent('login_success', { role: account.role })
     if (account.role === 'admin') {
       const path = viewToPath('admin')
       if (window.location.pathname !== path) window.history.pushState({}, '', path)
@@ -219,6 +245,7 @@ export default function App() {
   }
 
   const handleLogout = () => {
+    trackEvent('logout', { role: session?.role || 'unknown' })
     setStableSession(null)
     setState({ screen: 'main', view: 'home' })
   }

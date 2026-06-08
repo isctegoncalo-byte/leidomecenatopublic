@@ -7,6 +7,7 @@ import SdgIcon from './SdgIcon'
 import { buildPaymentUrl, getReportPaymentLink, isPaymentLinkConfigured } from '../utils/paymentLinks'
 import { ACCEPTED_DOCUMENT_INPUT, validateDocumentUpload } from '../utils/uploadSecurity'
 import { realBackendEnabled, upsertReportTransactionPendingReal } from '../utils/supabaseBackend'
+import { trackEvent } from '../utils/analytics'
 
 
 interface Props {
@@ -260,6 +261,11 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
         paymentStatus: 'pending',
         createdAt: new Date().toISOString(),
       }))
+      trackEvent('stripe_checkout_started', {
+        report_tier: contract.reportTier.id,
+        donation_type: contract.donationType || 'unknown',
+        has_public_amount_consent: Boolean(contract.publicDonationAmountConsent),
+      })
       window.location.href = paymentUrl
       return
     }
@@ -583,7 +589,11 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
                   {REPORT_TIERS.map(t => {
                     const colors: Record<string, string> = { slate: 'border-slate-300', blue: 'border-blue-500 ring-2 ring-blue-100', purple: 'border-purple-300' }
                     return (
-                      <div key={t.id} onClick={() => { setSelectedTierId(t.id); setNoImpactReport(false) }}
+                      <div key={t.id} onClick={() => {
+                        setSelectedTierId(t.id)
+                        setNoImpactReport(false)
+                        trackEvent('select_report_tier', { report_tier: t.id, source: 'company_donation_flow' })
+                      }}
                         className={`rounded-2xl border-2 cursor-pointer p-4 transition relative ${!noImpactReport && selectedTierId === t.id ? colors[t.color] : 'border-slate-200 hover:border-slate-300'}`}>
                         {t.highlighted && <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-3 py-0.5 rounded-full text-xs font-bold">Popular</div>}
                         <h4 className="font-bold text-sm">{t.name}</h4>

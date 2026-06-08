@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { SDG_DATA } from '../data/sdgs'
 import {
+  applySroiProxyToInputs,
   calculateIcsScore,
   calculateImpactScore,
   calculateIrodScore,
@@ -11,13 +12,21 @@ import {
   getDonationImpactContext,
   getIspMeasurement,
   icsInterpretation,
+  icsResultParagraphs,
   impactScoreInterpretation,
+  impactScoreResultParagraphs,
   IspDonationItem,
   IspMeasurement,
   irodInterpretation,
+  irodResultParagraphs,
   ISP_DIMENSIONS,
+  ispResultParagraphs,
   saveIspMeasurement,
+  SROI_PROXY_LIBRARY,
   sroiInterpretation,
+  sroiResultParagraphs,
+  suggestSroiProxy,
+  suggestSroiProxyRecommendation,
 } from '../utils/ispMeasurement'
 import { listProofs } from '../utils/proofStore'
 import { listProjectInstitutions } from '../utils/projectCatalog'
@@ -75,6 +84,13 @@ export default function AdminImpactMeasurementTab() {
   const impactScore = selected && measurement ? calculateImpactScore(selected, measurement) : null
   const sroi = selected && measurement ? calculateSroi(selected, measurement) : null
   const donationImpact = selected ? getDonationImpactContext(selected) : null
+  const proxyRecommendation = selected ? suggestSroiProxyRecommendation(selected) : null
+  const suggestedProxy = selected ? suggestSroiProxy(selected) : null
+  const ispParagraphs = measurement ? ispResultParagraphs(measurement) : null
+  const irodParagraphs = selected && measurement ? irodResultParagraphs(selected, measurement) : null
+  const icsParagraphs = selected && measurement ? icsResultParagraphs(selected, measurement) : null
+  const sroiParagraphs = selected && measurement ? sroiResultParagraphs(selected, measurement) : null
+  const impactScoreParagraphs = selected && measurement ? impactScoreResultParagraphs(selected, measurement) : null
 
   useEffect(() => {
     if (selected) setMeasurement(getIspMeasurement(selected))
@@ -130,6 +146,16 @@ export default function AdminImpactMeasurementTab() {
   }
 
   const refresh = () => setItems(buildItems())
+
+  const applyProxy = (proxyId: string) => {
+    if (!selected) return
+    const proxy = SROI_PROXY_LIBRARY.find(option => option.id === proxyId)
+    if (!proxy) return
+    persist({
+      ...measurement,
+      sroi: applySroiProxyToInputs(measurement.sroi, proxy, selected),
+    })
+  }
 
   if (!selected || !measurement) {
     return (
@@ -304,7 +330,68 @@ export default function AdminImpactMeasurementTab() {
                   <ImpactPill label="Valor do donativo" value={`EUR ${sroi.donationAmount.toLocaleString('pt-PT', { maximumFractionDigits: 0 })}`} />
                 </div>
               </div>
+              <div className="mt-5 rounded-2xl border border-purple-100 bg-purple-50 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-700">Proxy financeira aplicada</p>
+                    <h4 className="mt-1 text-base font-black text-slate-900">
+                      {measurement.sroi.proxyLabel || suggestedProxy?.label || 'Proxy a definir'}
+                    </h4>
+                    <p className="mt-1 text-xs leading-relaxed text-purple-900">
+                      {measurement.sroi.proxyRationale || suggestedProxy?.rationale || 'Selecione uma proxy para documentar a premissa usada no calculo.'}
+                    </p>
+                    {(measurement.sroi.proxySource || suggestedProxy?.source) && (
+                      <p className="mt-2 text-xs text-purple-800">
+                        <strong>Fonte/metodo:</strong> {measurement.sroi.proxySource || suggestedProxy?.source}
+                      </p>
+                    )}
+                    <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-black">
+                      <span className="rounded-full bg-white px-2.5 py-1 text-purple-800">
+                        ConfianÃ§a da sugestÃ£o: {measurement.sroi.proxyConfidence ?? proxyRecommendation?.confidence ?? 0}%
+                      </span>
+                      {(measurement.sroi.proxyMatchedSdgs?.length || proxyRecommendation?.matchedSdgs.length) ? (
+                        <span className="rounded-full bg-white px-2.5 py-1 text-purple-800">
+                          {(measurement.sroi.proxyMatchedSdgs || proxyRecommendation?.matchedSdgs || []).map(sdg => `ODS ${sdg}`).join(', ')}
+                        </span>
+                      ) : null}
+                    </div>
+                    {(measurement.sroi.proxyMatchedKeywords?.length || proxyRecommendation?.matchedKeywords.length) ? (
+                      <p className="mt-2 text-xs text-purple-800">
+                        <strong>Sinais usados:</strong> {(measurement.sroi.proxyMatchedKeywords || proxyRecommendation?.matchedKeywords || []).slice(0, 8).join(', ')}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] lg:min-w-[430px]">
+                    <select
+                      value={measurement.sroi.proxyId || suggestedProxy?.id || ''}
+                      onChange={event => applyProxy(event.target.value)}
+                      className={fieldClass}
+                    >
+                      {SROI_PROXY_LIBRARY.map(proxy => (
+                        <option key={proxy.id} value={proxy.id}>
+                          {proxy.category} - {proxy.label}
+                        </option>
+                      ))}
+                    </select>
+                    {suggestedProxy && (
+                      <button
+                        type="button"
+                        onClick={() => applyProxy(suggestedProxy.id)}
+                        className="rounded-xl bg-purple-700 px-4 py-2 text-sm font-black text-white hover:bg-purple-800"
+                      >
+                        Aplicar sugestao
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
               <div className="mt-5 grid gap-3 md:grid-cols-2">
+                <Field label="Fonte/metodo da proxy">
+                  <input value={measurement.sroi.proxySource || ''} onChange={event => persist({ ...measurement, sroi: { ...measurement.sroi, proxySource: event.target.value } })} className={fieldClass} />
+                </Field>
+                <Field label="Justificacao da proxy">
+                  <input value={measurement.sroi.proxyRationale || ''} onChange={event => persist({ ...measurement, sroi: { ...measurement.sroi, proxyRationale: event.target.value } })} className={fieldClass} />
+                </Field>
                 <Field label="Valor social por beneficiario direto">
                   <input type="number" value={measurement.sroi.valuePerDirectBeneficiary} onChange={event => persist({ ...measurement, sroi: { ...measurement.sroi, valuePerDirectBeneficiary: numberInput(event.target.value) } })} className={fieldClass} />
                 </Field>
@@ -333,6 +420,7 @@ export default function AdminImpactMeasurementTab() {
               <div className="mt-4 rounded-xl border border-purple-100 bg-purple-50 p-4 text-xs leading-relaxed text-purple-900">
                 Formula: SROI = valor social ajustado / valor do donativo. Valor social ajustado = valor social bruto x atribuicao x (1 - deadweight) x (1 - deslocacao), considerando duracao e drop-off anual.
               </div>
+              {sroiParagraphs && <NarrativeBlock title="Leitura do resultado SROI" paragraphs={sroiParagraphs} />}
             </Panel>
           )}
 
@@ -359,6 +447,7 @@ export default function AdminImpactMeasurementTab() {
                 Fórmula: IROD = qualidade de impacto 35% + confiança 15% + cobertura do custo total 20% + beneficiários por euro 20% + alavancagem 10%.
                 A alavancagem atual é {irod.leverageMultiplier.toFixed(2)}x, calculada pela relação entre custo total do projeto e valor doado.
               </div>
+              {irodParagraphs && <NarrativeBlock title="Leitura do resultado IROD" paragraphs={irodParagraphs} />}
             </Panel>
           )}
 
@@ -385,6 +474,7 @@ export default function AdminImpactMeasurementTab() {
               <div className="mt-4 rounded-xl border border-[#D7E2EA] bg-[#F8FAFC] p-4 text-xs leading-relaxed text-slate-600">
                 Fórmula: ICS = evidência 25% + integridade dos dados 20% + KPIs 20% + ODS 15% + beneficiários 10% + validação 10%.
               </div>
+              {icsParagraphs && <NarrativeBlock title="Leitura do resultado ICS" paragraphs={icsParagraphs} />}
             </Panel>
           )}
 
@@ -406,6 +496,7 @@ export default function AdminImpactMeasurementTab() {
                 <p className="mt-4 text-xs leading-relaxed text-slate-600">
                   Fórmula: Impact Score = ISP™ x 40% + IROD™ x 35% + ICS™ x 25%. Esta pontuação fica apenas na área de administração.
                 </p>
+                {impactScoreParagraphs && <NarrativeBlock title="Leitura do Impact Score" paragraphs={impactScoreParagraphs} />}
               </div>
             </Panel>
           )}
@@ -434,6 +525,7 @@ export default function AdminImpactMeasurementTab() {
             <div className="mt-4 rounded-xl border border-[#D7E2EA] bg-[#F8FAFC] p-4 text-xs leading-relaxed text-slate-600">
               Fórmula: ISP™ = impacto gerado 40% + contribuição ESG 25% + eficiência 15% + qualidade da evidência 10% + sustentabilidade 10%.
             </div>
+            {ispParagraphs && <NarrativeBlock title="Leitura do resultado ISP" paragraphs={ispParagraphs} />}
           </Panel>
 
           <Panel title="Dimensões ISP™">
@@ -609,6 +701,19 @@ function IrodBar({ label, value, color }: { label: string; value: number; color:
       </div>
       <div className="h-3 overflow-hidden rounded-full bg-[#E2EDF3]">
         <div className="h-full rounded-full" style={{ width: `${Math.max(2, Math.min(100, value))}%`, backgroundColor: color }} />
+      </div>
+    </div>
+  )
+}
+
+function NarrativeBlock({ title, paragraphs }: { title: string; paragraphs: [string, string] }) {
+  return (
+    <div className="mt-4 rounded-xl border border-[#D7E2EA] bg-white p-4 text-sm leading-relaxed text-slate-700">
+      <p className="text-xs font-black uppercase tracking-wide text-[#526879]">{title}</p>
+      <div className="mt-2 space-y-2">
+        {paragraphs.map((paragraph, index) => (
+          <p key={index}>{paragraph}</p>
+        ))}
       </div>
     </div>
   )

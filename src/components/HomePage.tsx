@@ -6,6 +6,7 @@ import { SDG_DATA } from '../data/sdgs'
 import { activeProjects, projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
 import { listProofs } from '../utils/proofStore'
 import { listProjectInstitutions, projectSlug } from '../utils/projectCatalog'
+import { trackEvent } from '../utils/analytics'
 
 interface Props {
   setCurrentView: (v: ViewType) => void
@@ -37,6 +38,7 @@ export default function HomePage({ setCurrentView }: Props) {
   ]
 
   const scrollToProjects = () => {
+    trackEvent('click_find_project', { location: 'home' })
     document.getElementById('projetos-para-apoiar')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -102,6 +104,7 @@ export default function HomePage({ setCurrentView }: Props) {
     const firstNeed = needs[0]
     const openFirstProject = () => {
       if (!firstNeed) return
+      trackEvent('open_project', { source: 'home_mini_card', support_type: mode, sdg_count: firstNeed.sdgGoals.length })
       window.history.pushState({}, '', `/projeto/${projectSlug(inst, firstNeed)}`)
       setCurrentView('projeto')
     }
@@ -159,6 +162,7 @@ export default function HomePage({ setCurrentView }: Props) {
     const openProject = (needId: string) => {
       const need = inst.needs.find(n => n.id === needId)
       if (!need) return
+      trackEvent('open_project', { source: 'home_profile_card', support_type: mode, sdg_count: need.sdgGoals.length })
       window.history.pushState({}, '', `/projeto/${projectSlug(inst, need)}`)
       setCurrentView('projeto')
     }
@@ -523,6 +527,7 @@ export default function HomePage({ setCurrentView }: Props) {
                     id="sdg-filter"
                     value={selectedSdg}
                     onChange={e => {
+                      if (e.target.value) trackEvent('filter_project_sdg', { sdg: Number(e.target.value) })
                       setSelectedSdg(e.target.value)
                       setMoneyPage(0)
                       setProductPage(0)
@@ -705,7 +710,10 @@ export default function HomePage({ setCurrentView }: Props) {
                   purple: 'border-purple-300 hover:border-purple-400',
                 }
                 return (
-                  <div key={t.id} onClick={() => setSelectedTier(t.id)}
+                  <div key={t.id} onClick={() => {
+                    setSelectedTier(t.id)
+                    trackEvent('select_report_tier', { report_tier: t.id, source: 'home' })
+                  }}
                     className={`bg-white rounded-2xl border-2 cursor-pointer transition p-6 relative ${selectedTier === t.id ? colors[t.color] : 'border-slate-200 hover:border-slate-300'}`}>
                     {t.highlighted && (
                       <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-0.5 rounded-full text-xs font-bold">Mais Popular</div>

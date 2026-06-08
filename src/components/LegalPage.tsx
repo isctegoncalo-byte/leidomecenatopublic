@@ -157,6 +157,13 @@ const content: Record<LegalKind, {
         ],
       },
       {
+        title: 'Google Analytics 4',
+        body: [
+          'Com consentimento, pode ser usado Google Analytics 4 para compreender utilizacao agregada do site, origem de trafego, navegacao entre paginas e conversoes tecnicas como inicio de registo, selecao de pacote ou inicio de checkout.',
+          'A configuracao analitica nao deve enviar emails, NIFs, nomes, contactos, valores de donativos ou outros dados pessoais como parametros de eventos.',
+        ],
+      },
+      {
         title: 'Gestao de cookies',
         body: [
           'O utilizador pode bloquear ou apagar cookies nas definições do navegador. Essa decisão pode afetar login, preferências e algumas funcionalidades.',

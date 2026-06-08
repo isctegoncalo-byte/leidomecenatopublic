@@ -35,6 +35,14 @@ export interface IspBeneficiaryProfile {
 export interface SroiInputs {
   valuePerDirectBeneficiary: number
   valuePerIndirectBeneficiary: number
+  proxyId?: string
+  proxyLabel?: string
+  proxyCategory?: string
+  proxySource?: string
+  proxyRationale?: string
+  proxyConfidence?: number
+  proxyMatchedKeywords?: string[]
+  proxyMatchedSdgs?: number[]
   attributionPercent: number
   deadweightPercent: number
   displacementPercent: number
@@ -106,7 +114,174 @@ export interface SroiResult {
   paybackPercent: number
 }
 
+export interface SroiProxy {
+  id: string
+  label: string
+  category: string
+  directValue: number
+  indirectValue: number
+  sdgs: number[]
+  keywords: string[]
+  source: string
+  rationale: string
+}
+
+export interface SroiProxyRecommendation {
+  proxy: SroiProxy
+  score: number
+  confidence: number
+  matchedKeywords: string[]
+  matchedSdgs: number[]
+  reasons: string[]
+}
+
 const STORAGE_KEY = 'leidomecenato_isp_measurements'
+
+export const SROI_PROXY_LIBRARY: SroiProxy[] = [
+  {
+    id: 'education-school-support',
+    label: 'Apoio educativo e sucesso escolar',
+    category: 'Educacao',
+    directValue: 180,
+    indirectValue: 45,
+    sdgs: [4, 10],
+    keywords: ['educacao', 'escolar', 'estudo', 'explicacoes', 'literacia', 'aprendizagem', 'alunos', 'criancas'],
+    source: 'Proxy interna baseada em custo equivalente de apoio educativo complementar.',
+    rationale: 'Usada quando o outcome principal e melhoria de aprendizagem, acompanhamento escolar ou reducao de desigualdades educativas.',
+  },
+  {
+    id: 'education-digital-inclusion',
+    label: 'Inclusao digital e competencias digitais',
+    category: 'Educacao',
+    directValue: 220,
+    indirectValue: 55,
+    sdgs: [4, 8, 9, 10],
+    keywords: ['digital', 'computador', 'tecnologia', 'competencias digitais', 'laboratorio', 'equipamento informatico'],
+    source: 'Proxy interna baseada em custo equivalente de formacao digital e acesso a equipamento.',
+    rationale: 'Adequada a projetos que aumentam acesso digital, qualificacao tecnologica ou literacia digital.',
+  },
+  {
+    id: 'health-primary-care',
+    label: 'Cuidados de saude e prevencao',
+    category: 'Saude',
+    directValue: 260,
+    indirectValue: 65,
+    sdgs: [3, 10],
+    keywords: ['saude', 'clinica', 'consulta', 'prevencao', 'rastreio', 'tratamento', 'terapia'],
+    source: 'Proxy interna baseada em custo evitado/custo equivalente de cuidados e acompanhamento preventivo.',
+    rationale: 'Usada quando o apoio melhora acesso a cuidados, prevencao ou acompanhamento clinico.',
+  },
+  {
+    id: 'health-mental-wellbeing',
+    label: 'Saude mental e bem-estar psicossocial',
+    category: 'Saude',
+    directValue: 320,
+    indirectValue: 80,
+    sdgs: [3, 10, 16],
+    keywords: ['saude mental', 'psicologia', 'bem-estar', 'terapeutico', 'isolamento', 'ansiedade', 'familias'],
+    source: 'Proxy interna baseada em custo equivalente de acompanhamento psicossocial.',
+    rationale: 'Aplicavel a outcomes de melhoria de bem-estar, reducao de isolamento ou apoio psicologico.',
+  },
+  {
+    id: 'social-food-basic-needs',
+    label: 'Apoio alimentar e necessidades basicas',
+    category: 'Apoio social',
+    directValue: 120,
+    indirectValue: 30,
+    sdgs: [1, 2, 10],
+    keywords: ['alimentar', 'alimentos', 'refeicoes', 'cabaz', 'pobreza', 'necessidades basicas', 'familias'],
+    source: 'Proxy interna baseada em valor de mercado/custo equivalente de apoio alimentar e bens essenciais.',
+    rationale: 'Indicada para donativos de bens essenciais, apoio alimentar e resposta social imediata.',
+  },
+  {
+    id: 'social-inclusion-vulnerability',
+    label: 'Inclusao social de populacoes vulneraveis',
+    category: 'Inclusao',
+    directValue: 280,
+    indirectValue: 70,
+    sdgs: [1, 5, 10, 16],
+    keywords: ['inclusao', 'vulnerabilidade', 'migrantes', 'sem abrigo', 'deficiencia', 'igualdade', 'comunidade'],
+    source: 'Proxy interna baseada em custo equivalente de acompanhamento social e integracao comunitaria.',
+    rationale: 'Usada quando o outcome e integracao, autonomia, protecao ou reducao de exclusao.',
+  },
+  {
+    id: 'employment-training',
+    label: 'Emprego, formacao e empregabilidade',
+    category: 'Emprego',
+    directValue: 650,
+    indirectValue: 160,
+    sdgs: [4, 8, 10],
+    keywords: ['emprego', 'formacao', 'empregabilidade', 'competencias', 'profissional', 'trabalho', 'capacitar'],
+    source: 'Proxy interna baseada em custo equivalente de formacao, ativacao e ganhos potenciais de empregabilidade.',
+    rationale: 'Adequada para projetos que aumentam empregabilidade, qualificacao ou transicao para trabalho.',
+  },
+  {
+    id: 'sports-inclusion',
+    label: 'Desporto inclusivo e participacao',
+    category: 'Desporto',
+    directValue: 160,
+    indirectValue: 40,
+    sdgs: [3, 4, 10],
+    keywords: ['desporto', 'atividade fisica', 'bolsas de desporto', 'inclusivo', 'modalidade', 'jovens'],
+    source: 'Proxy interna baseada em custo equivalente de participacao desportiva e beneficios de bem-estar.',
+    rationale: 'Aplicavel a projetos de desporto, inclusao, saude e participacao juvenil.',
+  },
+  {
+    id: 'culture-heritage-education',
+    label: 'Cultura, patrimonio e educacao artistica',
+    category: 'Cultura',
+    directValue: 140,
+    indirectValue: 35,
+    sdgs: [4, 11],
+    keywords: ['cultura', 'arte', 'memoria', 'patrimonio', 'arquivo', 'oficinas', 'museu'],
+    source: 'Proxy interna baseada em custo equivalente de experiencia cultural/educativa e acesso a patrimonio.',
+    rationale: 'Indicada para outcomes de acesso cultural, literacia artistica e valorizacao patrimonial.',
+  },
+  {
+    id: 'environment-tree-ecosystem',
+    label: 'Ambiente, reflorestacao e ecossistemas',
+    category: 'Ambiente',
+    directValue: 90,
+    indirectValue: 25,
+    sdgs: [6, 12, 13, 15],
+    keywords: ['ambiente', 'reflorestacao', 'arvores', 'biodiversidade', 'ecossistema', 'clima', 'co2'],
+    source: 'Proxy interna baseada em beneficios ambientais, educacao ambiental e servicos de ecossistema.',
+    rationale: 'Usada quando o projeto gera outcomes ambientais e comunitarios associados.',
+  },
+  {
+    id: 'water-sanitation',
+    label: 'Agua, saneamento e eficiencia hidrica',
+    category: 'Ambiente',
+    directValue: 210,
+    indirectValue: 55,
+    sdgs: [3, 6, 12],
+    keywords: ['agua', 'saneamento', 'hidrico', 'poupanca de agua', 'higiene'],
+    source: 'Proxy interna baseada em custo evitado e acesso a condicoes de higiene/saude.',
+    rationale: 'Adequada a projetos de acesso a agua, higiene, saneamento ou eficiencia hidrica.',
+  },
+  {
+    id: 'energy-efficiency',
+    label: 'Energia, eficiencia energetica e pobreza energetica',
+    category: 'Ambiente',
+    directValue: 240,
+    indirectValue: 60,
+    sdgs: [7, 11, 12, 13],
+    keywords: ['energia', 'eficiencia energetica', 'poupanca energetica', 'pobreza energetica', 'solar'],
+    source: 'Proxy interna baseada em poupanca potencial, conforto e reducao de custos energeticos.',
+    rationale: 'Indicada para intervenções de eficiencia energetica, conforto termico e reducao de emissoes.',
+  },
+  {
+    id: 'animal-welfare-community',
+    label: 'Bem-estar animal e saude publica comunitaria',
+    category: 'Bem-estar animal',
+    directValue: 110,
+    indirectValue: 35,
+    sdgs: [3, 11, 15],
+    keywords: ['animais', 'veterinaria', 'esterilizacao', 'clinica movel', 'bem-estar animal'],
+    source: 'Proxy interna baseada em custo equivalente de cuidados veterinarios e beneficios comunitarios.',
+    rationale: 'Aplicavel a projetos de bem-estar animal com efeitos indiretos em saude publica e comunidade.',
+  },
+]
 
 export const ISP_DIMENSIONS: Array<{ key: IspDimensionKey; label: string; weight: number; criteria: string[] }> = [
   {
@@ -328,23 +503,238 @@ export function impactScoreInterpretation(score: number) {
   return 'Impact Score a consolidar'
 }
 
+function scoreBand(score: number) {
+  if (score >= 85) return 'muito elevado'
+  if (score >= 70) return 'elevado'
+  if (score >= 50) return 'moderado'
+  return 'a reforcar'
+}
+
+function ratioBand(ratio: number) {
+  if (ratio >= 5) return 'muito elevado'
+  if (ratio >= 3) return 'elevado'
+  if (ratio >= 1) return 'positivo'
+  return 'a reforcar'
+}
+
+function strongestDimension(measurement: IspMeasurement) {
+  return ISP_DIMENSIONS.slice().sort((a, b) =>
+    clampScore(measurement.dimensions[b.key]) - clampScore(measurement.dimensions[a.key])
+  )[0]
+}
+
+function weakestDimension(measurement: IspMeasurement) {
+  return ISP_DIMENSIONS.slice().sort((a, b) =>
+    clampScore(measurement.dimensions[a.key]) - clampScore(measurement.dimensions[b.key])
+  )[0]
+}
+
+export function ispResultParagraphs(measurement: IspMeasurement): [string, string] {
+  const isp = calculateIspScore(measurement)
+  const strongest = strongestDimension(measurement)
+  const weakest = weakestDimension(measurement)
+  return [
+    `O resultado ISP de ${isp}/100 representa uma qualidade de impacto ${scoreBand(isp)}. A dimensao mais forte e ${strongest.label}, com ${Math.round(clampScore(measurement.dimensions[strongest.key]) * 20)}/100, indicando que este donativo apresenta melhor desempenho nesse eixo da metodologia.`,
+    `A dimensao que mais condiciona a leitura e ${weakest.label}, com ${Math.round(clampScore(measurement.dimensions[weakest.key]) * 20)}/100. Para melhorar o ISP, deve ser dada prioridade a evidencias, KPIs e informacao operacional que reforcem esta dimensao sem alterar artificialmente o alcance real do donativo.`,
+  ]
+}
+
+export function irodResultParagraphs(item: IspDonationItem, measurement: IspMeasurement): [string, string] {
+  const irod = calculateIrodScore(item, measurement)
+  const donationImpact = getDonationImpactContext(item)
+  return [
+    `O IROD de ${irod.score}/100 traduz um retorno de impacto ${scoreBand(irod.score)} face ao valor doado. O donativo cobre ${donationImpact.coveragePercent.toFixed(1)}% do custo total do projeto e apresenta uma alavancagem de ${irod.leverageMultiplier.toFixed(2)}x, o que ajuda a perceber se o valor doado desbloqueia impacto proporcional ou complementar.`,
+    `A leitura e composta por qualidade de impacto (${irod.qualityReturn}/100), integridade da medicao (${irod.confidenceReturn}/100), cobertura (${irod.coverageReturn}/100), beneficiarios por euro (${irod.beneficiaryReturn}/100) e alavancagem (${irod.leverageReturn}/100). Os pontos de melhoria devem concentrar-se nos eixos com menor pontuacao, sobretudo quando a cobertura financeira ou os beneficiarios atribuiveis ainda forem baixos.`,
+  ]
+}
+
+export function icsResultParagraphs(item: IspDonationItem, measurement: IspMeasurement): [string, string] {
+  const ics = calculateIcsScore(item, measurement)
+  const kpis = selectedKpis(item.project)
+  return [
+    `O ICS de ${ics.score}/100 indica uma credibilidade de impacto ${scoreBand(ics.score)}. Esta pontuacao mede a robustez da avaliacao, cruzando evidencia documental, integridade dos dados, rastreabilidade de KPIs, alinhamento com ODS, caracterizacao de beneficiarios e estado de validacao.`,
+    `Neste caso, existem ${kpis.length} KPI(s) associados e ${measurement.sdgs.length} ODS registado(s). Para aumentar a credibilidade, a prioridade deve ser reforcar evidencia verificavel, clarificar dados demograficos dos beneficiarios e garantir que cada KPI tem fonte, metodo de recolha e ligacao direta ao outcome medido.`,
+  ]
+}
+
+export function sroiResultParagraphs(item: IspDonationItem, measurement: IspMeasurement): [string, string] {
+  const sroi = calculateSroi(item, measurement)
+  const inputs = normalizeSroiInputs(item, measurement)
+  return [
+    `O SROI de ${sroi.ratio.toFixed(2)}x representa um retorno social estimado ${ratioBand(sroi.ratio)}. Isto significa que, para cada euro doado, a metodologia estima ${sroi.ratio.toFixed(2)} euros de valor social ajustado, depois de aplicar atribuicao, deadweight, deslocacao, duracao e drop-off.`,
+    `A proxy aplicada e "${inputs.proxyLabel || 'nao definida'}", com valor direto de EUR ${inputs.valuePerDirectBeneficiary.toLocaleString('pt-PT')} por beneficiario direto e EUR ${inputs.valuePerIndirectBeneficiary.toLocaleString('pt-PT')} por beneficiario indireto. Este resultado deve ser lido como estimativa metodologica e deve ser revisto sempre que a proxy, a fonte, a evidencia ou os dados de beneficiarios forem atualizados.`,
+  ]
+}
+
+export function impactScoreResultParagraphs(item: IspDonationItem, measurement: IspMeasurement): [string, string] {
+  const impactScore = calculateImpactScore(item, measurement)
+  return [
+    `O Impact Score de ${impactScore.score}/100 representa uma avaliacao global ${scoreBand(impactScore.score)} do donativo. O resultado consolida ISP (${impactScore.isp}/100), IROD (${impactScore.irod}/100) e ICS (${impactScore.ics}/100), dando mais peso a qualidade de impacto e retorno do donativo, sem ignorar a credibilidade da medicao.`,
+    `Quando o Impact Score e forte, o donativo combina impacto relevante, boa eficiencia relativa e medicao suficientemente suportada. Quando fica abaixo do esperado, a melhoria pode vir de tres frentes: reforcar dimensoes ISP, aumentar a rastreabilidade/validacao que alimenta o ICS ou melhorar a atribuicao/cobertura do donativo captada pelo IROD.`,
+  ]
+}
+
+function kpiLabels(item: IspDonationItem) {
+  const project = item.project
+  return [
+    ...(project?.customKpis || []),
+    ...Object.values(project?.odsImpactMetrics || {}).flatMap(metrics => [
+      ...Object.keys(metrics),
+      ...Object.values(metrics).map(value => String(value)),
+    ]),
+  ]
+}
+
+function sroiMatchingText(item: IspDonationItem) {
+  const project = item.project
+  return [
+    item.proof.description,
+    item.proof.institutionName,
+    project?.projectName,
+    project?.category,
+    project?.subcategory,
+    project?.description,
+    project?.executiveSummary,
+    project?.rationale,
+    project?.targetPopulation,
+    project?.objectives,
+    project?.impactMetric,
+    project?.productOrService,
+    project?.productOrServiceCategory,
+    ...kpiLabels(item),
+  ].filter(Boolean).join(' ').toLowerCase()
+}
+
+function scoreSroiProxy(item: IspDonationItem, proxy: SroiProxy) {
+  const text = sroiMatchingText(item)
+  const sdgs = item.project?.sdgGoals || []
+  const category = item.project?.category?.toLowerCase() || ''
+  const subcategory = item.project?.subcategory?.toLowerCase() || ''
+  const kpiText = kpiLabels(item).join(' ').toLowerCase()
+  const matchedKeywords = proxy.keywords.filter(keyword => text.includes(keyword.toLowerCase()))
+  const matchedSdgs = proxy.sdgs.filter(sdg => sdgs.includes(sdg))
+  const keywordScore = matchedKeywords.reduce((score, keyword) =>
+    score + (kpiText.includes(keyword.toLowerCase()) ? 6 : 4), 0)
+  const sdgScore = matchedSdgs.length * 3
+  const categoryScore =
+    (category && proxy.category.toLowerCase().includes(category) ? 5 : 0) +
+    (subcategory && proxy.keywords.some(keyword => subcategory.includes(keyword.toLowerCase())) ? 4 : 0)
+  const score = keywordScore + sdgScore + categoryScore
+  const reasons = [
+    matchedSdgs.length ? `ODS coincidentes: ${matchedSdgs.map(sdg => `ODS ${sdg}`).join(', ')}` : '',
+    matchedKeywords.length ? `Palavras/KPIs coincidentes: ${matchedKeywords.slice(0, 6).join(', ')}` : '',
+    categoryScore > 0 ? 'Categoria/subcategoria alinhada com a proxy.' : '',
+  ].filter(Boolean)
+  return { proxy, score, matchedKeywords, matchedSdgs, reasons }
+}
+
+function buildSroiProxyRecommendation(scored: ReturnType<typeof scoreSroiProxy>): SroiProxyRecommendation {
+  const confidence = clampPercent(Math.round(Math.min(95, 35 + (scored.score * 4))))
+  return { ...scored, confidence }
+}
+
+export function suggestSroiProxyRecommendation(item: IspDonationItem): SroiProxyRecommendation {
+  const scored = SROI_PROXY_LIBRARY.map(proxy => scoreSroiProxy(item, proxy)).sort((a, b) => b.score - a.score)
+
+  const best = scored[0]?.score > 0
+    ? scored[0]
+    : {
+        proxy: SROI_PROXY_LIBRARY[5],
+        score: 0,
+        matchedKeywords: [],
+        matchedSdgs: [],
+        reasons: ['Sem correspondencia forte; aplicada proxy conservadora de inclusao social.'],
+      }
+  return buildSroiProxyRecommendation(best)
+}
+
+export function suggestSroiProxy(item: IspDonationItem): SroiProxy {
+  return suggestSroiProxyRecommendation(item).proxy
+}
+
+function defaultSroiAssumptions(item: IspDonationItem, recommendation: SroiProxyRecommendation) {
+  const donationImpact = getDonationImpactContext(item)
+  const hasEvidence = Boolean(item.proof.proofFileDataUrl || item.proof.companyInvoiceFileDataUrl || item.proof.institutionReceiptFileDataUrl)
+  const hasKpis = kpiLabels(item).length > 0
+  const category = recommendation.proxy.category.toLowerCase()
+  const evidenceBonus = hasEvidence ? 5 : 0
+  const kpiBonus = hasKpis ? 5 : 0
+  const confidenceBonus = Math.round(recommendation.confidence / 20)
+  const attributionPercent = clampPercent(Math.min(90, 62 + evidenceBonus + kpiBonus + confidenceBonus))
+  const deadweightPercent = category.includes('apoio social') ? 18
+    : category.includes('emprego') ? 15
+      : category.includes('ambiente') ? 12
+        : category.includes('saude') ? 10
+          : 12
+  const displacementPercent = category.includes('emprego') ? 5 : 0
+  const durationYears = category.includes('ambiente') || category.includes('energia') ? 3
+    : category.includes('emprego') || category.includes('educacao') || category.includes('saude') || category.includes('inclusao') ? 2
+      : 1
+  const dropoffPercent = durationYears > 1 ? (category.includes('ambiente') ? 8 : 15) : 0
+  const coverageNote = donationImpact.coveragePercent > 0
+    ? ` A atribuicao usa beneficiarios ja ajustados a cobertura do donativo (${donationImpact.coveragePercent.toFixed(1)}% do projeto).`
+    : ''
+  return {
+    attributionPercent,
+    deadweightPercent,
+    displacementPercent,
+    durationYears,
+    dropoffPercent,
+    coverageNote,
+  }
+}
+
+export function applySroiProxyToInputs(inputs: SroiInputs, proxy: SroiProxy, item?: IspDonationItem): SroiInputs {
+  const recommendation = item
+    ? buildSroiProxyRecommendation(scoreSroiProxy(item, proxy))
+    : { proxy, score: 0, confidence: inputs.proxyConfidence || 60, matchedKeywords: [], matchedSdgs: [], reasons: [] }
+  const assumptions = item ? defaultSroiAssumptions(item, recommendation) : null
+  return {
+    ...inputs,
+    valuePerDirectBeneficiary: proxy.directValue,
+    valuePerIndirectBeneficiary: proxy.indirectValue,
+    proxyId: proxy.id,
+    proxyLabel: proxy.label,
+    proxyCategory: proxy.category,
+    proxySource: proxy.source,
+    proxyRationale: proxy.rationale,
+    proxyConfidence: appliedRecommendation.confidence,
+    proxyMatchedKeywords: appliedRecommendation.matchedKeywords,
+    proxyMatchedSdgs: appliedRecommendation.matchedSdgs,
+    attributionPercent: assumptions?.attributionPercent ?? inputs.attributionPercent,
+    deadweightPercent: assumptions?.deadweightPercent ?? inputs.deadweightPercent,
+    displacementPercent: assumptions?.displacementPercent ?? inputs.displacementPercent,
+    durationYears: assumptions?.durationYears ?? inputs.durationYears,
+    dropoffPercent: assumptions?.dropoffPercent ?? inputs.dropoffPercent,
+    notes: `${proxy.rationale} Fonte/metodo: ${proxy.source}.${assumptions?.coverageNote || ''}`,
+  }
+}
+
 export function defaultSroiInputs(item: IspDonationItem, directBeneficiaries?: number): SroiInputs {
   const donationImpact = getDonationImpactContext(item)
   const direct = directBeneficiaries || donationImpact.coveredDirectBeneficiaries || item.project?.beneficiaries || 0
-  const donationAmount = donationImpact.donationAmount || 0
-  const estimatedDirectValue = direct > 0 && donationAmount > 0
-    ? Math.max(25, Math.round((donationAmount / direct) * 1.5))
-    : 100
-  return {
-    valuePerDirectBeneficiary: estimatedDirectValue,
-    valuePerIndirectBeneficiary: Math.round(estimatedDirectValue * 0.25),
-    attributionPercent: 80,
-    deadweightPercent: 10,
-    displacementPercent: 0,
-    durationYears: 1,
-    dropoffPercent: 0,
-    notes: 'Premissas internas para estimar o valor social gerado pelo donativo. Rever antes de usar em relatorio externo.',
+  const recommendation = suggestSroiProxyRecommendation(item)
+  const proxy = recommendation.proxy
+  const assumptions = defaultSroiAssumptions(item, recommendation)
+  const baseInputs = {
+    valuePerDirectBeneficiary: proxy.directValue,
+    valuePerIndirectBeneficiary: proxy.indirectValue,
+    proxyId: proxy.id,
+    proxyLabel: proxy.label,
+    proxyCategory: proxy.category,
+    proxySource: proxy.source,
+    proxyRationale: proxy.rationale,
+    proxyConfidence: recommendation.confidence,
+    proxyMatchedKeywords: recommendation.matchedKeywords,
+    proxyMatchedSdgs: recommendation.matchedSdgs,
+    attributionPercent: assumptions.attributionPercent,
+    deadweightPercent: assumptions.deadweightPercent,
+    displacementPercent: assumptions.displacementPercent,
+    durationYears: assumptions.durationYears,
+    dropoffPercent: assumptions.dropoffPercent,
+    notes: `${proxy.rationale} Fonte/metodo: ${proxy.source}.${assumptions.coverageNote}`,
   }
+  return direct > 0 ? baseInputs : { ...baseInputs, attributionPercent: 70, deadweightPercent: 15 }
 }
 
 function normalizeSroiInputs(item: IspDonationItem, measurement: IspMeasurement): SroiInputs {
@@ -353,6 +743,14 @@ function normalizeSroiInputs(item: IspDonationItem, measurement: IspMeasurement)
   return {
     valuePerDirectBeneficiary: positiveNumber(measurement.sroi?.valuePerDirectBeneficiary ?? fallback.valuePerDirectBeneficiary),
     valuePerIndirectBeneficiary: positiveNumber(measurement.sroi?.valuePerIndirectBeneficiary ?? fallback.valuePerIndirectBeneficiary),
+    proxyId: measurement.sroi?.proxyId ?? fallback.proxyId,
+    proxyLabel: measurement.sroi?.proxyLabel ?? fallback.proxyLabel,
+    proxyCategory: measurement.sroi?.proxyCategory ?? fallback.proxyCategory,
+    proxySource: measurement.sroi?.proxySource ?? fallback.proxySource,
+    proxyRationale: measurement.sroi?.proxyRationale ?? fallback.proxyRationale,
+    proxyConfidence: measurement.sroi?.proxyConfidence ?? fallback.proxyConfidence,
+    proxyMatchedKeywords: measurement.sroi?.proxyMatchedKeywords ?? fallback.proxyMatchedKeywords,
+    proxyMatchedSdgs: measurement.sroi?.proxyMatchedSdgs ?? fallback.proxyMatchedSdgs,
     attributionPercent: clampPercent(measurement.sroi?.attributionPercent ?? fallback.attributionPercent),
     deadweightPercent: clampPercent(measurement.sroi?.deadweightPercent ?? fallback.deadweightPercent),
     displacementPercent: clampPercent(measurement.sroi?.displacementPercent ?? fallback.displacementPercent),
@@ -490,6 +888,10 @@ function barSvg(label: string, value: number, color: string) {
   `
 }
 
+function paragraphsHtml(paragraphs: [string, string]) {
+  return paragraphs.map(paragraph => `<p>${escapeHtml(paragraph)}</p>`).join('')
+}
+
 function selectedKpis(project?: NeedItem) {
   const custom = project?.customKpis || []
   const ods = Object.entries(project?.odsImpactMetrics || {}).flatMap(([sdg, metrics]) =>
@@ -517,6 +919,11 @@ export function downloadIspWordReport(item: IspDonationItem, measurement: IspMea
   const sroi = calculateSroi(item, measurement)
   const sroiInputs = normalizeSroiInputs(item, measurement)
   const donationImpact = getDonationImpactContext(item)
+  const ispParagraphs = ispResultParagraphs(measurement)
+  const irodParagraphs = irodResultParagraphs(item, measurement)
+  const icsParagraphs = icsResultParagraphs(item, measurement)
+  const sroiParagraphs = sroiResultParagraphs(item, measurement)
+  const impactScoreParagraphs = impactScoreResultParagraphs(item, measurement)
   const amount = (item.proof.confirmedAmount || item.proof.amount || 0).toLocaleString('pt-PT')
   const kpis = selectedKpis(item.project)
   const sdgDashboard = measurement.sdgs.map(sdg => `
@@ -607,6 +1014,10 @@ export function downloadIspWordReport(item: IspDonationItem, measurement: IspMea
       ${barSvg('SROI face ao break-even', sroi.paybackPercent, '#7C3AED')}
       <table>
         <tbody>
+          <tr><th>Proxy financeira aplicada</th><td>${escapeHtml(sroiInputs.proxyLabel || 'Nao definida')}</td></tr>
+          <tr><th>Categoria da proxy</th><td>${escapeHtml(sroiInputs.proxyCategory || 'Nao definida')}</td></tr>
+          <tr><th>Fonte/metodo da proxy</th><td>${escapeHtml(sroiInputs.proxySource || 'Nao definido')}</td></tr>
+          <tr><th>Justificacao da proxy</th><td>${escapeHtml(sroiInputs.proxyRationale || 'Nao definida')}</td></tr>
           <tr><th>Valor por beneficiario direto</th><td>EUR ${sroiInputs.valuePerDirectBeneficiary.toLocaleString('pt-PT')}</td></tr>
           <tr><th>Valor por beneficiario indireto</th><td>EUR ${sroiInputs.valuePerIndirectBeneficiary.toLocaleString('pt-PT')}</td></tr>
           <tr><th>Atribuicao ao donativo</th><td>${sroiInputs.attributionPercent}%</td></tr>
@@ -617,6 +1028,8 @@ export function downloadIspWordReport(item: IspDonationItem, measurement: IspMea
         </tbody>
       </table>
       <p class="note">${escapeHtml(sroiInputs.notes)}</p>
+      <h3>Leitura do resultado SROI</h3>
+      ${paragraphsHtml(sroiParagraphs)}
 
       <h2>Impact Return on Donation - IROD™</h2>
       <p>O IROD™ estima o retorno de impacto do donativo, cruzando qualidade de impacto, integridade da medição, cobertura do custo total, beneficiários diretos por euro e efeito de alavancagem do valor doado.</p>
@@ -636,6 +1049,9 @@ export function downloadIspWordReport(item: IspDonationItem, measurement: IspMea
       ${barSvg('Cobertura', irod.coverageReturn, '#F59E0B')}
       ${barSvg('Beneficiários por euro', irod.beneficiaryReturn, '#06B6D4')}
 
+      <h3>Leitura do resultado IROD</h3>
+      ${paragraphsHtml(irodParagraphs)}
+
       <h2>Impact Credibility Score - ICS™</h2>
       <p>O ICS™ mede a credibilidade da avaliação de impacto, verificando se a medição é suportada por evidências, dados completos, KPIs rastreáveis, ODS associados, dados demográficos e estado de validação.</p>
       <table>
@@ -654,6 +1070,9 @@ export function downloadIspWordReport(item: IspDonationItem, measurement: IspMea
       ${barSvg('Integridade dos dados', ics.dataIntegrity, '#22C55E')}
       ${barSvg('Rastreabilidade de KPIs', ics.kpiTraceability, '#06B6D4')}
 
+      <h3>Leitura do resultado ICS</h3>
+      ${paragraphsHtml(icsParagraphs)}
+
       <h2>Impact Score</h2>
       <p>O Impact Score consolida a avaliação global do donativo através de três indicadores proprietários: ISP™, IROD™ e ICS™.</p>
       <table>
@@ -670,9 +1089,15 @@ export function downloadIspWordReport(item: IspDonationItem, measurement: IspMea
       ${barSvg('IROD™', impactScore.irod, '#06B6D4')}
       ${barSvg('ICS™', impactScore.ics, '#22C55E')}
 
+      <h3>Leitura do Impact Score</h3>
+      ${paragraphsHtml(impactScoreParagraphs)}
+
       <h2>Fórmula ISP™</h2>
       <p>ISP = (Impacto Gerado x 40 + Contribuição ESG x 25 + Eficiência x 15 + Qualidade da Evidência x 10 + Sustentabilidade x 10) / 5.</p>
       ${ISP_DIMENSIONS.map(dimension => barSvg(`${dimension.label} (${dimension.weight}%)`, clampScore(measurement.dimensions[dimension.key]) * 20, '#2563EB')).join('')}
+
+      <h3>Leitura do resultado ISP</h3>
+      ${paragraphsHtml(ispParagraphs)}
 
       <h2>Integração com ODS</h2>
       <table>

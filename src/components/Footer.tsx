@@ -43,12 +43,30 @@ export default function Footer({ setCurrentView }: Props) {
           </div>
 
           <div>
-            <a
-              href="mailto:geral@leidomecenato.pt"
-              className="text-sm text-slate-400 transition hover:text-white"
-            >
-              geral@leidomecenato.pt
-            </a>
+            <div className="space-y-2">
+              <a
+                href="mailto:geral@leidomecenato.pt"
+                className="block text-sm text-slate-400 transition hover:text-white"
+              >
+                geral@leidomecenato.pt
+              </a>
+              <a
+                href="https://www.instagram.com/leidomecenato.pt"
+                target="_blank"
+                rel="noreferrer"
+                className="block text-sm text-slate-400 transition hover:text-white"
+              >
+                Instagram @leidomecenato.pt
+              </a>
+              <a
+                href="https://www.facebook.com/leidomecenato.pt"
+                target="_blank"
+                rel="noreferrer"
+                className="block text-sm text-slate-400 transition hover:text-white"
+              >
+                Facebook www.facebook.com/leidomecenato.pt
+              </a>
+            </div>
           </div>
         </div>
 

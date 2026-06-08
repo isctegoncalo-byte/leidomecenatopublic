@@ -588,6 +588,17 @@ export async function listAdminProfilesReal(): Promise<{ ok: true; profiles: Adm
   return { ok: true, profiles: (data || []) as AdminProfile[] }
 }
 
+export async function deleteAdminProfileReal(profileId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+
+  const { error } = await supabase.functions.invoke('admin-delete-account', {
+    body: { profileId },
+  })
+
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
 export async function listAdminDocumentsReal(): Promise<{ ok: true; documents: AdminDocument[] } | { ok: false; error: string }> {
   if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
   const client = supabase

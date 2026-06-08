@@ -10,6 +10,7 @@ import {
   AdminDocument,
   AdminProfile,
   ReportTransaction,
+  deleteAdminProfileReal,
   listAdminDocumentsReal,
   listAdminProfilesReal,
   listAdminReportTransactionsReal,
@@ -268,6 +269,7 @@ function AdminUsersDocumentsTab({ session }: { session: Account | null }) {
   const [error, setError] = useState('')
   const [documentsError, setDocumentsError] = useState('')
   const [savingDocumentId, setSavingDocumentId] = useState('')
+  const [deletingProfileId, setDeletingProfileId] = useState('')
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({})
 
   const load = async () => {
@@ -343,6 +345,34 @@ function AdminUsersDocumentsTab({ session }: { session: Account | null }) {
     setDocuments(current => current.map(document =>
       document.id === documentId ? { ...document, ...result.document } : document
     ))
+  }
+
+  const deleteSelectedProfile = async () => {
+    if (!selectedProfile) return
+    if (selectedProfile.id === session?.id) {
+      setDocumentsError('NÃ£o Ã© possÃ­vel eliminar a conta com que iniciou sessÃ£o.')
+      return
+    }
+
+    const label = `${selectedProfile.name} (${selectedProfile.email})`
+    const confirmed = window.confirm(
+      `Eliminar definitivamente a conta ${label}?\n\nEsta aÃ§Ã£o remove o acesso, o perfil e os documentos associados.`
+    )
+    if (!confirmed) return
+
+    setDocumentsError('')
+    setDeletingProfileId(selectedProfile.id)
+    const result = await deleteAdminProfileReal(selectedProfile.id)
+    setDeletingProfileId('')
+
+    if (!result.ok) {
+      setDocumentsError(`NÃ£o foi possÃ­vel eliminar a conta: ${result.error}`)
+      return
+    }
+
+    setProfiles(current => current.filter(profile => profile.id !== selectedProfile.id))
+    setDocuments(current => current.filter(document => document.owner_id !== selectedProfile.id))
+    setSelectedProfileId('')
   }
 
   const companyProfiles = profiles.filter(p => p.role === 'empresa')
@@ -517,6 +547,29 @@ where email = 'o-teu-email@exemplo.pt';`}</pre>
                       <span className="rounded-full bg-green-100 px-2.5 py-1 text-green-700">{selectedDocuments.filter(d => documentReviewStatus(d) === 'accepted').length} aceites</span>
                       <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-700">{selectedDocuments.filter(d => documentReviewStatus(d) === 'pending').length} por validar</span>
                       <span className="rounded-full bg-red-100 px-2.5 py-1 text-red-700">{selectedDocuments.filter(d => documentReviewStatus(d) === 'rejected').length} rejeitados</span>
+                    </div>
+                    <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-wide text-red-700">GestÃ£o de conta</p>
+                          <p className="mt-1 text-xs text-red-700">
+                            Remove o acesso, o perfil e os documentos associados.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={deletingProfileId === selectedProfile.id || selectedProfile.id === session?.id}
+                          onClick={() => void deleteSelectedProfile()}
+                          className="rounded-xl bg-red-600 px-4 py-2 text-sm font-black text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {deletingProfileId === selectedProfile.id ? 'A eliminar...' : 'Eliminar conta'}
+                        </button>
+                      </div>
+                      {selectedProfile.id === session?.id && (
+                        <p className="mt-2 text-xs font-bold text-red-700">
+                          NÃ£o pode eliminar a prÃ³pria conta de administrador enquanto estÃ¡ autenticado.
+                        </p>
+                      )}
                     </div>
                   </div>
                 ) : (

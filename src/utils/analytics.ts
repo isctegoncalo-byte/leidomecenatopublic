@@ -7,6 +7,7 @@ const CAMPAIGN_KEY = 'leidomecenato_campaign_attribution'
 type CookieConsentValue = {
   essential: true
   analytics: boolean
+  marketing: boolean
   acceptedAt: string
   version: 2
 }
@@ -31,10 +32,13 @@ declare global {
   interface Window {
     dataLayer?: unknown[]
     gtag?: (...args: unknown[]) => void
+    fbq?: (...args: unknown[]) => void
+    _fbq?: (...args: unknown[]) => void
   }
 }
 
 const GA_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || ''
+const META_PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID || ''
 const SEARCH_CONSOLE_TOKEN = import.meta.env.VITE_GOOGLE_SITE_VERIFICATION || ''
 
 function nowIso() {
@@ -49,6 +53,7 @@ function safeParse(raw: string | null): CookieConsentValue | null {
       return {
         essential: true,
         analytics: Boolean(parsed.analytics),
+        marketing: Boolean(parsed.marketing),
         acceptedAt: parsed.acceptedAt || nowIso(),
         version: 2,
       }
@@ -67,6 +72,7 @@ export function getCookieConsent(): CookieConsentValue | null {
     const migrated: CookieConsentValue = {
       essential: true,
       analytics: false,
+      marketing: false,
       acceptedAt: nowIso(),
       version: 2,
     }
@@ -80,16 +86,21 @@ export function analyticsAllowed() {
   return Boolean(GA_ID && getCookieConsent()?.analytics)
 }
 
-export function setCookieConsent(analytics: boolean) {
+export function marketingAllowed() {
+  return Boolean(META_PIXEL_ID && getCookieConsent()?.marketing)
+}
+
+export function setCookieConsent(preferences: { analytics: boolean; marketing: boolean }) {
   const consent: CookieConsentValue = {
     essential: true,
-    analytics,
+    analytics: preferences.analytics,
+    marketing: preferences.marketing,
     acceptedAt: nowIso(),
     version: 2,
   }
   localStorage.setItem(CONSENT_KEY, JSON.stringify(consent))
   window.dispatchEvent(new CustomEvent('leidomecenato:cookie-consent', { detail: consent }))
-  if (analytics) initAnalytics()
+  if (preferences.analytics || preferences.marketing) initAnalytics()
 }
 
 function stripUnsafeParams(params: AnalyticsParams = {}) {
@@ -128,9 +139,7 @@ function appendSearchConsoleMeta() {
   document.head.appendChild(meta)
 }
 
-export function initAnalytics() {
-  if (typeof window === 'undefined') return
-  appendSearchConsoleMeta()
+function initGoogleAnalytics() {
   if (!analyticsAllowed()) return
   if (document.querySelector(`script[data-ga-id="${GA_ID}"]`)) return
 
@@ -159,20 +168,63 @@ export function initAnalytics() {
   document.head.appendChild(script)
 }
 
+function initMetaPixel() {
+  if (!marketingAllowed()) return
+  if (document.querySelector(`script[data-meta-pixel-id="${META_PIXEL_ID}"]`)) return
+
+  const fbq = function (...args: unknown[]) {
+    window.fbq?.call(window, ...args)
+  }
+  if (!window.fbq) {
+    const queue = function (...args: unknown[]) {
+      queue.callMethod ? queue.callMethod(...args) : queue.queue.push(args)
+    } as ((...args: unknown[]) => void) & { queue: unknown[]; push: unknown; loaded: boolean; version: string; callMethod?: (...args: unknown[]) => void }
+    queue.push = queue
+    queue.loaded = true
+    queue.version = '2.0'
+    queue.queue = []
+    window.fbq = queue
+    window._fbq = queue
+  }
+
+  window.fbq?.('init', META_PIXEL_ID)
+
+  const script = document.createElement('script')
+  script.async = true
+  script.src = 'https://connect.facebook.net/en_US/fbevents.js'
+  script.dataset.metaPixelId = META_PIXEL_ID
+  document.head.appendChild(script)
+  void fbq
+}
+
+export function initAnalytics() {
+  if (typeof window === 'undefined') return
+  appendSearchConsoleMeta()
+  initGoogleAnalytics()
+  initMetaPixel()
+}
+
 export function trackPageView(view: ViewType, path = window.location.pathname) {
-  if (!analyticsAllowed()) return
+  if (!analyticsAllowed() && !marketingAllowed()) return
   initAnalytics()
-  window.gtag?.('event', 'page_view', {
+  const params = {
     page_title: document.title,
     page_location: window.location.href.split('?')[0],
     page_path: path,
     app_view: view,
-  })
+  }
+  if (analyticsAllowed()) window.gtag?.('event', 'page_view', params)
+  if (marketingAllowed()) window.fbq?.('track', 'PageView')
 }
 
 export function trackEvent(name: AnalyticsEventName, params: AnalyticsParams = {}) {
-  if (!analyticsAllowed()) return
+  if (!analyticsAllowed() && !marketingAllowed()) return
   initAnalytics()
-  window.gtag?.('event', name, stripUnsafeParams(params))
+  const safeParams = stripUnsafeParams(params)
+  if (analyticsAllowed()) window.gtag?.('event', name, safeParams)
+  if (marketingAllowed()) {
+    if (name === 'stripe_checkout_started') window.fbq?.('track', 'InitiateCheckout')
+    else if (name === 'start_company_registration' || name === 'start_institution_registration') window.fbq?.('track', 'Lead')
+    else window.fbq?.('trackCustom', name, safeParams)
+  }
 }
-

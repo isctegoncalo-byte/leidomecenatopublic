@@ -164,6 +164,13 @@ const content: Record<LegalKind, {
         ],
       },
       {
+        title: 'Meta Pixel',
+        body: [
+          'Com consentimento de marketing, pode ser usado Meta Pixel para medir desempenho de campanhas e conversoes tecnicas, como inicio de checkout ou inicio de registo.',
+          'A configuracao do Pixel nao deve enviar emails, NIFs, nomes, contactos, valores de donativos ou outros dados pessoais como parametros de eventos.',
+        ],
+      },
+      {
         title: 'Gestao de cookies',
         body: [
           'O utilizador pode bloquear ou apagar cookies nas definições do navegador. Essa decisão pode afetar login, preferências e algumas funcionalidades.',

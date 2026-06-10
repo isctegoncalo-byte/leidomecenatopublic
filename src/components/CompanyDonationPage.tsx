@@ -350,7 +350,7 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
             </div>
           </div>
           <div className="hidden">
-          <h1 className="text-3xl font-black text-slate-900 mb-6">Pedir Relatório de Impacto do Donativo</h1>
+          <div className="text-3xl font-black text-slate-900 mb-6">Pedir Relatório de Impacto do Donativo</div>
           <p className="text-slate-500 text-sm mb-6">
             Registe o donativo que já fez (ou vai fazer) e contrate um serviço de relatório de impacto.
             <strong> Não processamos donativos.</strong> O valor do donativo é transferido diretamente para a instituição.

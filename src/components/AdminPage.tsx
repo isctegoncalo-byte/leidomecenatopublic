@@ -133,7 +133,7 @@ where email = '${session.email}';`}</pre>
       {/* Header */}
       <div className="bg-slate-900 text-white py-4 px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div><h1 className="font-black text-lg">Administração</h1><p className="text-xs text-slate-400">Templates & Configuração</p></div>
+          <div><div className="font-black text-lg">Administração</div><p className="text-xs text-slate-400">Templates & Configuração</p></div>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setCurrentView('home')} className="bg-white/10 hover:bg-white/20 text-white text-sm px-4 py-2 rounded-lg">Site</button>

@@ -32,7 +32,7 @@ export default function Header({ currentView, setCurrentView, session }: Props) 
               <img src="/images/logo-leidomecenato-official.svg" alt={brand.name} className="h-10 w-10 object-contain" />
             </div>
             <div className="text-left">
-              <h1 className="text-xl font-extrabold tracking-tight leading-none">{brand.name}</h1>
+              <div className="text-xl font-extrabold tracking-tight leading-none">{brand.name}</div>
               <p className="text-xs font-medium" style={{ color: brand.accentColor }}>{brand.tagline}</p>
             </div>
           </button>

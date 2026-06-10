@@ -298,10 +298,11 @@ export default function HomePage({ setCurrentView }: Props) {
           <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
             <div>
               <p className="mb-4 inline-flex rounded-full border border-blue-400/40 bg-blue-500/10 px-4 py-2 text-xs font-black uppercase tracking-wide text-blue-200">
-                Lei do Mecenato
+                Impacto social e fiscal
               </p>
               <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight">
-                Transforme donativos em impacto social, com ganhos fiscais
+                <span className="block">Lei do Mecenato</span>
+                <span className="block text-3xl md:text-5xl">Transforme donativos em impacto social, com ganhos fiscais</span>
               </h1>
               <p className="text-xl text-slate-200 mb-5 max-w-3xl leading-relaxed">
                 Empresas encontram projetos elegíveis, simulam o benefício em IRC e recebem relatórios de impacto.

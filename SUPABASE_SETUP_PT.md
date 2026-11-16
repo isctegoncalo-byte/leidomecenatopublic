@@ -32,7 +32,7 @@ Este projeto ja funciona como demo. Para receber contas reais e ficheiros reais,
 5. Colar no SQL Editor.
 6. Clicar em "Run".
 
-Quando isto terminar, ficam criadas as tabelas `profiles`, `documents` e o bucket privado `documents`.
+Quando isto terminar, ficam criadas as tabelas base `profiles`, `documents` e o bucket privado `documents`. O esquema inclui também `institution_submissions` para candidaturas institucionais privadas.
 
 ## 3. Copiar as chaves do Supabase
 
@@ -132,13 +132,22 @@ Depois enviar o conteudo da pasta `dist/` para o alojamento.
 
 ## Nota importante
 
-Depois de preencher `.env`, este projeto deixa de guardar documentos so no browser e passa a enviar para o Supabase.
-Sem `.env`, continua em modo demo.
+Com as variáveis Supabase configuradas, a autenticação, os documentos, as transações de relatórios e as medições de impacto usam o Supabase. Outros registos operacionais (donativos, confirmações, chat, notificações e registos de instituições) ainda dependem do armazenamento do browser e não ficam partilhados entre dispositivos.
+Sem `.env`, a autenticação real não está disponível; a versão publicada não aceita sessões guardadas no browser.
 
 ## Segurança aplicada no Supabase
 
-O ficheiro `supabase/schema.sql` deve ser corrido novamente sempre que forem atualizadas as regras de seguranca.
-As regras atuais impedem utilizadores comuns de criarem ou alterarem perfis com `role = admin`, mantem o bucket `documents` privado e limitam uploads aos tipos permitidos.
+As alteracoes incrementais devem ser guardadas em `supabase/migrations/` e aplicadas pela ferramenta de migrations. Evitar voltar a executar o ficheiro completo `supabase/schema.sql` num projeto existente sem rever o diff e o estado remoto.
+
+A migration `20261116004637_harden_live_policies.sql` limita novas transacoes do browser ao estado pendente, reserva transicoes de estado ao `service_role`, remove insercoes publicas de notificacoes, retira a leitura anonima de dados institucionais privados e impede que um utilizador altere o proprio estado de revisao documental. O bucket `documents` permanece privado.
+
+A migration `20261116011144_restrict_document_storage.sql` remove politicas legadas que davam acesso amplo aos objetos no bucket `documents`; mantem o acesso do proprietario e do administrador.
+
+A migration `20261116013237_align_document_storage_columns.sql` alinha a tabela remota `documents` com o upload de ficheiros privado usado pelo frontend e mantem os campos legados. O administrador pode listar os documentos autorizados e obter URLs assinados temporarios. O caminho foi revisto, mas falta um upload de ponta a ponta com uma conta de teste antes de afirmar que a operacao real foi validada.
+
+A migration `20261116014230_institution_submissions.sql` cria o registo persistente de candidaturas de instituições. O titular autenticado e a administração podem ler a candidatura; só a administração a pode rever. O formulário exige uma conta com role `instituicao` e envia documentos comprovativos e imagens para o bucket privado `documents`. O painel de administração apresenta os dados e cria links temporários para os anexos. A decisão administrativa ainda não publica automaticamente a instituição no catálogo.
+
+O alerta de protecao contra palavras-passe comprometidas ainda requer ativacao nas definicoes de Auth do projeto. O alerta de `is_admin()` para utilizadores autenticados permanece porque as politicas RLS dependem dessa funcao; nao remover a permissao sem migrar essas politicas.
 
 Para as Edge Functions, configurar tambem:
 

@@ -69,6 +69,20 @@ alter table public.documents add column if not exists reviewed_at timestamptz;
 create index if not exists documents_owner_id_idx on public.documents (owner_id);
 create index if not exists documents_review_status_idx on public.documents (review_status);
 
+create table if not exists public.institution_submissions (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references public.profiles(id) on delete cascade,
+  status text not null default 'submitted' check (status in ('submitted', 'confirmed', 'rejected')),
+  payload jsonb not null,
+  submitted_at timestamptz not null default now(),
+  reviewed_at timestamptz,
+  reviewed_by uuid references public.profiles(id),
+  review_note text
+);
+create index if not exists institution_submissions_owner_submitted_idx on public.institution_submissions (owner_id, submitted_at desc);
+create index if not exists institution_submissions_status_submitted_idx on public.institution_submissions (status, submitted_at desc);
+create index if not exists institution_submissions_reviewed_by_idx on public.institution_submissions (reviewed_by);
+
 create table if not exists public.impact_measurements (
   proof_id text primary key,
   measurement jsonb not null,
@@ -323,6 +337,7 @@ where not exists (
 
 alter table public.profiles enable row level security;
 alter table public.documents enable row level security;
+alter table public.institution_submissions enable row level security;
 alter table public.impact_measurements enable row level security;
 alter table public.transactions enable row level security;
 
@@ -366,6 +381,30 @@ on public.documents for update
 using (public.is_admin())
 with check (public.is_admin());
 
+drop policy if exists "Institution owners can submit registration" on public.institution_submissions;
+create policy "Institution owners can submit registration"
+on public.institution_submissions for insert to authenticated
+with check (
+  owner_id = (select auth.uid())
+  and status = 'submitted'
+  and reviewed_at is null
+  and reviewed_by is null
+  and review_note is null
+);
+
+drop policy if exists "Institution owners and admins can read submissions" on public.institution_submissions;
+create policy "Institution owners and admins can read submissions"
+on public.institution_submissions for select to authenticated
+using (owner_id = (select auth.uid()) or public.is_admin());
+
+drop policy if exists "Admins can review institution submissions" on public.institution_submissions;
+create policy "Admins can review institution submissions"
+on public.institution_submissions for update to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+grant select, insert, update on public.institution_submissions to authenticated;
+revoke all on public.institution_submissions from anon;
+
 drop policy if exists "impact_measurements_admin_select" on public.impact_measurements;
 create policy "impact_measurements_admin_select"
 on public.impact_measurements for select
@@ -401,7 +440,16 @@ create policy "transactions_insert_own"
 on public.transactions for insert
 with check (
   company_profile_id = auth.uid()
-  or lower(company_email) = lower(coalesce(auth.jwt()->>'email', ''))
+  and status = 'pending'
+  and payment_provider = 'stripe'
+  and stripe_checkout_session_id is null
+  and stripe_payment_intent_id is null
+  and stripe_customer_id is null
+  and stripe_receipt_url is null
+  and invoice_receipt_status = 'pending'
+  and invoice_receipt_number is null
+  and invoice_receipt_file_url is null
+  and invoice_receipt_updated_by is null
 );
 
 drop policy if exists "transactions_update_admin" on public.transactions;

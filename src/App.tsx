@@ -18,8 +18,9 @@ import LegalPage from './components/LegalPage'
 import CookieConsent from './components/CookieConsent'
 import SiteChatbot from './components/SiteChatbot'
 import BrandSync from './components/BrandSync'
+import CatalogPages from './components/CatalogPages'
 import { getSession, listAccounts } from './utils/authStore'
-import { getRealSessionAccount, notifyAdminAboutDonationIntent, realBackendEnabled } from './utils/supabaseBackend'
+import { getRealSessionAccount, logoutReal, notifyAdminAboutDonationIntent, realBackendEnabled } from './utils/supabaseBackend'
 import { createProof, getProofByContractId } from './utils/proofStore'
 import { createCompanyDonationRegisteredNotification, createDonationIntentNotification } from './utils/notificationStore'
 import { createThread } from './utils/chatStore'
@@ -94,6 +95,7 @@ export default function App() {
   const [state, setState] = useState<AppState>(() => ({ screen: 'main', view: pathToView(window.location.pathname) }))
   const [session, setSession] = useState<Account | null>(null)
   const [sessionReady, setSessionReady] = useState(false)
+  const [loginDestination, setLoginDestination] = useState<ViewType | null>(null)
   const sessionRef = useRef<Account | null>(null)
 
   const setStableSession = (account: Account | null) => {
@@ -111,7 +113,8 @@ export default function App() {
         if (alive) setSessionReady(true)
       })
     } else {
-      setStableSession(getSession())
+      // A public build without Supabase must fail closed; browser storage is not authentication.
+      setStableSession(import.meta.env.DEV ? getSession() : null)
       setSessionReady(true)
     }
     return () => { alive = false }
@@ -143,6 +146,9 @@ export default function App() {
   }, [state])
 
   const setView = (view: ViewType) => {
+    if (view === 'login' && state.screen === 'main' && state.view === 'instituicao') {
+      setLoginDestination('instituicao')
+    }
     const resolvedView = view === 'area-privada' && session?.role === 'admin' ? 'admin' : view
     if (resolvedView === 'empresa') trackEvent('start_company_registration', { source: 'navigation' })
     if (resolvedView === 'instituicao') trackEvent('start_institution_registration', { source: 'navigation' })
@@ -209,8 +215,10 @@ export default function App() {
       if (!pending.contract) return
       localStorage.removeItem('leidomecenato_pending_report_payment')
       window.history.replaceState({}, '', '/empresa/donativo')
-      trackEvent('donation_confirmation_success', { payment_provider: 'stripe' })
-      handleContractComplete({ ...pending.contract, reportPaymentStatus: 'paid' })
+      trackEvent('stripe_checkout_return', { payment_provider: 'stripe' })
+      // Returning from a Payment Link is not proof of payment. Only the signed webhook
+      // may change the persisted transaction status to paid.
+      handleContractComplete({ ...pending.contract, reportPaymentStatus: 'pending' })
     } catch {
       localStorage.removeItem('leidomecenato_pending_report_payment')
     }
@@ -232,6 +240,14 @@ export default function App() {
       setState({ screen: 'main', view: 'admin' })
       return
     }
+    if (loginDestination === 'instituicao' && account.role === 'instituicao') {
+      setLoginDestination(null)
+      const path = viewToPath('instituicao')
+      if (window.location.pathname !== path) window.history.pushState({}, '', path)
+      setState({ screen: 'main', view: 'instituicao' })
+      return
+    }
+    setLoginDestination(null)
     const pending = localStorage.getItem('leidomecenato_pending_project')
     if (pending && account.role === 'empresa') {
       const path = viewToPath('empresa')
@@ -245,6 +261,7 @@ export default function App() {
   }
 
   const handleLogout = () => {
+    void logoutReal()
     trackEvent('logout', { role: session?.role || 'unknown' })
     setStableSession(null)
     setState({ screen: 'main', view: 'home' })
@@ -282,17 +299,10 @@ export default function App() {
           <CompanyDonationPage onContractComplete={handleContractComplete} account={session} />
         )}
         {view === 'instituicao' && (
-          <InstitutionRegisterPage onComplete={handleHome} />
+          <InstitutionRegisterPage onComplete={handleHome} account={session} setCurrentView={setView} />
         )}
         {(view === 'empresas' || view === 'instituicoes' || view === 'relatorios') && (
-          <div className="min-h-screen bg-slate-50 flex items-center justify-center py-20 px-4">
-             <div className="max-w-2xl text-center bg-white p-12 rounded-3xl shadow-xl border border-slate-100">
-                <div className="text-6xl mb-6"></div>
-                <h1 className="text-3xl font-black mb-4 capitalize">{view}</h1>
-                <p className="text-slate-500 mb-8 text-lg">Estamos a preparar conteúdos exclusivos para esta página. Junte-se à plataforma para ser notificado.</p>
-                <button onClick={() => setView('login')} className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold">Criar Conta Gratuitamente</button>
-             </div>
-          </div>
+          <CatalogPages view={view} setCurrentView={setView} />
         )}
         {view === 'login' && (
           <LoginPage onLogin={handleLogin} setCurrentView={setView} />

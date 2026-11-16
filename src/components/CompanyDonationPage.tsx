@@ -70,7 +70,10 @@ export default function CompanyDonationPage({ onContractComplete, account }: Pro
     contact: '',
     activity: account?.role === 'empresa' ? account.companyActivity || '' : '',
   })
-  const [selectedTierId, setSelectedTierId] = useState('premium')
+  const [selectedTierId, setSelectedTierId] = useState(() => {
+    const requestedTier = new URLSearchParams(window.location.search).get('reportTier')
+    return REPORT_TIERS.some(tier => tier.id === requestedTier) ? requestedTier! : 'premium'
+  })
   const [noImpactReport, setNoImpactReport] = useState(false)
   const [proofFile, setProofFile] = useState<{ name: string; dataUrl: string; size: number } | null>(null)
   const [publicDonationAmountConsent, setPublicDonationAmountConsent] = useState(false)

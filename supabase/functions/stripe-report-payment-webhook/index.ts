@@ -38,6 +38,15 @@ const packAmounts: Record<PackId, { base: number; vat: number; total: number }> 
   social: { base: 400, vat: 24, total: 424 },
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
+}
+
 function detectPack(session: Stripe.Checkout.Session): PackId {
   const metadataPack = session.metadata?.pack_id as PackId | undefined
   if (metadataPack && packConfirmation[metadataPack]) return metadataPack
@@ -70,7 +79,7 @@ function customerId(session: Stripe.Checkout.Session) {
 }
 
 async function persistTransaction(session: Stripe.Checkout.Session, packId: PackId, receiptUrl: string, companyNif: string) {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return false
 
   const contractId = session.client_reference_id || session.metadata?.contract_id || session.id
   const pack = packConfirmation[packId]
@@ -118,7 +127,9 @@ async function persistTransaction(session: Stripe.Checkout.Session, packId: Pack
 
   if (!result.ok) {
     console.warn('Nao foi possivel persistir transacao Stripe:', await result.text())
+    return false
   }
+  return true
 }
 
 function buildEmail(input: {
@@ -132,13 +143,13 @@ function buildEmail(input: {
 }) {
   const pack = packConfirmation[input.packId]
   const institutionLine = input.institutionName
-    ? `<p><strong>Instituicao apoiada:</strong> ${input.institutionName}</p>`
+    ? `<p><strong>Instituicao apoiada:</strong> ${escapeHtml(input.institutionName)}</p>`
     : ''
   const fiscalLine = input.companyNif
-    ? `<p><strong>NIF/NIPC do adquirente:</strong> ${input.companyNif}</p>`
+    ? `<p><strong>NIF/NIPC do adquirente:</strong> ${escapeHtml(input.companyNif)}</p>`
     : ''
   const receiptLine = input.receiptUrl
-    ? `<p><a href="${input.receiptUrl}" style="color:#2563eb;font-weight:700;">Ver recibo de pagamento</a></p>`
+    ? `<p><a href="${escapeHtml(input.receiptUrl)}" style="color:#2563eb;font-weight:700;">Ver recibo de pagamento</a></p>`
     : '<p>O recibo sera enviado automaticamente pelo Stripe quando disponivel.</p>'
 
   return {
@@ -150,11 +161,11 @@ function buildEmail(input: {
           <h1 style="margin:0;font-size:24px;">Confirmacao de compra</h1>
         </div>
         <div style="border:1px solid #e2e8f0;border-top:0;padding:28px;border-radius:0 0 16px 16px;">
-          <p>Ola, ${input.companyName || 'empresa'}.</p>
+          <p>Ola, ${escapeHtml(input.companyName || 'empresa')}.</p>
           <p>${pack.text}</p>
           <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin:20px 0;">
             <p><strong>Pack adquirido:</strong> ${pack.title}</p>
-            <p><strong>Adquirente:</strong> ${input.companyName || 'Empresa'}</p>
+            <p><strong>Adquirente:</strong> ${escapeHtml(input.companyName || 'Empresa')}</p>
             ${fiscalLine}
             <p><strong>Valor pago:</strong> ${input.amountPaid}</p>
             ${institutionLine}
@@ -187,7 +198,7 @@ function buildInternalEmail(input: {
 }) {
   const pack = packConfirmation[input.packId]
   const receiptLine = input.receiptUrl
-    ? `<p><strong>Recibo Stripe:</strong> <a href="${input.receiptUrl}" style="color:#2563eb;font-weight:700;">abrir recibo</a></p>`
+    ? `<p><strong>Recibo Stripe:</strong> <a href="${escapeHtml(input.receiptUrl)}" style="color:#2563eb;font-weight:700;">abrir recibo</a></p>`
     : '<p><strong>Recibo Stripe:</strong> ainda nao disponivel.</p>'
 
   return {
@@ -200,15 +211,15 @@ function buildInternalEmail(input: {
         </div>
         <div style="border:1px solid #e2e8f0;border-top:0;padding:24px;border-radius:0 0 14px 14px;">
           <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:18px;">
-            <p><strong>Empresa:</strong> ${input.companyName || 'Nao indicada'}</p>
-            <p><strong>NIF/NIPC:</strong> ${input.companyNif || 'Nao indicado'}</p>
-            <p><strong>Email:</strong> ${input.customerEmail}</p>
+            <p><strong>Empresa:</strong> ${escapeHtml(input.companyName || 'Nao indicada')}</p>
+            <p><strong>NIF/NIPC:</strong> ${escapeHtml(input.companyNif || 'Nao indicado')}</p>
+            <p><strong>Email:</strong> ${escapeHtml(input.customerEmail)}</p>
             <p><strong>Pack:</strong> ${pack.title}</p>
             <p><strong>Valor pago:</strong> ${input.amountPaid}</p>
-            ${input.institutionName ? `<p><strong>Instituicao associada:</strong> ${input.institutionName}</p>` : ''}
-            <p><strong>Contrato:</strong> ${input.contractId}</p>
-            <p><strong>Stripe Checkout Session:</strong> ${input.checkoutSessionId}</p>
-            ${input.paymentIntentId ? `<p><strong>Payment Intent:</strong> ${input.paymentIntentId}</p>` : ''}
+            ${input.institutionName ? `<p><strong>Instituicao associada:</strong> ${escapeHtml(input.institutionName)}</p>` : ''}
+            <p><strong>Contrato:</strong> ${escapeHtml(input.contractId)}</p>
+            <p><strong>Stripe Checkout Session:</strong> ${escapeHtml(input.checkoutSessionId)}</p>
+            ${input.paymentIntentId ? `<p><strong>Payment Intent:</strong> ${escapeHtml(input.paymentIntentId)}</p>` : ''}
             ${receiptLine}
           </div>
           <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:16px;color:#92400e;">
@@ -259,15 +270,24 @@ Deno.serve(async (req) => {
   }
 
   const session = event.data.object as Stripe.Checkout.Session
+  if (session.mode !== 'payment' || session.payment_status !== 'paid') {
+    return Response.json({ ok: true, ignored: 'checkout session is not paid' })
+  }
+  const packId = detectPack(session)
+  const expected = packAmounts[packId].total * 100
+  if (session.currency !== 'eur' || session.amount_total !== expected) {
+    console.warn('Checkout Stripe com moeda ou total inesperado', session.id, session.currency, session.amount_total)
+    return Response.json({ ok: false, error: 'Unexpected checkout amount or currency' }, { status: 400 })
+  }
   const customerEmail = session.customer_details?.email || session.customer_email || ''
   if (!customerEmail) return Response.json({ ok: false, error: 'Missing customer email' }, { status: 400 })
 
-  const packId = detectPack(session)
   const receiptUrl = await getReceiptUrl(session)
   const companyNif = session.customer_details?.tax_ids?.[0]?.value || session.metadata?.company_nif || ''
   const contractId = session.client_reference_id || session.metadata?.contract_id || session.id
   const stripePaymentIntentId = paymentIntentId(session)
-  await persistTransaction(session, packId, receiptUrl, companyNif)
+  const persisted = await persistTransaction(session, packId, receiptUrl, companyNif)
+  if (!persisted) return Response.json({ ok: false, error: 'Could not persist paid transaction' }, { status: 500 })
   const email = buildEmail({
     packId,
     customerEmail,

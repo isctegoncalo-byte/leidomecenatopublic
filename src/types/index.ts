@@ -92,12 +92,15 @@ export interface DonationProof {
   proofFileName?: string
   proofFileDataUrl?: string
   proofFileSize?: number
+  proofFileStoragePath?: string
   companyInvoiceFileName?: string
   companyInvoiceFileDataUrl?: string
   companyInvoiceFileSize?: number
+  companyInvoiceStoragePath?: string
   institutionReceiptFileName?: string
   institutionReceiptFileDataUrl?: string
   institutionReceiptFileSize?: number
+  institutionReceiptStoragePath?: string
   institutionThankYouMessage?: string
   companyConfirmed: boolean
   institutionConfirmed: boolean
@@ -282,6 +285,8 @@ export interface InstitutionRegistration {
   utilidadePublica: boolean
   lastAccountsApproved: boolean
   termsAccepted?: boolean
+  consentRGPD?: boolean
+  consentLogoDisplay?: boolean
   termsAcceptedAt?: string
   termsVersion?: string
   termsDocumentUrl?: string

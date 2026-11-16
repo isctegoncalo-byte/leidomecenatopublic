@@ -14,8 +14,10 @@ export default function ImpactContractSuccessPage({ contract, onGoToPrivate, onH
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 flex items-center justify-center p-6">
       <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden">
-        <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-8 text-center text-white">
-          <h2 className="text-3xl font-black mb-2">Relatório de Impacto Contratado!</h2>
+        <div className="bg-gradient-to-r from-blue-700 to-indigo-800 p-8 text-center text-white">
+          <h2 className="text-3xl font-black mb-2">
+            {contract.reportPrice > 0 ? 'Pedido de relatório registado' : 'Intenção de donativo registada'}
+          </h2>
           <p className="text-green-100">Referência: <strong>{contract.id}</strong></p>
         </div>
 
@@ -26,7 +28,7 @@ export default function ImpactContractSuccessPage({ contract, onGoToPrivate, onH
             <div>
               <p className="text-xs text-slate-500">Instituição apoiada</p>
               <h3 className="font-bold text-slate-800">{contract.institutionName}</h3>
-              <p className="text-sm text-slate-500">Donativo registado na plataforma</p>
+              <p className="text-sm text-slate-500">Intenção de donativo registada na plataforma</p>
             </div>
           </div>
 
@@ -47,7 +49,7 @@ export default function ImpactContractSuccessPage({ contract, onGoToPrivate, onH
                 <span className="font-bold">{contract.donationType === 'dinheiro' ? 'Financeiro' : 'Produtos/Serviços'}</span>
               </div>
               <div className="flex justify-between pt-2 border-t">
-                <span className="text-slate-500">Serviço contratado:</span>
+                <span className="text-slate-500">Serviço selecionado:</span>
                 <span className="font-bold text-purple-600">{contract.reportTier.name}</span>
               </div>
               <div className="flex justify-between">
@@ -73,23 +75,27 @@ export default function ImpactContractSuccessPage({ contract, onGoToPrivate, onH
             </div>
           </div>
 
-          {/* Report status */}
-          <div className="bg-purple-50 border-2 border-purple-200 rounded-2xl p-6 mb-6">
-            <div className="flex items-start gap-4">
-              <div className="flex-1">
-                <h4 className="font-bold text-purple-800 mb-1">Relatório ESG aguarda confirmação dupla</h4>
-                <p className="text-purple-700 text-sm mb-3">
-                  O Relatório ESG fica disponível na sua <strong>área privada</strong> assim que <strong>ambas as partes</strong> (a sua empresa e a instituição beneficiária) confirmarem que o donativo aconteceu.
-                </p>
-                <ol className="text-xs text-purple-600 space-y-1 list-decimal list-inside">
-                  <li>Aceda à área privada da empresa</li>
-                  <li>Confirme o donativo na tab "Comprovativos"</li>
-                  <li>Aguarde a confirmação da instituição</li>
-                  <li>O Relatório ESG aparece automaticamente em "Relatórios ESG"</li>
-                </ol>
-              </div>
+          {contract.reportPrice > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6 text-amber-900">
+              <h4 className="font-bold mb-1">Pagamento a aguardar confirmação</h4>
+              <p className="text-sm">O regresso do checkout não confirma o pagamento. O estado será atualizado depois de a Stripe confirmar a transação.</p>
             </div>
-          </div>
+          )}
+
+          {/* Report status */}
+          {contract.reportPrice > 0 && (
+            <div className="bg-purple-50 border-2 border-purple-200 rounded-2xl p-6 mb-6">
+              <h4 className="font-bold text-purple-800 mb-1">Disponibilização do relatório</h4>
+              <p className="text-purple-700 text-sm mb-3">
+                O relatório só fica disponível depois da confirmação Stripe do pagamento e da confirmação do donativo pela empresa e pela instituição.
+              </p>
+              <ol className="text-xs text-purple-600 space-y-1 list-decimal list-inside">
+                <li>Confirme o donativo na área privada</li>
+                <li>Aguarde a confirmação da instituição beneficiária</li>
+                <li>Consulte o estado do pagamento e o relatório na área privada</li>
+              </ol>
+            </div>
+          )}
 
           <div className="flex flex-col gap-3">
             <button onClick={onGoToPrivate}

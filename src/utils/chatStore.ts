@@ -1,6 +1,12 @@
 import { Account, ChatMessage, ChatThread, ImpactContract } from '../types'
+import { realBackendEnabled, sendChatMessageReal } from './supabaseBackend'
 
 const CHATS_KEY = 'leidomecenato_chat_threads'
+let realChatCache: ChatThread[] = []
+
+export function replaceThreadsReal(threads: ChatThread[]) {
+  realChatCache = threads
+}
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -16,6 +22,7 @@ function writeJson(key: string, value: unknown) {
 }
 
 export function listThreads(): ChatThread[] {
+  if (realBackendEnabled()) return realChatCache
   return readJson<ChatThread[]>(CHATS_KEY, [])
 }
 
@@ -34,6 +41,10 @@ export function listThreadsForAccount(account: Account): ChatThread[] {
 }
 
 export function saveThread(thread: ChatThread) {
+  if (realBackendEnabled()) {
+    realChatCache = [thread, ...realChatCache.filter(item => item.id !== thread.id)]
+    return
+  }
   const all = listThreads().filter(t => t.id !== thread.id)
   writeJson(CHATS_KEY, [...all, thread])
 }
@@ -46,7 +57,7 @@ export function createThread(contract: ImpactContract, company: Account | null, 
   const companyAccountId = company?.id || `guest-${contract.nif}`
   const companyName = company?.name || contract.company
   const thread: ChatThread = {
-    id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    id: realBackendEnabled() && proofId ? proofId : `chat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     contractId: contract.id,
     proofId,
     companyAccountId,
@@ -93,6 +104,9 @@ export function addMessage(threadId: string, sender: Account, body: string) {
   thread.messages.push(msg)
   thread.updatedAt = msg.createdAt
   saveThread(thread)
+  if (realBackendEnabled()) {
+    void sendChatMessageReal(threadId, sender, text).then(result => { if (!result.ok) console.error('Mensagem não guardada no Supabase:', result.error) })
+  }
   return msg
 }
 
@@ -102,4 +116,5 @@ export function closeThread(threadId: string) {
   thread.status = 'closed'
   thread.updatedAt = new Date().toISOString()
   saveThread(thread)
+  // The asynchronous server update is initiated by the calling component where the account is available.
 }

@@ -1,7 +1,7 @@
-import { Account, AccountRole, DocumentReviewEntry, DonationProof, ImpactContract, PlatformNotification, UploadedDoc } from '../types'
+import { Account, AccountRole, DocumentReviewEntry, DonationProof, ImpactContract, InstitutionRegistration, PlatformNotification, UploadedDoc } from '../types'
 import { isSupabaseConfigured, supabase } from './supabaseClient'
 import { User } from '@supabase/supabase-js'
-import { safeUploadName, validateDocumentUpload } from './uploadSecurity'
+import { safeUploadName, validateDocumentUpload, validateImageUpload } from './uploadSecurity'
 import {
   calculateIcsScore,
   calculateImpactScore,
@@ -45,6 +45,31 @@ export interface AdminDocument {
   reviewed_at: string | null
   created_at: string
   profiles?: Pick<AdminProfile, 'name' | 'email' | 'role'> | null
+}
+
+export interface AdminInstitutionSubmission {
+  id: string
+  owner_id: string
+  status: 'submitted' | 'confirmed' | 'rejected'
+  payload: InstitutionRegistration & { storedAssets?: Array<{ label: string; name: string; path: string; url?: string }> }
+  submitted_at: string
+  reviewed_at: string | null
+  review_note: string | null
+}
+
+export interface DonationNotificationRow {
+  id: string
+  recipient_id: string
+  recipient_role: 'empresa' | 'instituicao' | 'admin' | null
+  recipient_name: string | null
+  kind: PlatformNotification['kind']
+  title: string | null
+  body: string | null
+  read: boolean
+  related_proof_id: string | null
+  action_label: string | null
+  action_view: string | null
+  created_at: string
 }
 
 export interface SupabaseRegisterPayload {
@@ -331,14 +356,15 @@ export async function upsertReportTransactionPendingReal(
     report_total: contract.reportTotal || contract.reportPrice,
     payment_provider: 'stripe',
     payment_link_url: paymentLink,
-    status: contract.reportPaymentStatus === 'paid' ? 'paid' : 'pending',
+    // Browser initiated writes can only create pending transactions. Paid is server-owned.
+    status: 'pending',
     currency: 'eur',
     updated_at: new Date().toISOString(),
   }
 
   const { data, error } = await supabase
     .from('transactions')
-    .upsert(payload, { onConflict: 'contract_id' })
+    .insert(payload)
     .select('*')
     .single()
 
@@ -572,6 +598,440 @@ export async function deleteDocReal(doc: UploadedDoc): Promise<{ ok: true } | { 
   if (storagePath) await supabase.storage.from('documents').remove([storagePath])
 
   const { error } = await supabase.from('documents').delete().eq('id', doc.id)
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
+export async function submitInstitutionRegistrationReal(
+  ownerId: string,
+  registration: InstitutionRegistration,
+  supportingFiles: Record<string, File | null>,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth.user || auth.user.id !== ownerId) return { ok: false, error: 'Inicie sessao com a conta da instituição antes de submeter.' }
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', ownerId).single()
+  if (profile?.role !== 'instituicao') return { ok: false, error: 'A submissão exige uma conta registada como instituição.' }
+
+  const uploaded: Array<{ label: string; name: string; path: string; size: number; mimeType: string }> = []
+  const uploadPrivateFile = async (file: File, label: string, checkImage = false) => {
+    const validationError = checkImage ? validateImageUpload(file) : validateDocumentUpload(file)
+    if (validationError) throw new Error(validationError)
+    const name = safeUploadName(file.name)
+    const path = `${ownerId}/${Date.now()}-${crypto.randomUUID()}-${name}`
+    const { error } = await supabase!.storage.from('documents').upload(path, file, { upsert: false, contentType: file.type })
+    if (error) throw new Error(error.message)
+    uploaded.push({ label, name, path, size: file.size, mimeType: file.type })
+  }
+  const visit = async (value: unknown, label: string): Promise<unknown> => {
+    if (typeof value === 'string' && value.startsWith('data:image/')) {
+      const response = await fetch(value)
+      const blob = await response.blob()
+      const extension = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg'
+      const file = new File([blob], `${label}.${extension}`, { type: blob.type })
+      await uploadPrivateFile(file, label, true)
+      return `storage:${uploaded[uploaded.length - 1].path}`
+    }
+    if (Array.isArray(value)) return Promise.all(value.map((item, index) => visit(item, `${label}-${index + 1}`)))
+    if (value && typeof value === 'object') {
+      const entries = await Promise.all(Object.entries(value as Record<string, unknown>).map(async ([key, child]) => [key, await visit(child, `${label}-${key}`)] as const))
+      return Object.fromEntries(entries)
+    }
+    return value
+  }
+
+  try {
+    for (const [label, file] of Object.entries(supportingFiles)) {
+      if (file) await uploadPrivateFile(file, label)
+    }
+    const payload = await visit(registration, 'registo-instituicao') as InstitutionRegistration
+    for (const asset of uploaded) {
+      const { error: docError } = await supabase.from('documents').insert({
+        owner_id: ownerId,
+        name: asset.name,
+        category: 'anexo-registo-instituicao',
+        storage_path: asset.path,
+        public_url: null,
+        mime_type: asset.mimeType,
+        size: asset.size,
+      })
+      if (docError) throw new Error(docError.message)
+    }
+    const { data, error } = await supabase.from('institution_submissions').insert({
+      owner_id: ownerId,
+      status: 'submitted',
+      payload: { ...payload, storedAssets: uploaded.map(({ label, name, path }) => ({ label, name, path })) },
+    }).select('id').single()
+    if (error || !data) throw new Error(error?.message || 'Nao foi possivel guardar a submissão.')
+    return { ok: true, id: data.id as string }
+  } catch (error) {
+    if (uploaded.length) {
+      await supabase.storage.from('documents').remove(uploaded.map(asset => asset.path))
+      await supabase.from('documents').delete().eq('owner_id', ownerId).eq('category', 'anexo-registo-instituicao').in('storage_path', uploaded.map(asset => asset.path))
+    }
+    return { ok: false, error: error instanceof Error ? error.message : 'Falha ao guardar a submissão da instituição.' }
+  }
+}
+
+export async function listAdminInstitutionSubmissionsReal(): Promise<{ ok: true; submissions: AdminInstitutionSubmission[] } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+  const { data, error } = await supabase.from('institution_submissions').select('*').order('submitted_at', { ascending: false })
+  if (error) return { ok: false, error: error.message }
+  const submissions = await Promise.all((data || []).map(async row => {
+    const payload = row.payload as AdminInstitutionSubmission['payload']
+    const assets = await Promise.all((payload.storedAssets || []).map(async asset => {
+      const { data: signed } = await supabase!.storage.from('documents').createSignedUrl(asset.path, 600)
+      return { ...asset, url: signed?.signedUrl }
+    }))
+    return { ...row, payload: { ...payload, storedAssets: assets } } as AdminInstitutionSubmission
+  }))
+  return { ok: true, submissions }
+}
+
+export async function reviewInstitutionSubmissionReal(
+  submissionId: string,
+  status: 'confirmed' | 'rejected',
+  note: string,
+  reviewerId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth.user || auth.user.id !== reviewerId) return { ok: false, error: 'A sessão administrativa expirou.' }
+  const { error } = await supabase.from('institution_submissions').update({
+    status,
+    review_note: note.trim() || null,
+    reviewed_by: reviewerId,
+    reviewed_at: new Date().toISOString(),
+  }).eq('id', submissionId)
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
+type DonationRow = Record<string, any> & {
+  id: string
+  company_id: string
+  institution_profile_id: string | null
+  contract_reference: string | null
+  metadata: Record<string, unknown> | null
+}
+
+async function uploadDonationAttachment(ownerId: string, proofId: string, slot: string, attachment: { name: string; dataUrl: string; size: number }) {
+  if (!supabase) throw new Error('Supabase ainda nao esta configurado.')
+  const response = await fetch(attachment.dataUrl)
+  const blob = await response.blob()
+  const file = new File([blob], safeUploadName(attachment.name), { type: blob.type })
+  const validationError = validateDocumentUpload(file)
+  if (validationError) throw new Error(validationError)
+  const path = `${ownerId}/donations/${proofId}/${slot}-${crypto.randomUUID()}-${safeUploadName(file.name)}`
+  const { error: uploadError } = await supabase.storage.from('documents').upload(path, file, { upsert: false, contentType: file.type })
+  if (uploadError) throw new Error(uploadError.message)
+  const { error: rowError } = await supabase.from('documents').insert({
+    owner_id: ownerId,
+    name: file.name,
+    category: 'donation-proof',
+    storage_path: path,
+    public_url: null,
+    mime_type: file.type,
+    size: file.size,
+  })
+  if (rowError) {
+    await supabase.storage.from('documents').remove([path])
+    throw new Error(rowError.message)
+  }
+  return path
+}
+
+function donationMetadata(proof: DonationProof) {
+  return {
+    accessCode: proof.accessCode,
+    selectedNeedIds: proof.selectedNeedIds || [],
+    reportTierName: proof.reportTierName,
+    reportPrice: proof.reportPrice,
+    reportVat: proof.reportVat,
+    reportTotal: proof.reportTotal,
+    reportPaymentStatus: proof.reportPaymentStatus,
+    publicDonationAmountConsent: proof.publicDonationAmountConsent,
+    projectCost: proof.projectCost,
+    description: proof.description,
+    proofDocId: proof.proofDocId,
+    certificateId: proof.certificateId,
+    certificateIssuedAt: proof.certificateIssuedAt,
+    timelineStatus: proof.timelineStatus,
+  }
+}
+
+export async function createDonationProofReal(proof: DonationProof): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth.user || auth.user.id !== proof.companyAccountId) return { ok: false, error: 'Inicie sessão com a conta da empresa para registar o donativo.' }
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', auth.user.id).single()
+  if (profile?.role !== 'empresa') return { ok: false, error: 'A conta autenticada não tem perfil de empresa.' }
+
+  let proofPath: string | null = null
+  try {
+    if (proof.proofFileDataUrl?.startsWith('data:')) {
+      proofPath = await uploadDonationAttachment(auth.user.id, proof.id, 'comprovativo', {
+        name: proof.proofFileName || 'comprovativo.pdf', dataUrl: proof.proofFileDataUrl, size: proof.proofFileSize || 0,
+      })
+    }
+    const { error } = await supabase.from('donations').insert({
+      id: proof.id,
+      company_id: auth.user.id,
+      institution_profile_id: proof.institutionAccountId && /^[0-9a-f-]{36}$/i.test(proof.institutionAccountId) ? proof.institutionAccountId : null,
+      contract_reference: proof.contractId,
+      institution_name: proof.institutionName,
+      company_name: proof.companyName || '',
+      company_nif: proof.companyNif || '',
+      company_email: proof.companyEmail || auth.user.email || '',
+      donation_type: proof.donationType,
+      amount: Math.round(proof.amount),
+      date: proof.date,
+      proof_file_name: proof.proofFileName || null,
+      proof_file_url: proofPath,
+      proof_file_size: proof.proofFileSize || null,
+      company_confirmed: proof.companyConfirmed,
+      company_confirmed_amount: proof.companyConfirmedAmount ?? null,
+      institution_confirmed: false,
+      status: proof.status,
+      metadata: donationMetadata(proof),
+      timeline_status: proof.timelineStatus || 'intent_created',
+    })
+    if (error) throw new Error(error.message)
+    proof.proofFileStoragePath = proofPath || undefined
+    return { ok: true }
+  } catch (error) {
+    if (proofPath) {
+      await supabase.storage.from('documents').remove([proofPath])
+      await supabase.from('documents').delete().eq('owner_id', auth.user.id).eq('storage_path', proofPath)
+    }
+    return { ok: false, error: error instanceof Error ? error.message : 'Falha ao guardar o donativo.' }
+  }
+}
+
+async function donationRowToProof(row: DonationRow): Promise<DonationProof> {
+  if (!supabase) throw new Error('Supabase ainda nao esta configurado.')
+  const metadata = row.metadata || {}
+  const signedUrl = async (path: string | null) => {
+    if (!path) return undefined
+    const { data } = await supabase!.storage.from('documents').createSignedUrl(path, 600)
+    return data?.signedUrl || undefined
+  }
+  const [proofUrl, invoiceUrl, receiptUrl] = await Promise.all([
+    signedUrl(row.proof_file_url), signedUrl(row.company_invoice_file_url), signedUrl(row.institution_receipt_file_url),
+  ])
+  return {
+    id: row.id,
+    contractId: row.contract_reference || row.id,
+    companyAccountId: row.company_id,
+    companyName: row.company_name || '',
+    companyNif: row.company_nif || '',
+    companyEmail: row.company_email || '',
+    institutionAccountId: row.institution_profile_id || undefined,
+    institutionName: row.institution_name || '',
+    donationType: row.donation_type || null,
+    selectedNeedIds: Array.isArray(metadata.selectedNeedIds) ? metadata.selectedNeedIds as string[] : [],
+    reportTierName: typeof metadata.reportTierName === 'string' ? metadata.reportTierName : undefined,
+    reportPrice: Number(metadata.reportPrice || 0),
+    reportVat: Number(metadata.reportVat || 0),
+    reportTotal: Number(metadata.reportTotal || 0),
+    reportPaymentStatus: metadata.reportPaymentStatus as DonationProof['reportPaymentStatus'],
+    amount: Number(row.amount || 0),
+    projectCost: Number(metadata.projectCost || 0) || undefined,
+    confirmedAmount: Number(row.institution_confirmed_amount || row.company_confirmed_amount || row.amount || 0),
+    companyConfirmedAmount: row.company_confirmed_amount == null ? undefined : Number(row.company_confirmed_amount),
+    institutionConfirmedAmount: row.institution_confirmed_amount == null ? undefined : Number(row.institution_confirmed_amount),
+    publicDonationAmountConsent: Boolean(metadata.publicDonationAmountConsent),
+    date: row.date || '',
+    description: typeof metadata.description === 'string' ? metadata.description : '',
+    proofDocId: typeof metadata.proofDocId === 'string' ? metadata.proofDocId : undefined,
+    proofFileName: row.proof_file_name || undefined,
+    proofFileDataUrl: proofUrl,
+    proofFileStoragePath: row.proof_file_url || undefined,
+    proofFileSize: row.proof_file_size || undefined,
+    companyInvoiceFileName: row.company_invoice_file_name || undefined,
+    companyInvoiceFileDataUrl: invoiceUrl,
+    companyInvoiceStoragePath: row.company_invoice_file_url || undefined,
+    companyInvoiceFileSize: row.company_invoice_file_size || undefined,
+    institutionReceiptFileName: row.institution_receipt_file_name || undefined,
+    institutionReceiptFileDataUrl: receiptUrl,
+    institutionReceiptStoragePath: row.institution_receipt_file_url || undefined,
+    institutionReceiptFileSize: row.institution_receipt_file_size || undefined,
+    institutionThankYouMessage: row.institution_thank_you_message || undefined,
+    companyConfirmed: Boolean(row.company_confirmed),
+    institutionConfirmed: Boolean(row.institution_confirmed),
+    status: row.status,
+    confirmedAt: row.confirmed_at || undefined,
+    certificateId: metadata.certificateId as string | undefined,
+    certificateIssuedAt: metadata.certificateIssuedAt as string | undefined,
+    timelineStatus: row.timeline_status,
+  }
+}
+
+export async function listDonationProofsReal(account: Account): Promise<{ ok: true; proofs: DonationProof[] } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth.user || auth.user.id !== account.id) return { ok: false, error: 'A sessão expirou.' }
+  const { data, error } = await supabase.from('donations').select('*').order('created_at', { ascending: false })
+  if (error) return { ok: false, error: error.message }
+  const rows = (data || []) as DonationRow[]
+  const visible = rows.filter(row => row.company_id === account.id || row.institution_profile_id === account.id)
+  return { ok: true, proofs: await Promise.all(visible.map(donationRowToProof)) }
+}
+
+export async function listAdminDonationProofsReal(): Promise<{ ok: true; proofs: DonationProof[] } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth.user) return { ok: false, error: 'A sessão expirou.' }
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', auth.user.id).single()
+  if (profile?.role !== 'admin') return { ok: false, error: 'Apenas administradores podem consultar todos os donativos.' }
+  const { data, error } = await supabase.from('donations').select('*').order('created_at', { ascending: false })
+  if (error) return { ok: false, error: error.message }
+  return { ok: true, proofs: await Promise.all(((data || []) as DonationRow[]).map(donationRowToProof)) }
+}
+
+export async function saveDonationProofReal(proof: DonationProof): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth.user) return { ok: false, error: 'A sessão expirou.' }
+  const { data: current, error: readError } = await supabase.from('donations').select('*').eq('id', proof.id).maybeSingle()
+  if (readError || !current) return { ok: false, error: readError?.message || 'Donativo não encontrado no Supabase.' }
+  const row = current as DonationRow
+  const isCompany = row.company_id === auth.user.id
+  const isInstitution = row.institution_profile_id === auth.user.id
+  if (!isCompany && !isInstitution) return { ok: false, error: 'A conta atual não participa neste donativo.' }
+
+  const uploaded: string[] = []
+  try {
+    const patch: Record<string, unknown> = {}
+    if (isCompany) {
+      patch.company_confirmed = proof.companyConfirmed
+      patch.company_confirmed_amount = proof.companyConfirmedAmount ?? null
+      if (proof.proofFileDataUrl?.startsWith('data:')) {
+        const path = await uploadDonationAttachment(auth.user.id, proof.id, 'comprovativo', { name: proof.proofFileName || 'comprovativo.pdf', dataUrl: proof.proofFileDataUrl, size: proof.proofFileSize || 0 })
+        uploaded.push(path); patch.proof_file_url = path; patch.proof_file_name = proof.proofFileName || null; patch.proof_file_size = proof.proofFileSize || null
+      }
+      if (proof.companyInvoiceFileDataUrl?.startsWith('data:')) {
+        const path = await uploadDonationAttachment(auth.user.id, proof.id, 'fatura', { name: proof.companyInvoiceFileName || 'fatura.pdf', dataUrl: proof.companyInvoiceFileDataUrl, size: proof.companyInvoiceFileSize || 0 })
+        uploaded.push(path); patch.company_invoice_file_url = path; patch.company_invoice_file_name = proof.companyInvoiceFileName || null; patch.company_invoice_file_size = proof.companyInvoiceFileSize || null
+      }
+    } else {
+      patch.institution_confirmed = proof.institutionConfirmed
+      patch.institution_confirmed_amount = proof.institutionConfirmedAmount ?? null
+      patch.institution_thank_you_message = proof.institutionThankYouMessage || null
+      if (proof.institutionReceiptFileDataUrl?.startsWith('data:')) {
+        const path = await uploadDonationAttachment(auth.user.id, proof.id, 'recibo', { name: proof.institutionReceiptFileName || 'recibo.pdf', dataUrl: proof.institutionReceiptFileDataUrl, size: proof.institutionReceiptFileSize || 0 })
+        uploaded.push(path); patch.institution_receipt_file_url = path; patch.institution_receipt_file_name = proof.institutionReceiptFileName || null; patch.institution_receipt_file_size = proof.institutionReceiptFileSize || null
+      }
+    }
+    if (proof.status === 'rejected') {
+      patch.status = 'rejected'
+      patch.rejection_note = 'Donativo rejeitado pelo participante.'
+    }
+    const { error } = await supabase.from('donations').update(patch).eq('id', proof.id)
+    if (error) throw new Error(error.message)
+    return { ok: true }
+  } catch (error) {
+    if (uploaded.length) {
+      await supabase.storage.from('documents').remove(uploaded)
+      await supabase.from('documents').delete().eq('owner_id', auth.user.id).in('storage_path', uploaded)
+    }
+    return { ok: false, error: error instanceof Error ? error.message : 'Falha ao atualizar o donativo.' }
+  }
+}
+
+export async function listNotificationsReal(account: Account): Promise<{ ok: true; notifications: PlatformNotification[] } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth.user || auth.user.id !== account.id) return { ok: false, error: 'A sessão expirou.' }
+  const { data, error } = await supabase.from('notifications').select('*').order('created_at', { ascending: false })
+  if (error) return { ok: false, error: error.message }
+  const notifications = ((data || []) as DonationNotificationRow[]).map(row => ({
+    id: row.id,
+    recipientAccountId: row.recipient_id,
+    recipientRole: row.recipient_role || undefined,
+    recipientName: row.recipient_name || undefined,
+    createdAt: row.created_at,
+    kind: row.kind,
+    title: row.title || '',
+    body: row.body || '',
+    read: row.read,
+    relatedProofId: row.related_proof_id || undefined,
+    actionLabel: row.action_label || undefined,
+    actionView: row.action_view as PlatformNotification['actionView'],
+  }))
+  return { ok: true, notifications }
+}
+
+export async function listChatThreadsReal(account: Account): Promise<{ ok: true; threads: import('../types').ChatThread[] } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth.user || auth.user.id !== account.id) return { ok: false, error: 'A sessão expirou.' }
+  const { data: threadRows, error } = await supabase.from('chat_threads').select('*').order('updated_at', { ascending: false })
+  if (error) return { ok: false, error: error.message }
+  const rows = (threadRows || []) as Array<Record<string, any> & { id: string; donation_id: string | null }>
+  if (!rows.length) return { ok: true, threads: [] }
+  const donationIds = rows.map(row => row.donation_id).filter((id): id is string => Boolean(id))
+  const [{ data: donations }, { data: messages }] = await Promise.all([
+    donationIds.length ? supabase.from('donations').select('*').in('id', donationIds) : Promise.resolve({ data: [] as any[] }),
+    supabase.from('chat_messages').select('*').in('thread_id', rows.map(row => row.id)).order('created_at', { ascending: true }),
+  ])
+  const donationMap = new Map(((donations || []) as DonationRow[]).map(row => [row.id, row]))
+  const messageRows = (messages || []) as Array<Record<string, any>>
+  const threads = rows.map(row => {
+    const donation = row.donation_id ? donationMap.get(row.donation_id) : undefined
+    return {
+      id: row.id,
+      contractId: donation?.contract_reference || donation?.id || row.id,
+      proofId: donation?.id,
+      companyAccountId: row.company_id,
+      companyName: donation?.company_name || 'Empresa',
+      institutionAccountId: row.institution_profile_id || undefined,
+      institutionName: donation?.institution_name || 'Instituição',
+      donationAmount: Number(donation?.amount || 0),
+      donationType: donation?.donation_type || null,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      status: row.status || 'open',
+      messages: messageRows.filter(message => message.thread_id === row.id).map(message => ({
+        id: message.id,
+        threadId: message.thread_id,
+        senderAccountId: message.sender_id,
+        senderName: message.sender_name || '',
+        senderRole: message.sender_role,
+        body: message.body || '',
+        createdAt: message.created_at,
+      })),
+    }
+  }) as import('../types').ChatThread[]
+  return { ok: true, threads }
+}
+
+export async function sendChatMessageReal(threadId: string, account: Account, body: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth.user || auth.user.id !== account.id) return { ok: false, error: 'A sessão expirou.' }
+  const { error } = await supabase.from('chat_messages').insert({ thread_id: threadId, sender_id: account.id, sender_name: account.name, sender_role: account.role, body: body.trim() })
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
+export async function closeChatThreadReal(threadId: string, account: Account): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth.user || auth.user.id !== account.id) return { ok: false, error: 'A sessão expirou.' }
+  const { error } = await supabase.from('chat_threads').update({ status: 'closed' }).eq('id', threadId)
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
+export async function markNotificationReadReal(id: string, markAllForAccountId?: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth.user || (markAllForAccountId && auth.user.id !== markAllForAccountId)) return { ok: false, error: 'A sessão expirou.' }
+  let query = supabase.from('notifications').update({ read: true })
+  if (markAllForAccountId) query = query.eq('recipient_id', markAllForAccountId)
+  else query = query.eq('id', id)
+  const { error } = await query
   if (error) return { ok: false, error: error.message }
   return { ok: true }
 }

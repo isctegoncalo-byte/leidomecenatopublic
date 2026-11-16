@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { NeedItem } from '../types'
-import { saveInstitutionRegistration } from '../utils/institutionRegistry'
+import { Account, InstitutionRegistration, NeedItem, ViewType } from '../types'
+import { submitInstitutionRegistrationReal } from '../utils/supabaseBackend'
 import { SDG_DATA } from '../data/sdgs'
 import SdgGrid from './SdgGrid'
-import { ACCEPTED_IMAGE_INPUT, validateImageUpload } from '../utils/uploadSecurity'
+import { ACCEPTED_DOCUMENT_INPUT, ACCEPTED_IMAGE_INPUT, validateDocumentUpload, validateImageUpload } from '../utils/uploadSecurity'
 import {
   PROJECT_TYPE_LIMIT_MESSAGE,
   ProjectSupportType,
@@ -31,6 +31,8 @@ const NEED_CATEGORIES = [
 
 interface Props {
   onComplete: () => void
+  account: Account | null
+  setCurrentView: (view: ViewType) => void
 }
 
 const emptyNeed = (): NeedItem => ({
@@ -59,13 +61,14 @@ const STEPS = ['Identidade', 'Missão & Impacto', 'Equipa & Recursos', 'Necessid
 const TERMS_VERSION = '2026-06-02'
 const TERMS_DOCUMENT_URL = '/docs/termos-condicoes-instituicoes.html'
 
-export default function InstitutionRegisterPage({ onComplete }: Props) {
+export default function InstitutionRegisterPage({ onComplete, account, setCurrentView }: Props) {
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [formError, setFormError] = useState('')
   const [logoUrl, setLogoUrl] = useState<string>('')
   const [photoUrls, setPhotoUrls] = useState<string[]>(['', '', '', ''])
+  const [supportingFiles, setSupportingFiles] = useState<Record<string, File | null>>({ nif: null, statutes: null, accounts: null, iban: null })
   const [consentLogo, setConsentLogo] = useState(false)
   const [consentRGPD, setConsentRGPD] = useState(false)
   const [consentTerms, setConsentTerms] = useState(false)
@@ -225,7 +228,10 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
       if (!mission.peopleReachedPerYear)      missing.push('Pessoas Beneficiadas por Ano')
     }
     if (s === 2) {
-      // Equipa: nada obrigatório explicitamente marcado com *
+      if (!supportingFiles.nif) missing.push('Comprovativo de NIF')
+      if (!supportingFiles.statutes) missing.push('Estatutos atualizados')
+      if (!supportingFiles.accounts) missing.push('Relatório de atividades e contas')
+      if (!supportingFiles.iban) missing.push('Comprovativo de IBAN')
     }
     if (s === 3) {
       const limitMessage = duplicateActiveProjectTypeMessage(needs)
@@ -259,7 +265,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
     setStep(s => s + 1)
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Valida todos os passos
     const allMissing: string[] = []
     for (let s = 0; s <= 3; s++) {
@@ -284,6 +290,11 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
       return
     }
 
+    if (!account || account.role !== 'instituicao') {
+      setFormError('Para submeter o registo, entre numa conta Supabase registada como instituição.')
+      return
+    }
+
     setFormError('')
     setSubmitting(true)
     const normalizedNeeds = needs.map(need => {
@@ -302,8 +313,7 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
-    setTimeout(() => {
-      saveInstitutionRegistration({
+    const registration: InstitutionRegistration = {
         name: identity.name,
         legalName: identity.legalName,
         nif: identity.nif,
@@ -339,13 +349,39 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
         utilidadePublica: team.utilidadePublica,
         lastAccountsApproved: team.lastAccountsApproved,
         termsAccepted: true,
+        consentRGPD: true,
+        consentLogoDisplay: consentLogo,
         termsAcceptedAt: new Date().toISOString(),
         termsVersion: TERMS_VERSION,
         termsDocumentUrl: TERMS_DOCUMENT_URL,
-      })
-      setSubmitting(false)
+      }
+    try {
+      const result = await submitInstitutionRegistrationReal(account.id, registration, supportingFiles)
+      if (!result.ok) {
+        setFormError(`Não foi possível guardar a candidatura: ${result.error}`)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
       setSubmitted(true)
-    }, 2500)
+    } catch (error) {
+      setFormError(`Não foi possível guardar a candidatura: ${error instanceof Error ? error.message : 'erro inesperado.'}`)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (!account || account.role !== 'instituicao') {
+    return (
+      <div className="min-h-[70vh] bg-slate-50 flex items-center justify-center p-6">
+        <div className="max-w-xl rounded-3xl bg-white p-8 shadow-xl">
+          <h1 className="text-3xl font-black text-slate-900">Registo de instituição</h1>
+          <p className="mt-4 text-slate-600">Para guardar uma candidatura com segurança, primeiro precisa de uma conta Supabase com o perfil “Instituição”. Depois de entrar, volte a esta página para preencher e submeter os dados.</p>
+          {account && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">A conta atual está registada como empresa. Entre com uma conta de instituição.</p>}
+          <button onClick={() => setCurrentView('login')} className="mt-6 rounded-xl bg-blue-700 px-5 py-3 font-bold text-white">Entrar ou criar conta</button>
+        </div>
+      </div>
+    )
   }
 
   if (submitted) {
@@ -354,16 +390,14 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
         <div className="bg-white rounded-3xl shadow-xl p-12 max-w-lg text-center">
           <h2 className="text-3xl font-black text-slate-900 mb-4">Registo Submetido!</h2>
           <p className="text-slate-500 mb-4">
-            O perfil de <strong>{identity.name}</strong> foi submetido para verificação. 
-            Em 2–3 dias úteis a nossa equipa irá verificar os dados e ativar o perfil na plataforma.
+            A candidatura de <strong>{identity.name}</strong>, incluindo os documentos e imagens anexados, foi guardada de forma privada para revisão administrativa.
           </p>
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-left">
             <p className="text-green-800 text-sm font-semibold mb-2">Próximos passos:</p>
             <ul className="text-green-700 text-sm space-y-1">
-              <li>Análise do perfil ESG (1–2 dias úteis)</li>
-              <li>Verificação dos documentos submetidos</li>
-              <li>Ativação e publicação na plataforma</li>
-              <li>Notificação por email: <strong>{identity.email}</strong></li>
+              <li>A administração pode consultar os dados e descarregar os anexos no painel.</li>
+              <li>O estado da revisão será atualizado pela administração.</li>
+              <li>A validação não publica automaticamente o perfil no catálogo público.</li>
             </ul>
           </div>
           <button onClick={onComplete} className="bg-blue-600 text-white font-bold py-3 px-8 rounded-xl hover:bg-blue-700 transition">
@@ -681,23 +715,32 @@ export default function InstitutionRegisterPage({ onComplete }: Props) {
 
               <div className="mt-8">
                 <h3 className="font-bold text-slate-700 mb-4">Documentação e Estatutos</h3>
-                <div className="space-y-3">
-                  {[
-                    { key: 'statutes', label: 'Estatutos atualizados disponíveis para envio' },
-                    { key: 'utilidadePublica', label: 'Reconhecimento de Utilidade Pública (DL 460/77)' },
-                    { key: 'lastAccountsApproved', label: 'Contas do último exercício aprovadas em Assembleia Geral' },
-                    { key: 'ibanProof', label: 'Comprovativo de IBAN da instituição' },
-                  ].map(item => (
-                    <label key={item.key} className="flex items-center gap-3 p-4 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
-                      <input
-                        type="checkbox"
-                        checked={team[item.key as keyof typeof team] as boolean}
-                        onChange={e => setTeam({...team, [item.key]: e.target.checked})}
-                        className="w-5 h-5 accent-blue-600"
-                      />
-                      <span className="text-slate-700 text-sm font-medium">{item.label}</span>
+                <p className="mb-4 text-sm text-slate-600">Os quatro documentos abaixo são obrigatórios e serão guardados no Supabase em área privada, acessível à instituição e à administração.</p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {([
+                    ['nif', 'Comprovativo de NIF'],
+                    ['statutes', 'Estatutos atualizados'],
+                    ['accounts', 'Relatório de atividades e contas do último exercício'],
+                    ['iban', 'Comprovativo de IBAN da instituição'],
+                  ] as const).map(([key, label]) => (
+                    <label key={key} className="rounded-xl border border-slate-200 p-4 text-sm font-semibold text-slate-700">
+                      <span className="mb-2 block">{label} *</span>
+                      <input type="file" accept={ACCEPTED_DOCUMENT_INPUT} onChange={event => {
+                        const file = event.target.files?.[0] || null
+                        if (file) {
+                          const validationError = validateDocumentUpload(file)
+                          if (validationError) { setFormError(validationError); event.target.value = ''; return }
+                        }
+                        setFormError('')
+                        setSupportingFiles(current => ({ ...current, [key]: file }))
+                      }} className="block w-full text-xs" />
+                      {supportingFiles[key] && <span className="mt-2 block truncate text-xs font-normal text-green-700">Selecionado: {supportingFiles[key]?.name}</span>}
                     </label>
                   ))}
+                </div>
+                <div className="mt-3 space-y-3">
+                  <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-4"><input type="checkbox" checked={team.utilidadePublica} onChange={e => setTeam({...team, utilidadePublica: e.target.checked})} className="h-5 w-5 accent-blue-600" /><span className="text-sm text-slate-700">A instituição tem Reconhecimento de Utilidade Pública (DL 460/77).</span></label>
+                  <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-4"><input type="checkbox" checked={team.lastAccountsApproved} onChange={e => setTeam({...team, lastAccountsApproved: e.target.checked})} className="h-5 w-5 accent-blue-600" /><span className="text-sm text-slate-700">As contas do último exercício foram aprovadas em Assembleia Geral.</span></label>
                 </div>
               </div>
 

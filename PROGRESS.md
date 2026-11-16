@@ -1,6 +1,37 @@
 # Estado Atual do Projeto
 
-Ultima atualizacao: 2026-05-17
+Ultima atualizacao: 2026-11-16
+
+## Configuracao remota e seguranca — 2026-11-16
+
+- Projeto Supabase `LeidoMecenato` confirmado como ativo.
+- Aplicada a migration `supabase/migrations/20261116004637_harden_live_policies.sql`: transacoes criadas pelo utilizador autenticado ficam pendentes, apenas o papel `service_role` pode alterar o estado, notificacoes deixaram de aceitar insercoes publicas, dados institucionais deixaram de ser legiveis anonimamente e utilizadores comuns deixaram de poder alterar o estado de revisao dos proprios documentos.
+- Aplicada a migration `supabase/migrations/20261116011144_restrict_document_storage.sql`: removidas quatro politicas antigas de acesso amplo ao bucket privado `documents`; permanecem as politicas por proprietario e administrador.
+- Aplicada a migration `supabase/migrations/20261116013237_align_document_storage_columns.sql`: adicionadas as colunas que o fluxo de upload usa (`storage_path`, `public_url`, `mime_type`, `size`), preservando `file_url` e `file_size` legados.
+- Aplicada a migration `supabase/migrations/20261116014230_institution_submissions.sql`: criada uma tabela de candidaturas institucionais com RLS, leitura apenas pelo titular/admin e revisão exclusiva do admin. Aplicada tambem `20261116022000_index_institution_submission_reviews.sql`.
+- O formulário completo de instituição exige agora sessão Supabase com role `instituicao`, requer comprovativo de NIF, estatutos, relatório/contas e comprovativo de IBAN, e guarda os dados/anexos/imagens como candidatura privada no Supabase. O painel admin lista, permite descarregar os anexos por URL assinada e regista a decisão/nota de revisão.
+- No projeto remoto, antes de existirem novos registos, havia 7 perfis `empresa`, 1 `admin`, 0 `instituicao`, 0 documentos e 0 objetos no bucket `documents`. Nenhuma candidatura/ficha ou ficheiro de teste foi criado.
+- O fluxo de documentos existente foi alinhado com o esquema remoto e as permissões permitem listar metadados e gerar URLs assinados de curta duração para titular/admin. A estrutura/RLS foram verificadas, mas falta um teste ponta a ponta com uma conta autorizada e ficheiros reais.
+- Atualizada a Edge Function `stripe-report-payment-webhook` no Supabase para a versao local (versao publicada 14). Continua a validar assinatura, sessao paga, moeda e montante antes de persistir a transacao.
+- A chave `RESEND_API_KEY` foi substituida nos segredos Edge Function do Supabase em 2026-11-16. O valor nao esta guardado no repositorio. Nao foi enviado email de teste; recomenda-se rodar a chave depois de validar o acesso e confirmar o dominio no Resend, dado que foi partilhada na conversa.
+- Reverificacao dos conselheiros Supabase: deixaram de surgir alertas sobre leitura anonima de SECURITY DEFINER e `search_path`; permanece um alerta esperado para `is_admin()` acessivel a utilizadores autenticados devido ao seu uso em politicas RLS, e a protecao contra palavras-passe comprometidas continua desativada na configuracao Auth.
+- O projeto Netlify `leidomecenato` esta associado a `leidomecenato.pt`, com um deploy de producao pronto na branch `main` publicado em 2026-06-10. Foram confirmadas as variaveis publicas Supabase, os tres Payment Links Stripe e a medicao GA4. As alteracoes locais atuais ainda nao foram publicadas.
+- Stripe continua sem acesso de gestao nesta sessao; nao foi possivel confirmar o modo da conta, valores/metadados dos Payment Links nem o endpoint de webhook no Dashboard Stripe.
+- O dominio remetente, estado de verificacao, limites e logs do Resend continuam por confirmar. A funcao `donation-notification` existe no repositorio mas nao esta publicada no projeto remoto.
+- Continua pendente migrar donativos/comprovativos, confirmações, conversas e notificações do `localStorage` para o Supabase. Não existe ainda publicação automática das candidaturas confirmadas no catálogo público.
+- O build foi tentado, mas não pôde correr porque `npm` não está instalado/disponível nesta sessão. `git diff --check` terminou sem erros. Não foram criados registos de negócio, ficheiros de teste ou emails, nem foi publicado deploy.
+
+## Continuidade e segurança — 2026-11-15
+
+- O retorno do browser do Stripe deixou de marcar o pagamento como pago. O frontend mantém o estado pendente; a confirmação depende do webhook.
+- O webhook só processa sessões Stripe em modo `payment`, pagas, em EUR e com o total esperado para o pacote. Uma falha ao persistir a transação impede o envio do email de confirmação.
+- A inserção de transações autenticadas pela empresa está limitada ao estado pendente e não aceita IDs/recibos Stripe nem dados de emissão fiscal.
+- Os campos dinâmicos dos emails de compra são escapados antes de integrar HTML.
+- Sessões locais de demonstração só são restauradas em desenvolvimento. Os botões de saída invalidam também a sessão Supabase.
+- As páginas Empresas, Instituições e Relatórios já não mostram o ecrã genérico “em preparação”. A página de instituições não apresenta perfis locais como catálogo global.
+- Adicionada configuração de build estático para Netlify e guia de variáveis e publicação.
+- A migração de donativos, comprovativos, confirmações, chat, notificações e registos institucionais para persistência Supabase continua pendente. É necessária uma migração por domínio, com permissões separadas para cada parte e armazenamento privado para comprovativos; os dados locais existentes não foram apagados nem migrados automaticamente.
+- Não foram executados SQL no Supabase, deploys ou verificações de build/testes nesta etapa.
 
 ## Posicionamento
 

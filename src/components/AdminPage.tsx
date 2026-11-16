@@ -8,13 +8,17 @@ import { sampleInstitutions } from '../data/institutions'
 import AdminBrandTab from './AdminBrandTab'
 import {
   AdminDocument,
+  AdminInstitutionSubmission,
   AdminProfile,
   ReportTransaction,
   deleteAdminProfileReal,
   listAdminDocumentsReal,
+  listAdminDonationProofsReal,
+  listAdminInstitutionSubmissionsReal,
   listAdminProfilesReal,
   listAdminReportTransactionsReal,
   realBackendEnabled,
+  reviewInstitutionSubmissionReal,
   updateAdminDocumentAcceptedReal,
   updateReportTransactionInvoiceReal,
 } from '../utils/supabaseBackend'
@@ -72,7 +76,7 @@ function buildPlaceholderVars(report: GeneratedESGReport): Record<string, string
   }
 }
 
-type AdminTab = 'users-docs' | 'donation-history' | 'impact-measurement' | 'brand' | 'report-templates' | 'preview'
+type AdminTab = 'users-docs' | 'institution-submissions' | 'donation-history' | 'impact-measurement' | 'brand' | 'report-templates' | 'preview'
 
 const REQUIRED_ADMIN_INSTITUTION_DOCS = [
   'Comprovativo NIF',
@@ -109,10 +113,7 @@ export default function AdminPage({ setCurrentView, session, onLogout }: Props) 
                 A conta <strong>{session.email}</strong> não tem permissões de administrador.
               </p>
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-left text-xs text-amber-800 mb-5">
-                Para ativar esta conta como admin, execute no Supabase SQL Editor:
-                <pre className="mt-2 overflow-x-auto rounded-lg bg-white p-3 text-slate-700">{`update public.profiles
-set role = 'admin'
-where email = '${session.email}';`}</pre>
+                A atribuição de permissões de administrador deve ser feita pelo responsável do projeto através de um processo administrativo seguro.
               </div>
               <button onClick={onLogout} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl">Terminar sessao</button>
             </>
@@ -145,6 +146,7 @@ where email = '${session.email}';`}</pre>
       <div className="bg-white border-b border-slate-200 px-6 flex gap-1 overflow-x-auto">
         {([
           { id: 'users-docs' as const, label: 'Utilizadores e Documentos' },
+          { id: 'institution-submissions' as const, label: 'Candidaturas de Instituições' },
           { id: 'donation-history' as const, label: 'Historico de Donativos' },
           { id: 'impact-measurement' as const, label: 'Medição ESG e Impacto' },
           { id: 'brand' as const, label: 'Identidade da Marca' },
@@ -160,6 +162,7 @@ where email = '${session.email}';`}</pre>
 
       <div className="p-6 max-w-6xl mx-auto">
         {tab === 'users-docs' && <AdminUsersDocumentsTab session={session} />}
+        {tab === 'institution-submissions' && <AdminInstitutionSubmissionsTab session={session} />}
         {tab === 'donation-history' && <AdminDonationHistoryTab />}
         {tab === 'impact-measurement' && <AdminImpactMeasurementTab />}
         {tab === 'brand' && <AdminBrandTab />}
@@ -258,6 +261,67 @@ function documentStatusClass(status: 'pending' | 'accepted' | 'rejected') {
   if (status === 'accepted') return 'bg-green-100 text-green-700'
   if (status === 'rejected') return 'bg-red-100 text-red-700'
   return 'bg-amber-100 text-amber-700'
+}
+
+function AdminInstitutionSubmissionsTab({ session }: { session: Account | null }) {
+  const [submissions, setSubmissions] = useState<AdminInstitutionSubmission[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [notes, setNotes] = useState<Record<string, string>>({})
+  const [savingId, setSavingId] = useState('')
+
+  const reload = async () => {
+    setLoading(true)
+    const result = await listAdminInstitutionSubmissionsReal()
+    setLoading(false)
+    if (!result.ok) { setError(result.error); return }
+    setError('')
+    setSubmissions(result.submissions)
+  }
+
+  useEffect(() => { if (session?.role === 'admin') void reload() }, [session?.id, session?.role])
+
+  const review = async (item: AdminInstitutionSubmission, status: 'confirmed' | 'rejected') => {
+    if (!session) return
+    setSavingId(item.id)
+    const result = await reviewInstitutionSubmissionReal(item.id, status, notes[item.id] || '', session.id)
+    setSavingId('')
+    if (!result.ok) { setError(result.error); return }
+    await reload()
+  }
+
+  return (
+    <section>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div><h2 className="text-2xl font-black text-slate-900">Candidaturas de instituições</h2><p className="mt-1 text-sm text-slate-600">Dados e imagens ficam privados no Supabase e só são visíveis ao titular e à administração.</p></div>
+        <button onClick={() => void reload()} className="rounded-lg bg-slate-200 px-4 py-2 text-sm font-bold">Atualizar</button>
+      </div>
+      {error && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">{error}</p>}
+      {loading ? <p className="text-slate-500">A carregar candidaturas…</p> : submissions.length === 0 ? <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-600">Ainda não existem candidaturas guardadas.</p> : (
+        <div className="space-y-4">
+          {submissions.map(item => {
+            const data = item.payload
+            return <article key={item.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div><h3 className="text-lg font-black text-slate-900">{data.name} <span className="text-sm font-medium text-slate-500">({data.legalName})</span></h3><p className="text-sm text-slate-600">NIF {data.nif} · {data.category} · submetida {new Date(item.submitted_at).toLocaleString('pt-PT')}</p><p className="mt-1 text-sm text-slate-600">{data.email} · {data.phone} · {data.municipality}/{data.district}</p></div>
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${item.status === 'confirmed' ? 'bg-green-100 text-green-800' : item.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-900'}`}>{item.status === 'confirmed' ? 'Validada' : item.status === 'rejected' ? 'Rejeitada' : 'Submetida'}</span>
+              </div>
+              <details className="mt-4"><summary className="cursor-pointer text-sm font-bold text-blue-700">Ver candidatura completa</summary>
+                <div className="mt-3 grid gap-4 md:grid-cols-2">
+                  <div className="space-y-1 text-sm text-slate-700"><p><b>Missão:</b> {data.mission}</p><p><b>Descrição:</b> {data.description}</p><p><b>Atividades:</b> {data.mainActivities}</p><p><b>Experiência:</b> {data.pastAchievements}</p><p><b>Morada:</b> {data.address}, {data.postalCode}</p><p><b>IBAN:</b> {data.iban}</p><p><b>Equipa:</b> {data.fullTimeStaff} tempo inteiro, {data.partTimeStaff} parcial, {data.volunteers} voluntários</p></div>
+                  <div><b className="text-sm">Projetos propostos</b><ul className="mt-2 space-y-2">{data.needs.map(need => <li key={need.id} className="rounded-lg bg-slate-50 p-3 text-sm"><b>{need.category} · {need.subcategory}</b><p>{need.description}</p><p className="text-slate-500">{need.impactMetric} · €{need.estimatedValue || 0}</p></li>)}</ul>
+                    {!!data.storedAssets?.length && <div className="mt-3"><b className="text-sm">Imagens privadas</b><ul className="mt-1 space-y-1">{data.storedAssets.map(asset => <li key={asset.path} className="text-sm"><a className="text-blue-700 underline" href={asset.url} target="_blank" rel="noreferrer">{asset.label}: {asset.name}</a></li>)}</ul></div>}
+                  </div>
+                </div>
+                {item.review_note && <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm"><b>Nota de revisão:</b> {item.review_note}</p>}
+              </details>
+              {item.status === 'submitted' && <div className="mt-4 flex flex-wrap gap-2"><input value={notes[item.id] || ''} onChange={event => setNotes(prev => ({ ...prev, [item.id]: event.target.value }))} placeholder="Nota para o histórico de revisão" className="min-w-64 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" /><button disabled={savingId === item.id} onClick={() => void review(item, 'confirmed')} className="rounded-lg bg-green-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Confirmar</button><button disabled={savingId === item.id} onClick={() => void review(item, 'rejected')} className="rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Rejeitar</button></div>}
+            </article>
+          })}
+        </div>
+      )}
+    </section>
+  )
 }
 
 function AdminUsersDocumentsTab({ session }: { session: Account | null }) {
@@ -682,14 +746,14 @@ function parseDonationYear(date: string) {
   return parts[2] || ''
 }
 
-function buildDonationHistoryItems() {
+function buildDonationHistoryItems(proofs: ReturnType<typeof listProofs> = listProofs()) {
   const institutions = listProjectInstitutions()
-  return listProofs()
+  return proofs
     .map(proof => {
       const institution = institutions.find(inst => inst.name === proof.institutionName || inst.id === proof.institutionAccountId)
       const project = institution?.needs.find(n => proof.selectedNeedIds?.includes(n.id)) || institution?.needs[0]
       const reportPrice = proof.reportPrice ?? 0
-      const reportPaid = proof.reportPaymentStatus === 'paid' || reportPrice > 0
+      const reportPaid = !realBackendEnabled() && proof.reportPaymentStatus === 'paid'
       return {
         proof,
         institution,
@@ -713,7 +777,18 @@ function AdminDonationHistoryTab() {
   const [sdgFilter, setSdgFilter] = useState('')
   const [reportFilter, setReportFilter] = useState('')
   const [selectedId, setSelectedId] = useState('')
-  const items = buildDonationHistoryItems()
+  const [proofs, setProofs] = useState<ReturnType<typeof listProofs>>(() => listProofs())
+  const [loadingProofs, setLoadingProofs] = useState(realBackendEnabled())
+  const [proofLoadError, setProofLoadError] = useState('')
+  useEffect(() => {
+    if (!realBackendEnabled()) return
+    listAdminDonationProofsReal().then(result => {
+      setLoadingProofs(false)
+      if (result.ok) setProofs(result.proofs)
+      else setProofLoadError(result.error)
+    })
+  }, [])
+  const items = buildDonationHistoryItems(proofs)
   const years = [...new Set(items.map(i => i.year).filter(Boolean))].sort((a, b) => b.localeCompare(a))
   const institutions = [...new Set(items.map(i => i.proof.institutionName).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-PT'))
   const companies = [...new Set(items.map(i => i.companyName).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-PT'))

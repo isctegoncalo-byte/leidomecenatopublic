@@ -8,15 +8,16 @@ import {
   setCompanyConfirmation,
   setInstitutionConfirmation,
   rejectProof,
+  replaceProofsReal,
 } from '../utils/proofStore'
 import { internalDemoInstitution, sampleInstitutions } from '../data/institutions'
 import { generateESGReport } from '../utils/esgEngine'
 import { downloadSustainabilityReport } from '../utils/sustainabilityPdf'
 import { REPORT_TIERS, calculateTotalWithVat, calculateVat, formatCurrency } from '../types'
-import { createNotification, listNotificationsForAccount, markAllNotificationsRead, markNotificationRead } from '../utils/notificationStore'
-import { addMessage, listThreadsForAccount } from '../utils/chatStore'
+import { createNotification, listNotificationsForAccount, markAllNotificationsRead, markNotificationRead, replaceNotificationsReal } from '../utils/notificationStore'
+import { addMessage, listThreadsForAccount, replaceThreadsReal } from '../utils/chatStore'
 import { findInstitutionRegistration, saveInstitutionRegistration } from '../utils/institutionRegistry'
-import { ReportTransaction, deleteDocReal, listCompanyReportTransactionsReal, listDocsReal, logoutReal, notifyAdminAboutCompanyDonationConfirmation, realBackendEnabled, uploadDocReal } from '../utils/supabaseBackend'
+import { ReportTransaction, deleteDocReal, listChatThreadsReal, listCompanyReportTransactionsReal, listDocsReal, listDonationProofsReal, listNotificationsReal, notifyAdminAboutCompanyDonationConfirmation, realBackendEnabled, uploadDocReal } from '../utils/supabaseBackend'
 import { isProjectComplete, projectProgress, projectSecured, projectTarget, supportTypeLabel } from '../utils/projectFunding'
 import { PROJECT_TYPE_LIMIT_MESSAGE, ProjectSupportType, hasActiveProjectOfType, nextAvailableProjectType } from '../utils/projectLimits'
 import SdgGrid from './SdgGrid'
@@ -45,18 +46,24 @@ export default function PrivateAreaPage({ account, onLogout, setCurrentView }: P
   const [refreshTick, force] = useState(0)
   const [realDocs, setRealDocs] = useState<UploadedDoc[]>([])
   const [realTransactions, setRealTransactions] = useState<ReportTransaction[]>([])
+  const [realProofs, setRealProofs] = useState<DonationProof[]>([])
+  const [realNotifications, setRealNotifications] = useState<PlatformNotification[]>([])
+  const [realThreads, setRealThreads] = useState<ChatThread[]>([])
   const refresh = () => force(x => x + 1)
 
   const localDocs = useMemo(() => listDocs(account.id), [account.id, tab])
   const docs = realBackendEnabled() ? realDocs : localDocs
-  const proofs = useMemo(() => account.role === 'empresa'
+  const localProofs = useMemo(() => account.role === 'empresa'
     ? listProofsForCompany(account)
     : listProofsForInstitution(account.id),
   [account, account.id, account.role, tab])
-  const notifications = useMemo(() =>
+  const proofs = realBackendEnabled() ? realProofs : localProofs
+  const localNotifications = useMemo(() =>
     listNotificationsForAccount(account.id, account.role === 'admin' ? undefined : account.role, account.name),
   [account.id, account.name, account.role, tab])
-  const chatThreads = useMemo(() => listThreadsForAccount(account), [account.id, account.name, tab])
+  const notifications = realBackendEnabled() ? realNotifications : localNotifications
+  const localThreads = useMemo(() => listThreadsForAccount(account), [account.id, account.name, tab])
+  const chatThreads = realBackendEnabled() ? realThreads : localThreads
   const institutionRegistration = account.role === 'instituicao' ? findInstitutionRegistration(account.name) : null
   const onboarding = buildOnboardingSteps(account, docs, proofs, institutionRegistration?.needs.length || 0)
 
@@ -66,6 +73,17 @@ export default function PrivateAreaPage({ account, onLogout, setCurrentView }: P
     listDocsReal(account.id).then(items => {
       if (alive) setRealDocs(items)
     })
+    if (account.role === 'empresa' || account.role === 'instituicao') {
+      listDonationProofsReal(account).then(result => {
+        if (alive && result.ok) { replaceProofsReal(result.proofs); setRealProofs(result.proofs) }
+      })
+      listNotificationsReal(account).then(result => {
+        if (alive && result.ok) { replaceNotificationsReal(result.notifications); setRealNotifications(result.notifications) }
+      })
+      listChatThreadsReal(account).then(result => {
+        if (alive && result.ok) { replaceThreadsReal(result.threads); setRealThreads(result.threads) }
+      })
+    }
     if (account.role === 'empresa') {
       listCompanyReportTransactionsReal(account).then(result => {
         if (alive && result.ok) setRealTransactions(result.transactions)
@@ -75,7 +93,6 @@ export default function PrivateAreaPage({ account, onLogout, setCurrentView }: P
   }, [account.id, tab, refreshTick])
 
   const handleLogout = () => {
-    void logoutReal()
     logout()
     onLogout()
   }
@@ -2107,8 +2124,12 @@ function ESGReportsTab({
     .sort((a, b) => String(b.confirmedAt || b.date).localeCompare(String(a.confirmedAt || a.date)))
   const proofContractIds = new Set(transactions.map(proof => proof.contractId))
   const remoteTransactions = realTransactions.filter(transaction => !proofContractIds.has(transaction.contract_id))
-  const paidCount = transactions.filter(t => t.reportPaymentStatus === 'paid').length + remoteTransactions.filter(t => t.status === 'paid').length
-  const pendingCount = transactions.filter(t => t.reportPaymentStatus === 'pending').length + remoteTransactions.filter(t => t.status === 'pending').length
+  const paidCount = realBackendEnabled()
+    ? realTransactions.filter(t => t.status === 'paid').length
+    : transactions.filter(t => t.reportPaymentStatus === 'paid').length
+  const pendingCount = realBackendEnabled()
+    ? realTransactions.filter(t => t.status === 'pending').length
+    : transactions.filter(t => t.reportPaymentStatus === 'pending').length
 
   const buildAndDownload = async (proof: DonationProof) => {
     // Tenta encontrar a instituição correspondente
@@ -2188,7 +2209,12 @@ function ESGReportsTab({
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {transactions.map(transaction => {
-                  const status = transaction.reportPaymentStatus || (transaction.reportTotal || transaction.reportPrice ? 'pending' : 'none')
+                  const serverStatus = realTransactions.find(item => item.contract_id === transaction.contractId)?.status
+                  const status = serverStatus
+                    ? (serverStatus === 'paid' ? 'paid' : 'pending')
+                    : realBackendEnabled()
+                      ? 'pending'
+                      : transaction.reportPaymentStatus || (transaction.reportTotal || transaction.reportPrice ? 'pending' : 'none')
                   const statusLabel = status === 'paid' ? 'Pago' : status === 'pending' ? 'Pendente' : 'Sem pagamento'
                   const statusClass = status === 'paid' ? 'bg-green-100 text-green-700' : status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
                   const base = transaction.reportPrice || 0

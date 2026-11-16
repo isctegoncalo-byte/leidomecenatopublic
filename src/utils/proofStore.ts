@@ -1,10 +1,16 @@
 import { Account, DonationProof } from '../types'
 import { listProjectInstitutions } from './projectCatalog'
+import { createDonationProofReal, realBackendEnabled, saveDonationProofReal } from './supabaseBackend'
 
 const PROOFS_KEY = 'leidomecenato_proofs'
 const PROOFS_CLEANUP_FLAG = 'leidomecenato_proofs_cleaned_v1'
 const ZAPIER_ESG_REPORT_WEBHOOK = 'https://hooks.zapier.com/hooks/catch/27566905/4ykwk2i/'
 const LEGACY_DEMO_PROOF_PREFIXES = ['demo-proof-', 'demo-contract-', 'demo-company-']
+let realProofCache: DonationProof[] = []
+
+export function replaceProofsReal(proofs: DonationProof[]) {
+  realProofCache = proofs
+}
 
 function isLegacyDemoProof(proof: DonationProof) {
   return LEGACY_DEMO_PROOF_PREFIXES.some(prefix =>
@@ -28,6 +34,7 @@ function writeJson(key: string, value: unknown) {
 }
 
 export function listProofs(): DonationProof[] {
+  if (realBackendEnabled()) return realProofCache
   if (typeof window !== 'undefined' && !localStorage.getItem(PROOFS_CLEANUP_FLAG)) {
     localStorage.removeItem(PROOFS_KEY)
     localStorage.setItem(PROOFS_CLEANUP_FLAG, '1')
@@ -63,6 +70,13 @@ export function getProofByContractId(contractId: string): DonationProof | null {
 }
 
 export function saveProof(proof: DonationProof) {
+  if (realBackendEnabled()) {
+    const existed = realProofCache.some(item => item.id === proof.id)
+    realProofCache = [...realProofCache.filter(item => item.id !== proof.id), proof]
+    const operation = existed ? saveDonationProofReal(proof) : createDonationProofReal(proof)
+    void operation.then(result => { if (!result.ok) console.error('Donativo não foi guardado no Supabase:', result.error) })
+    return
+  }
   const all = listProofs().filter(p => p.id !== proof.id)
   writeJson(PROOFS_KEY, [...all, proof])
 }
@@ -71,7 +85,7 @@ export function createProof(input: Omit<DonationProof, 'id' | 'companyConfirmed'
   const companyConfirmed = Boolean(input.proofFileDataUrl)
   const proof: DonationProof = {
     ...input,
-    id: `proof-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    id: realBackendEnabled() ? crypto.randomUUID() : `proof-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     companyConfirmed,
     companyConfirmedAmount: companyConfirmed ? input.amount : undefined,
     confirmedAmount: companyConfirmed ? input.amount : input.confirmedAmount,

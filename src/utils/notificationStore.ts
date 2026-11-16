@@ -1,6 +1,12 @@
 import { ImpactContract, PlatformNotification, ViewType } from '../types'
+import { markNotificationReadReal, realBackendEnabled } from './supabaseBackend'
 
 const NOTIFICATIONS_KEY = 'leidomecenato_notifications'
+let realNotificationCache: PlatformNotification[] = []
+
+export function replaceNotificationsReal(notifications: PlatformNotification[]) {
+  realNotificationCache = notifications
+}
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -16,10 +22,15 @@ function writeJson(key: string, value: unknown) {
 }
 
 export function listNotifications(): PlatformNotification[] {
+  if (realBackendEnabled()) return realNotificationCache
   return readJson<PlatformNotification[]>(NOTIFICATIONS_KEY, [])
 }
 
 export function saveNotification(notification: PlatformNotification) {
+  if (realBackendEnabled()) {
+    realNotificationCache = [notification, ...realNotificationCache.filter(item => item.id !== notification.id)]
+    return
+  }
   const all = listNotifications().filter(n => n.id !== notification.id)
   writeJson(NOTIFICATIONS_KEY, [...all, notification])
 }
@@ -44,10 +55,20 @@ export function listNotificationsForAccount(accountId: string, role?: 'empresa' 
 }
 
 export function markNotificationRead(id: string) {
+  if (realBackendEnabled()) {
+    realNotificationCache = realNotificationCache.map(notification => notification.id === id ? { ...notification, read: true } : notification)
+    void markNotificationReadReal(id).then(result => { if (!result.ok) console.error('Notificação não atualizada no Supabase:', result.error) })
+    return
+  }
   writeJson(NOTIFICATIONS_KEY, listNotifications().map(n => n.id === id ? { ...n, read: true } : n))
 }
 
 export function markAllNotificationsRead(accountId: string) {
+  if (realBackendEnabled()) {
+    realNotificationCache = realNotificationCache.map(notification => notification.recipientAccountId === accountId ? { ...notification, read: true } : notification)
+    void markNotificationReadReal('', accountId).then(result => { if (!result.ok) console.error('Notificações não atualizadas no Supabase:', result.error) })
+    return
+  }
   writeJson(NOTIFICATIONS_KEY, listNotifications().map(n => n.recipientAccountId === accountId ? { ...n, read: true } : n))
 }
 

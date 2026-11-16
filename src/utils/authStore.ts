@@ -58,6 +58,7 @@ export function registerAccount(payload: RegisterPayload): { ok: true; account: 
     id: `acc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     role: payload.role,
     email: payload.email.trim().toLowerCase(),
+    // This store exists only for the local demo. Real accounts use Supabase Auth.
     password: payload.password,
     name: payload.name.trim(),
     nif: payload.nif.trim(),
@@ -165,7 +166,7 @@ function removeDemoAccounts() {
 }
 
 export function seedDemoAccounts() {
-  removeDemoAccounts()
+  if (import.meta.env.DEV) removeDemoAccounts()
 }
 
 seedDemoAccounts()

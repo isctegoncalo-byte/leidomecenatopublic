@@ -501,6 +501,14 @@ export async function registerReal(payload: SupabaseRegisterPayload): Promise<Su
     return { ok: false, error: authError?.message || 'Nao foi possivel criar a conta.' }
   }
 
+  if (Array.isArray(authData.user.identities) && authData.user.identities.length === 0) {
+    return {
+      ok: true,
+      needsEmailConfirmation: true,
+      message: 'Este email já está associado a uma conta. Entre ou recupere a palavra-passe. Se a conta ainda não foi confirmada, pode pedir um novo email abaixo.',
+    }
+  }
+
   await notifyAdminAboutRegistration({ ...payload, userId: authData.user.id })
 
   if (!authData.session) {
@@ -522,6 +530,20 @@ export async function registerReal(payload: SupabaseRegisterPayload): Promise<Su
   }
 
   return { ok: true, account: toAccount(data as AdminProfile) }
+}
+
+export async function resendSignupConfirmationReal(email: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
+
+  const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/entrar` : undefined
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email: email.trim().toLowerCase(),
+    options: { emailRedirectTo: redirectTo },
+  })
+
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
 }
 
 export async function logoutReal() {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Account, AccountRole, ViewType } from '../types'
-import { loginReal, realBackendEnabled, registerReal, requestPasswordRecoveryReal, updatePasswordReal } from '../utils/supabaseBackend'
+import { loginReal, realBackendEnabled, registerReal, requestPasswordRecoveryReal, resendSignupConfirmationReal, updatePasswordReal } from '../utils/supabaseBackend'
 import { supabase } from '../utils/supabaseClient'
 import { COMPANY_SECTORS } from '../data/companySectors'
 
@@ -175,6 +175,28 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
       return
     }
     setSuccess('Enviámos um email com o link para recuperar a palavra-passe. Verifique também o spam/lixo eletrónico.')
+  }
+
+  const handleResendConfirmation = async () => {
+    setError('')
+    setSuccess('')
+    if (!email.trim()) {
+      setError('Escreva o email usado no registo.')
+      return
+    }
+    if (!realBackendEnabled()) {
+      setError('A confirmação de email só funciona com o Supabase ativo.')
+      return
+    }
+
+    setLoading(true)
+    const res = await resendSignupConfirmationReal(email)
+    setLoading(false)
+    if (!res.ok) {
+      setError(res.error)
+      return
+    }
+    setSuccess('Se existir uma conta pendente de confirmação para este email, será enviado um novo link. Verifique também o spam/lixo eletrónico.')
   }
 
   const handlePasswordReset = async (e: React.FormEvent) => {
@@ -434,6 +456,16 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
                 >
                   Esqueci-me da palavra-passe
                 </button>
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleResendConfirmation()}
+                    disabled={loading}
+                    className="text-sm text-blue-600 hover:text-blue-800 font-semibold disabled:opacity-60"
+                  >
+                    Reenviar email de confirmação
+                  </button>
+                </div>
               </div>
             )}
 

@@ -90,7 +90,6 @@ const toAccount = (row: AdminProfile): Account => ({
   id: row.id,
   role: row.role,
   email: row.email,
-  password: '',
   name: row.name,
   nif: row.nif,
   createdAt: row.created_at,
@@ -1221,3 +1220,4 @@ export async function saveImpactMeasurementReal(
 
   return { ok: true, row: data as AdminImpactMeasurementRow }
 }
+

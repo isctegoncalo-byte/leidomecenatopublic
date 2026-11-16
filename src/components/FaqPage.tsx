@@ -22,16 +22,16 @@ const FAQS: FaqCategory[] = [
     title: 'Sobre a Plataforma',
     items: [
       {
-        q: 'O que é a Lei do Mecenato?',
-        a: 'É uma plataforma privada e independente que produz Relatórios de Impacto sobre donativos feitos por empresas a instituições, ao abrigo do Estatuto do Mecenato (Lei n.º 16/2001). Não somos um organismo público nem uma entidade certificadora oficial.',
+        q: 'O que é a LeidoMecenato.pt?',
+        a: 'A LeidoMecenato.pt é uma plataforma privada e independente que aproxima empresas e instituições beneficiárias, apoiando o registo de donativos e a elaboração de Relatórios de Impacto.',
       },
       {
         q: 'A plataforma fica com alguma percentagem do donativo?',
         a: 'Não. O donativo vai 100% da empresa para a instituição. A plataforma cobra apenas o serviço de Relatório de Impacto, com preço fixo. O valor do donativo nunca passa por nós.',
       },
       {
-        q: 'A Lei do Mecenato é um organismo público?',
-        a: 'Não. Somos uma iniciativa privada independente, sem qualquer vínculo a organismos públicos ou entidades certificadoras oficiais.',
+        q: 'A LeidoMecenato.pt é um organismo público?',
+        a: 'Não. A LeidoMecenato.pt é uma plataforma privada e independente, sem vínculo a organismos públicos ou a entidades certificadoras oficiais.',
       },
     ],
   },
@@ -115,7 +115,7 @@ const FAQS: FaqCategory[] = [
       },
       {
         q: 'A plataforma emite recibos para efeitos fiscais?',
-        a: 'Não. Quem emite a declaração para o IRC é a instituição beneficiária do donativo. A plataforma fornece o Relatório de Impacto, que pode acompanhar a declaração da instituição como documento de suporte.',
+        a: 'Os recibos dos donativos são efetuados ao abrigo da Lei do Mecenato pelas Instituições que os recebem. Para as empresas que optarem por adquirir o Relatório de Impacto, existe uma fatura recibo do serviço prestado.',
       },
     ],
   },
@@ -219,3 +219,4 @@ export default function FaqPage({ setCurrentView }: Props) {
     </div>
   )
 }
+

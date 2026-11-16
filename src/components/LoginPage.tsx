@@ -13,6 +13,31 @@ interface Props {
 
 type Mode = 'login' | 'register' | 'recover' | 'reset'
 
+type CaptchaChallenge = { question: string; answer: number }
+
+function randomInt(min: number, max: number) {
+  const values = new Uint32Array(1)
+  crypto.getRandomValues(values)
+  return min + (values[0] % (max - min + 1))
+}
+
+function createCaptchaChallenge(): CaptchaChallenge {
+  const operation = randomInt(0, 2)
+  if (operation === 0) {
+    const left = randomInt(4, 19)
+    const right = randomInt(3, 18)
+    return { question: `Quanto é ${left} + ${right}?`, answer: left + right }
+  }
+  if (operation === 1) {
+    const left = randomInt(10, 29)
+    const right = randomInt(2, left - 1)
+    return { question: `Quanto é ${left} − ${right}?`, answer: left - right }
+  }
+  const left = randomInt(2, 9)
+  const right = randomInt(2, 9)
+  return { question: `Quanto é ${left} × ${right}?`, answer: left * right }
+}
+
 export default function LoginPage({ onLogin, setCurrentView, initialPasswordRecovery = false, onPasswordRecoveryComplete }: Props) {
   const [mode, setMode] = useState<Mode>(() => initialPasswordRecovery ? 'reset' : 'login')
   const [role, setRole] = useState<AccountRole>('empresa')
@@ -29,13 +54,11 @@ export default function LoginPage({ onLogin, setCurrentView, initialPasswordReco
   const [institutionCategory, setInstitutionCategory] = useState('')
   const [consentLogo, setConsentLogo] = useState(false)
   const [consentRGPD, setConsentRGPD] = useState(false)
-  const [captchaA, setCaptchaA] = useState(3)
-  const [captchaB, setCaptchaB] = useState(4)
+  const [captcha, setCaptcha] = useState<CaptchaChallenge>(createCaptchaChallenge)
   const [captchaAnswer, setCaptchaAnswer] = useState('')
 
   const refreshCaptcha = () => {
-    setCaptchaA(Math.floor(Math.random() * 8) + 2)
-    setCaptchaB(Math.floor(Math.random() * 8) + 2)
+    setCaptcha(createCaptchaChallenge())
     setCaptchaAnswer('')
   }
 
@@ -66,7 +89,7 @@ export default function LoginPage({ onLogin, setCurrentView, initialPasswordReco
     setError('')
     setSuccess('')
 
-    if (Number(captchaAnswer) !== captchaA + captchaB) {
+    if (Number(captchaAnswer) !== captcha.answer) {
       setError('Confirme que é humano resolvendo a conta de verificação.')
       refreshCaptcha()
       return
@@ -123,6 +146,11 @@ export default function LoginPage({ onLogin, setCurrentView, initialPasswordReco
       setError('Deve aceitar o tratamento de dados de acordo com o RGPD para criar conta.')
       return
     }
+    if (Number(captchaAnswer) !== captcha.answer) {
+      setError('A verificação humana não está correta. Tente o novo desafio.')
+      refreshCaptcha()
+      return
+    }
 
     if (!realBackendEnabled()) {
       setError('A ligação ao Supabase não está configurada neste ambiente. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.')
@@ -169,6 +197,11 @@ export default function LoginPage({ onLogin, setCurrentView, initialPasswordReco
 
     if (!email) {
       setError('Escreva o email da sua conta.')
+      return
+    }
+    if (Number(captchaAnswer) !== captcha.answer) {
+      setError('A verificação humana não está correta. Tente o novo desafio.')
+      refreshCaptcha()
       return
     }
     if (!realBackendEnabled()) {
@@ -400,10 +433,10 @@ export default function LoginPage({ onLogin, setCurrentView, initialPasswordReco
                 </div>
               )}
 
-              {mode === 'login' && (
+              {(mode === 'login' || mode === 'register' || mode === 'recover') && (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <label className="block text-sm font-semibold text-slate-600 mb-2">
-                    Verificação humana: quanto é {captchaA} + {captchaB}?
+                    Verificação humana: {captcha.question}
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -518,3 +551,4 @@ export default function LoginPage({ onLogin, setCurrentView, initialPasswordReco
     </div>
   )
 }
+

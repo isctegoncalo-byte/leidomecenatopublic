@@ -13,7 +13,6 @@ export interface Account {
   id: string
   role: AccountRole
   email: string
-  password: string             // simulação: em produção seria hash
   name: string                 // nome da empresa ou instituição
   nif: string
   createdAt: string
@@ -450,3 +449,4 @@ export const REPORT_TIERS: ReportTier[] = [
     ],
   },
 ]
+

@@ -7,12 +7,14 @@ import { COMPANY_SECTORS } from '../data/companySectors'
 interface Props {
   onLogin: (account: Account) => void
   setCurrentView: (v: ViewType) => void
+  initialPasswordRecovery?: boolean
+  onPasswordRecoveryComplete?: () => void
 }
 
 type Mode = 'login' | 'register' | 'recover' | 'reset'
 
-export default function LoginPage({ onLogin, setCurrentView }: Props) {
-  const [mode, setMode] = useState<Mode>('login')
+export default function LoginPage({ onLogin, setCurrentView, initialPasswordRecovery = false, onPasswordRecoveryComplete }: Props) {
+  const [mode, setMode] = useState<Mode>(() => initialPasswordRecovery ? 'reset' : 'login')
   const [role, setRole] = useState<AccountRole>('empresa')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -50,6 +52,14 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
 
     return () => data.subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (initialPasswordRecovery) {
+      setMode('reset')
+      setError('')
+      setSuccess('Pode definir uma nova palavra-passe.')
+    }
+  }, [initialPasswordRecovery])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -220,12 +230,14 @@ export default function LoginPage({ onLogin, setCurrentView }: Props) {
     setSuccess('Palavra-passe alterada com sucesso. Já pode entrar com a nova palavra-passe.')
     setPassword('')
     setMode('login')
+    onPasswordRecoveryComplete?.()
   }
 
   const resetMode = (nextMode: Mode) => {
     setMode(nextMode)
     setError('')
     setSuccess('')
+    if (mode === 'reset' && nextMode !== 'reset') onPasswordRecoveryComplete?.()
   }
 
   return (

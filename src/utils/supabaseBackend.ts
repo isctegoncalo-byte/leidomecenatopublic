@@ -223,7 +223,7 @@ export async function loginReal(email: string, password: string): Promise<Supaba
 export async function requestPasswordRecoveryReal(email: string): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
 
-  const redirectTo = `${window.location.origin}/entrar`
+  const redirectTo = 'https://leidomecenato.pt/entrar'
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo })
   if (error) return { ok: false, error: error.message }
   return { ok: true }
@@ -479,7 +479,7 @@ async function upsertProfileFromUser(user: User, fallback?: SupabaseRegisterPayl
 export async function registerReal(payload: SupabaseRegisterPayload): Promise<SupabaseAuthResult> {
   if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
 
-  const emailRedirectTo = typeof window !== 'undefined' ? `${window.location.origin}/entrar` : undefined
+  const emailRedirectTo = 'https://leidomecenato.pt/entrar'
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: payload.email.trim().toLowerCase(),
     password: payload.password,
@@ -535,11 +535,10 @@ export async function registerReal(payload: SupabaseRegisterPayload): Promise<Su
 export async function resendSignupConfirmationReal(email: string): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!supabase) return { ok: false, error: 'Supabase ainda nao esta configurado.' }
 
-  const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/entrar` : undefined
   const { error } = await supabase.auth.resend({
     type: 'signup',
     email: email.trim().toLowerCase(),
-    options: { emailRedirectTo: redirectTo },
+    options: { emailRedirectTo: 'https://leidomecenato.pt/entrar' },
   })
 
   if (error) return { ok: false, error: error.message }

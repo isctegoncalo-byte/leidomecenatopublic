@@ -21,6 +21,7 @@ import BrandSync from './components/BrandSync'
 import CatalogPages from './components/CatalogPages'
 import { getSession, listAccounts } from './utils/authStore'
 import { getRealSessionAccount, logoutReal, notifyAdminAboutDonationIntent, realBackendEnabled } from './utils/supabaseBackend'
+import { supabase } from './utils/supabaseClient'
 import { createProof, getProofByContractId } from './utils/proofStore'
 import { createCompanyDonationRegisteredNotification, createDonationIntentNotification } from './utils/notificationStore'
 import { createThread } from './utils/chatStore'
@@ -95,6 +96,7 @@ export default function App() {
   const [state, setState] = useState<AppState>(() => ({ screen: 'main', view: pathToView(window.location.pathname) }))
   const [session, setSession] = useState<Account | null>(null)
   const [sessionReady, setSessionReady] = useState(false)
+  const [passwordRecoveryPending, setPasswordRecoveryPending] = useState(false)
   const [loginDestination, setLoginDestination] = useState<ViewType | null>(null)
   const sessionRef = useRef<Account | null>(null)
 
@@ -125,6 +127,23 @@ export default function App() {
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [])
+
+  useEffect(() => {
+    if (!supabase) return
+    const { data } = supabase.auth.onAuthStateChange(event => {
+      if (event !== 'PASSWORD_RECOVERY') return
+      setPasswordRecoveryPending(true)
+      const loginPath = viewToPath('login')
+      if (window.location.pathname !== loginPath || window.location.search) window.history.replaceState({}, '', loginPath)
+      setState({ screen: 'main', view: 'login' })
+    })
+    return () => data.subscription.unsubscribe()
+  }, [])
+
+  const handlePasswordRecoveryComplete = () => {
+    setPasswordRecoveryPending(false)
+    if (window.location.search) window.history.replaceState({}, '', viewToPath('login'))
+  }
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })
@@ -305,7 +324,7 @@ export default function App() {
           <CatalogPages view={view} setCurrentView={setView} />
         )}
         {view === 'login' && (
-          <LoginPage onLogin={handleLogin} setCurrentView={setView} />
+          <LoginPage onLogin={handleLogin} setCurrentView={setView} initialPasswordRecovery={passwordRecoveryPending} onPasswordRecoveryComplete={handlePasswordRecoveryComplete} />
         )}
         {view === 'area-privada' && (
           session?.role === 'admin' ? (
@@ -313,7 +332,7 @@ export default function App() {
           ) : session ? (
             <PrivateAreaPage account={session} onLogout={handleLogout} setCurrentView={setView} />
           ) : (
-            <LoginPage onLogin={handleLogin} setCurrentView={setView} />
+            <LoginPage onLogin={handleLogin} setCurrentView={setView} initialPasswordRecovery={passwordRecoveryPending} onPasswordRecoveryComplete={handlePasswordRecoveryComplete} />
           )
         )}
         {view === 'admin' && (
